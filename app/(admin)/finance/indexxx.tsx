@@ -1,12 +1,11 @@
 // app/(admin)/finance/index.tsx
 import clsx from "clsx";
 import { useRouter } from "expo-router";
-import { ArrowDown, ArrowUp, Eye, Plus } from "lucide-react-native";
+import { ArrowDown, ArrowLeft, ArrowUp, Eye, Plus } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     FlatList,
     Modal,
-    Platform,
     Pressable,
     RefreshControl,
     SectionList,
@@ -33,8 +32,12 @@ import {
 import { fetchFinance } from "@/redux/finance/finance.thunks";
 
 /* ───────── Clients (for Receivables) ───────── */
-import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
-import { selectClientFilters } from "@/redux/client/client.selectors";
+import {
+    selectAllClients,
+    selectClientFilters,
+    selectClientPagination,
+    selectClientsLoading,
+} from "@/redux/client/client.selectors";
 import { fetchClients } from "@/redux/client/client.thunks";
 
 type Flow = "Receivables" | "Expenses";
@@ -57,48 +60,6 @@ const NGN = (n: number) =>
         currency: "NGN",
         maximumFractionDigits: 2,
     }).format(n);
-
-function getOutstandingReceivable(client: any) {
-    const summaryOutstanding = Number(
-        client?.paymentSummary?.remainingBalance ?? NaN,
-    );
-    if (Number.isFinite(summaryOutstanding)) {
-        return Math.max(summaryOutstanding, 0);
-    }
-
-    const payable = Number(client?.payableAmount || 0);
-    const paid = Array.isArray(client?.installmentalPayment)
-        ? client.installmentalPayment.reduce(
-              (sum: number, p: any) => sum + Number(p?.amount || 0),
-              0,
-          )
-        : 0;
-    return Math.max(payable - paid, 0);
-}
-
-function getTotalPaid(client: any) {
-    const summaryTotalPaid = Number(client?.paymentSummary?.totalPaid ?? NaN);
-    if (Number.isFinite(summaryTotalPaid)) {
-        return Math.max(summaryTotalPaid, 0);
-    }
-
-    return Array.isArray(client?.installmentalPayment)
-        ? client.installmentalPayment.reduce(
-              (sum: number, p: any) => sum + Number(p?.amount || 0),
-              0,
-          )
-        : 0;
-}
-
-function buildFilteredReceivables(clients: any[]) {
-    return (clients || [])
-        .filter((c: any) => getTotalPaid(c) > 0)
-        .sort(
-            (a: any, b: any) =>
-                new Date(b?.createdAt || 0).getTime() -
-                new Date(a?.createdAt || 0).getTime(),
-        );
-}
 
 function formatTime(iso: string) {
     try {
@@ -139,9 +100,6 @@ export default function FinanceIndex() {
     const [pinLocked, setPinLocked] = useState(true);
     const [pinInput, setPinInput] = useState("");
     const [pinError, setPinError] = useState("");
-    const [receivablesPage, setReceivablesPage] = useState(1);
-    const [filteredReceivables, setFilteredReceivables] = useState<any[]>([]);
-    const RECEIVABLES_LIMIT = 20;
 
     const handlePinSubmit = () => {
         if (pinInput.trim() === ADMIN_FINANCE_PIN) {
@@ -161,12 +119,12 @@ export default function FinanceIndex() {
     const financeLoading = useAppSelector(selectFinanceListLoading);
     const financeFilters = useAppSelector(selectFinanceFilters);
 
-    /* Clients for Receivables (local paged cache) */
-    const clientFilters = useAppSelector(selectClientFilters);
+    /* Clients for Receivables */
+    const clients = useAppSelector(selectAllClients);
 
-    const [clients, setClients] = useState<any[]>([]);
-    const [clientsLoading, setClientsLoading] = useState(false);
-    const [clientsRefreshing, setClientsRefreshing] = useState(false);
+    const clientsPagination = useAppSelector(selectClientPagination);
+    const clientsLoading = useAppSelector(selectClientsLoading);
+    const clientFilters = useAppSelector(selectClientFilters);
 
     const [tab, setTab] = useState<Flow>("Receivables");
     const [hidden, setHidden] = useState(false);
@@ -181,30 +139,37 @@ export default function FinanceIndex() {
     /* Totals */
     const total = useMemo(() => {
         if (tab === "Receivables") {
-            const sum = (filteredReceivables || []).reduce(
-                (acc, c: any) => acc + getTotalPaid(c),
+            const sum = (clients || []).reduce(
+                (acc, c: any) => acc + Number(c?.payableAmount || 0),
                 0,
             );
             return sum;
         }
         // Expenses: keep your existing summary behavior
         return summary?.totalExpenses || 0;
-    }, [summary, tab, filteredReceivables]);
+    }, [summary, tab, clients]);
 
     /* Section builder */
     const sections = useMemo(() => {
         if (tab === "Receivables") {
-            const txns: Txn[] = (clients || []).map((c: any) => ({
-                id: c._id,
-                title: "Receive",
-                amount: getTotalPaid(c),
-                time: formatTime(c?.createdAt || ""),
-                description: String(c?.name || "Unnamed client"),
-                status: "Pending",
-                dir: "down",
-                dateKey: dateBucket(c?.createdAt || ""),
-                kind: "receivable", // <- new
-            }));
+            const txns: Txn[] = (clients || [])
+                .filter((c: any) => Number(c?.payableAmount || 0) > 0)
+                .sort(
+                    (a: any, b: any) =>
+                        new Date(b?.createdAt || 0).getTime() -
+                        new Date(a?.createdAt || 0).getTime(),
+                )
+                .map((c: any) => ({
+                    id: c._id,
+                    title: "Receive",
+                    amount: Number(c?.payableAmount || 0),
+                    time: formatTime(c?.createdAt || ""),
+                    description: String(c?.name || "Unnamed client"),
+                    status: "Pending",
+                    dir: "down",
+                    dateKey: dateBucket(c?.createdAt || ""),
+                    kind: "receivable", // <- new
+                }));
 
             const map = new Map<string, Txn[]>();
             txns.forEach((t) => {
@@ -250,58 +215,21 @@ export default function FinanceIndex() {
         }));
     }, [tab, clients, records]);
 
-    const fetchAndPaginateReceivables = useCallback(
-        async (asRefresh = false) => {
-            if (asRefresh) setClientsRefreshing(true);
-            setClientsLoading(true);
-
-            try {
-                // 1) Fetch all clients (probe count, then bulk fetch)
-                const probe = await dispatch(
-                    fetchClients({
-                        page: 1,
-                        limit: 1,
-                        sortOrder: clientFilters?.sortOrder ?? "desc",
-                    }) as any,
-                ).unwrap();
-
-                const totalClients =
-                    Number(probe?.pagination?.totalClients || 0) ||
-                    (probe?.clients?.length ?? 0);
-
-                const payload = await dispatch(
-                    fetchClients({
-                        page: 1,
-                        limit: Math.max(totalClients, 1),
-                        sortOrder: clientFilters?.sortOrder ?? "desc",
-                    }) as any,
-                ).unwrap();
-
-                const all = payload?.clients ?? [];
-                const filtered = buildFilteredReceivables(all);
-
-                // Keep full filtered set and show first local page
-                const visible = filtered.slice(0, RECEIVABLES_LIMIT);
-
-                setFilteredReceivables(filtered);
-                setReceivablesPage(1);
-                setClients(visible);
-            } catch {
-                // swallow here: global error handling remains in redux slices/toasts
-            } finally {
-                setClientsLoading(false);
-                setClientsRefreshing(false);
-            }
-        },
-        [dispatch, clientFilters?.sortOrder],
-    );
+    console.log(sections);
 
     /* First load + tab switching */
     useEffect(() => {
         if (pinLocked) return;
 
         if (tab === "Receivables") {
-            fetchAndPaginateReceivables(false);
+            // fetch clients list (first page)
+            dispatch(
+                fetchClients({
+                    page: clientFilters?.page ?? 1,
+                    limit: clientFilters?.limit ?? 20,
+                    sortOrder: clientFilters?.sortOrder ?? "desc",
+                }) as any,
+            );
         } else {
             // fetch expenses (first page)
             dispatch(
@@ -320,23 +248,32 @@ export default function FinanceIndex() {
             );
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [tab, dispatch, pinLocked, fetchAndPaginateReceivables]);
+    }, [tab, dispatch, pinLocked]);
 
     useEffect(() => {
         if (!showClientPicker) return;
-        if ((clients?.length ?? 0) === 0) {
-            fetchAndPaginateReceivables(false);
-        }
-    }, [showClientPicker, clients?.length, fetchAndPaginateReceivables]);
+        dispatch(
+            fetchClients({
+                page: 1,
+                limit: clientFilters?.limit ?? 20,
+                sortOrder: clientFilters?.sortOrder ?? "desc",
+            }) as any,
+        );
+    }, [showClientPicker]);
 
     /* Refresh */
     const onRefresh = useCallback(() => {
-        console.log("Loading");
         if (pinLocked) return;
 
         if (tab === "Receivables") {
             if (clientsLoading) return;
-            fetchAndPaginateReceivables(true);
+            dispatch(
+                fetchClients({
+                    page: 1,
+                    limit: clientFilters?.limit ?? 20,
+                    sortOrder: clientFilters?.sortOrder ?? "desc",
+                }) as any,
+            );
         } else {
             if (financeLoading) return;
             dispatch(setFinancePage(1));
@@ -351,11 +288,11 @@ export default function FinanceIndex() {
     }, [
         tab,
         clientsLoading,
+        clientFilters,
         financeLoading,
         financeFilters,
         dispatch,
         pinLocked,
-        fetchAndPaginateReceivables,
     ]);
 
     /* Infinite load */
@@ -363,18 +300,17 @@ export default function FinanceIndex() {
         if (pinLocked) return;
 
         if (tab === "Receivables") {
-            // Reveal next local page (21-40, 41-60...) from cached filtered list
-            if (clientsLoading) return;
-            if ((clients?.length ?? 0) >= (filteredReceivables?.length ?? 0))
-                return;
-
-            const nextPage = receivablesPage + 1;
-            const nextVisible = (filteredReceivables || []).slice(
-                0,
-                nextPage * RECEIVABLES_LIMIT,
+            if (clientsLoading || !clientsPagination) return;
+            const { currentPage, totalPages } = clientsPagination;
+            if (currentPage >= totalPages) return;
+            const next = currentPage + 1;
+            dispatch(
+                fetchClients({
+                    page: next,
+                    limit: clientFilters?.limit ?? 20,
+                    sortOrder: clientFilters?.sortOrder ?? "desc",
+                }) as any,
             );
-            setReceivablesPage(nextPage);
-            setClients(nextVisible);
             return;
         }
 
@@ -393,46 +329,30 @@ export default function FinanceIndex() {
         );
     }, [
         tab,
-        clients,
         clientsLoading,
-        filteredReceivables,
-        receivablesPage,
+        clientsPagination,
+        clientFilters,
         financeLoading,
         financePagination,
         financeFilters,
         dispatch,
         pinLocked,
-        fetchAndPaginateReceivables,
     ]);
 
     const refreshing =
         tab === "Receivables"
-            ? clientsRefreshing ||
-              (clientsLoading && (clients?.length ?? 0) === 0)
+            ? clientsLoading && (clientFilters?.page ?? 1) === 1
             : financeLoading && financeFilters.page === 1;
 
     const canLoadMore =
-        tab === "Expenses" &&
-        !!financePagination &&
-        financePagination.currentPage < financePagination.totalPages;
-
-    const isLoadingMore =
-        financeLoading &&
-        tab === "Expenses" &&
-        (records?.length ?? 0) > 0 &&
-        canLoadMore;
-
-    const isIOS = Platform.OS === "ios";
+        tab === "Receivables"
+            ? !!clientsPagination &&
+              clientsPagination.currentPage < clientsPagination.totalPages
+            : !!financePagination &&
+              financePagination.currentPage < financePagination.totalPages;
 
     return (
-        <SafeAreaView
-            edges={
-                isIOS
-                    ? ["left", "right", "bottom"]
-                    : ["top", "left", "right", "bottom"]
-            }
-            className="flex-1 bg-white"
-        >
+        <SafeAreaView className="flex-1 bg-background">
             <Modal
                 visible={pinLocked}
                 transparent
@@ -455,7 +375,7 @@ export default function FinanceIndex() {
                                 onChangeText={(text) =>
                                     setPinInput(text.replace(/\s+/g, ""))
                                 }
-                                placeholder="Enter Pin"
+                                placeholder="Enter pin"
                                 placeholderTextColor="#9CA3AF"
                                 keyboardType="number-pad"
                                 maxLength={7}
@@ -502,20 +422,33 @@ export default function FinanceIndex() {
             </Modal>
 
             {/* Header */}
-            <PlatformAdaptiveHeader title="Finance" />
+            <View className="px-5 pt-6 pb-3">
+                <View className="flex-row items-center justify-between gap-4">
+                    <Pressable
+                        onPress={() => router.back()}
+                        className="w-10 h-10 items-center justify-center"
+                    >
+                        <ArrowLeft size={24} color="#111827" />
+                    </Pressable>
+                    <Text className="text-3xl font-kumbh text-text">
+                        Finance
+                    </Text>
+                    <View className="w-10" />
+                </View>
 
-            {/* Tabs */}
-            <View className="mt-2 flex-row items-end justify-between">
-                <TabButton
-                    label="Receivables"
-                    active={tab === "Receivables"}
-                    onPress={() => setTab("Receivables")}
-                />
-                <TabButton
-                    label="Expenses"
-                    active={tab === "Expenses"}
-                    onPress={() => setTab("Expenses")}
-                />
+                {/* Tabs */}
+                <View className="mt-5 flex-row items-end justify-between">
+                    <TabButton
+                        label="Receivables"
+                        active={tab === "Receivables"}
+                        onPress={() => setTab("Receivables")}
+                    />
+                    <TabButton
+                        label="Expenses"
+                        active={tab === "Expenses"}
+                        onPress={() => setTab("Expenses")}
+                    />
+                </View>
             </View>
 
             {/* Total card */}
@@ -551,8 +484,6 @@ export default function FinanceIndex() {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        tintColor="#4C5FAB"
-                        // tintColor="#F00"
                     />
                 }
                 onEndReachedThreshold={0.2}
@@ -578,18 +509,8 @@ export default function FinanceIndex() {
                         }
                     />
                 )}
-                // ListEmptyComponent={
-                //     tab === "Receivables" && clientsLoading ? (
-                //         <View className="py-8 items-center justify-center">
-                //             <ActivityIndicator size="small" color="#4C5FAB" />
-                //             <Text className="mt-2 text-gray-400 font-kumbh">
-                //                 Loading receivables…
-                //             </Text>
-                //         </View>
-                //     ) : null
-                // }
                 ListFooterComponent={
-                    isLoadingMore ? (
+                    canLoadMore ? (
                         <Text className="text-center text-gray-400 font-kumbh my-3">
                             Loading more…
                         </Text>
@@ -604,7 +525,14 @@ export default function FinanceIndex() {
                     if (tab === "Receivables") {
                         // ensure we have clients ready when opening the modal
                         if (!clients || clients.length === 0) {
-                            fetchAndPaginateReceivables(false);
+                            dispatch(
+                                fetchClients({
+                                    page: 1,
+                                    limit: clientFilters?.limit ?? 20,
+                                    sortOrder:
+                                        clientFilters?.sortOrder ?? "desc",
+                                }) as any,
+                            );
                         }
                         setClientSearch("");
                         setSelectedClientId(null);

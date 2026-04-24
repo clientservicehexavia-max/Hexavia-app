@@ -1,80 +1,86 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import * as Print from "expo-print";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Sharing from "expo-sharing";
 import {
-  ArrowLeft,
-  ChevronDown,
-  ClipboardCheck,
-  Save,
-  Share2,
+    Check,
+    ChevronDown,
+    ClipboardCheck,
+    Share2,
 } from "lucide-react-native";
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Linking,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import DatePickerModal from "@/components/admin/DatePickerModal";
 import OptionSheet from "@/components/common/OptionSheet";
 
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import {
-  makeSelectClientById,
-  selectClientDetailLoading,
-  selectClientMutationLoading,
+    makeSelectClientById,
+    selectClientDetailLoading,
+    selectClientMutationLoading,
 } from "@/redux/client/client.selectors";
 import {
-  deleteClient,
-  fetchClientById,
-  updateClient,
+    deleteClient,
+    fetchClientById,
+    updateClient,
 } from "@/redux/client/client.thunks";
 import type { Client } from "@/redux/client/client.types";
 
 type AdminUser = {
-  _id: string;
-  email: string;
-  phoneNumber?: string;
-  fullname?: string;
-  username?: string;
-  role: "client" | "staff" | "admin" | "super-admin";
-  isSuspended?: boolean;
-  createdAt?: string;
-  projectName?: string;
-  industry?: string;
-  staffSize?: number | string;
-  description?: string;
-  problems?: string;
-  strength?: string;
-  opportunities?: string;
-  weakness?: string;
-  threats?: string;
-  engagement?: string;
-  deliverables?: string;
-  payableAmount?: number;
-  status?: "current" | "pending" | "completed" | "active" | "Active";
+    _id: string;
+    email: string;
+    phoneNumber?: string;
+    fullname?: string;
+    username?: string;
+    role: "client" | "staff" | "admin" | "super-admin";
+    isSuspended?: boolean;
+    createdAt?: string;
+    projectName?: string;
+    industry?: string;
+    staffSize?: number | string;
+    description?: string;
+    problems?: string;
+    strength?: string;
+    opportunities?: string;
+    weakness?: string;
+    threats?: string;
+    engagement?: string;
+    deliverables?: string;
+    payableAmount?: number;
+    status?:
+        | "active"
+        | "pending"
+        | "closed"
+        | "current"
+        | "completed"
+        | "past"
+        | "Active";
 };
 
-type ApiStatus = "current" | "pending" | "completed";
+type ApiStatus = "active" | "pending" | "closed";
 type BaseUser = AdminUser & { statusApi: ApiStatus };
 
 const BG_INPUT = "#F7F9FC";
@@ -83,453 +89,495 @@ const PRIMARY = "#4C5FAB";
 const DOCUMENT_TYPES: string[] = ["application/pdf"];
 
 const STATUS_OPTIONS: {
-  value: ApiStatus;
-  label: "Active" | "Pending" | "Closed";
+    value: ApiStatus;
+    label: "Active" | "Pending" | "Closed";
 }[] = [
-  { value: "current", label: "Active" },
-  { value: "pending", label: "Pending" },
-  { value: "completed", label: "Closed" },
+    { value: "active", label: "Active" },
+    { value: "pending", label: "Pending" },
+    { value: "closed", label: "Closed" },
 ];
 
+const normalizeApiStatus = (status?: unknown): ApiStatus => {
+    const s = String(status ?? "").toLowerCase();
+    if (s === "active" || s === "current") return "active";
+    if (s === "closed" || s === "completed" || s === "past") {
+        return "closed";
+    }
+    return "pending";
+};
+
 const STAFF_SIZE_OPTIONS = [
-  { label: "0-5", value: 5 },
-  { label: "5-20", value: 20 },
-  { label: "20-100", value: 100 },
-  { label: "100-150", value: 150 },
-  { label: "150+", value: 151 },
+    { label: "0-5", value: 5 },
+    { label: "5-20", value: 20 },
+    { label: "20-100", value: 100 },
+    { label: "100-150", value: 150 },
+    { label: "150+", value: 151 },
 ];
 
 const INDUSTRY_OPTIONS = [
-  { label: "Technology", value: "Technology" },
-  { label: "Healthcare", value: "Healthcare" },
-  { label: "Finance", value: "Finance" },
-  { label: "Education", value: "Education" },
-  { label: "Retail", value: "Retail" },
-  { label: "Manufacturing", value: "Manufacturing" },
-  { label: "Real Estate", value: "Real Estate" },
-  { label: "Transportation", value: "Transportation" },
-  { label: "Energy", value: "Energy" },
-  { label: "Agriculture", value: "Agriculture" },
-  { label: "Construction", value: "Construction" },
-  { label: "Hospitality", value: "Hospitality" },
-  { label: "Entertainment", value: "Entertainment" },
-  { label: "Telecommunications", value: "Telecommunications" },
-  { label: "Automotive", value: "Automotive" },
-  { label: "Food & Beverage", value: "Food & Beverage" },
-  { label: "Pharmaceuticals", value: "Pharmaceuticals" },
-  { label: "Consulting", value: "Consulting" },
-  { label: "Legal Services", value: "Legal Services" },
-  { label: "Non-Profit", value: "Non-Profit" },
-  { label: "Government", value: "Government" },
-  { label: "Other", value: "Other" },
+    { label: "Technology", value: "Technology" },
+    { label: "Healthcare", value: "Healthcare" },
+    { label: "Finance", value: "Finance" },
+    { label: "Education", value: "Education" },
+    { label: "Retail", value: "Retail" },
+    { label: "Manufacturing", value: "Manufacturing" },
+    { label: "Real Estate", value: "Real Estate" },
+    { label: "Transportation", value: "Transportation" },
+    { label: "Energy", value: "Energy" },
+    { label: "Agriculture", value: "Agriculture" },
+    { label: "Construction", value: "Construction" },
+    { label: "Hospitality", value: "Hospitality" },
+    { label: "Entertainment", value: "Entertainment" },
+    { label: "Telecommunications", value: "Telecommunications" },
+    { label: "Automotive", value: "Automotive" },
+    { label: "Food & Beverage", value: "Food & Beverage" },
+    { label: "Pharmaceuticals", value: "Pharmaceuticals" },
+    { label: "Consulting", value: "Consulting" },
+    { label: "Legal Services", value: "Legal Services" },
+    { label: "Non-Profit", value: "Non-Profit" },
+    { label: "Government", value: "Government" },
+    { label: "Other", value: "Other" },
 ];
 
 const toUiLabel = (s?: ApiStatus) =>
-  STATUS_OPTIONS.find((x) => x.value === s)?.label ?? "Pending";
+    STATUS_OPTIONS.find((x) => x.value === s)?.label ?? "Pending";
 
 function escapeHtml(input?: string | number | null) {
-  if (input === null || input === undefined) return "";
-  return String(input)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    if (input === null || input === undefined) return "";
+    return String(input)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <Text className="font-kumbh text-[13px] text-[#111827] mb-2">
-      {children}
-    </Text>
-  );
+    return (
+        <Text className="font-kumbh text-[13px] text-[#111827] mb-2">
+            {children}
+        </Text>
+    );
 }
 
 function Input({
-  value,
-  onChangeText,
-  placeholder = "—",
-  multiline = false,
-  keyboardType,
-  onBlur,
-  onFocus,
+    value,
+    onChangeText,
+    placeholder = "—",
+    multiline = false,
+    keyboardType,
+    onBlur,
+    onFocus,
 }: {
-  value?: string | number | null;
-  onChangeText: (t: string) => void;
-  placeholder?: string;
-  multiline?: boolean;
-  keyboardType?: React.ComponentProps<typeof TextInput>["keyboardType"];
-  onBlur?: () => void;
-  onFocus?: () => void;
+    value?: string | number | null;
+    onChangeText: (t: string) => void;
+    placeholder?: string;
+    multiline?: boolean;
+    keyboardType?: React.ComponentProps<typeof TextInput>["keyboardType"];
+    onBlur?: () => void;
+    onFocus?: () => void;
 }) {
-  return (
-    <TextInput
-      value={value == null ? "" : String(value)}
-      onChangeText={onChangeText}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      placeholder={placeholder}
-      placeholderTextColor="#9CA3AF"
-      multiline={multiline}
-      keyboardType={keyboardType}
-      className="rounded-2xl px-4 py-3 font-kumbh text-[#111827]"
-      style={{
-        backgroundColor: BG_INPUT,
-        minHeight: multiline ? 64 : undefined,
-      }}
-    />
-  );
+    return (
+        <TextInput
+            value={value == null ? "" : String(value)}
+            onChangeText={onChangeText}
+            onBlur={onBlur}
+            onFocus={onFocus}
+            placeholder={placeholder}
+            placeholderTextColor="#9CA3AF"
+            multiline={multiline}
+            keyboardType={keyboardType}
+            className="rounded-2xl px-4 py-3 font-kumbh text-[#111827]"
+            style={{
+                backgroundColor: BG_INPUT,
+                minHeight: multiline ? 64 : undefined,
+            }}
+        />
+    );
 }
 
 function TwoCol({ children }: { children: React.ReactNode }) {
-  return (
-    <View className="flex-row" style={{ gap: 12 }}>
-      {children}
-    </View>
-  );
+    return (
+        <View className="flex-row" style={{ gap: 12 }}>
+            {children}
+        </View>
+    );
 }
 
 function PillButton({
-  icon,
-  label,
-  onPress,
-  variant = "primary",
-  disabled = false,
+    icon,
+    label,
+    onPress,
+    variant = "primary",
+    disabled = false,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  onPress?: () => void;
-  variant?: "primary" | "outline";
-  disabled?: boolean;
+    icon: React.ReactNode;
+    label: string;
+    onPress?: () => void;
+    variant?: "primary" | "outline";
+    disabled?: boolean;
 }) {
-  const isPrimary = variant === "primary";
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      className="flex-row items-center justify-center rounded-2xl px-4 py-4"
-      style={{
-        backgroundColor: isPrimary ? PRIMARY : "transparent",
-        borderWidth: isPrimary ? 0 : 1,
-        borderColor: isPrimary ? "transparent" : PRIMARY,
-        gap: 10,
-        opacity: disabled ? 0.5 : 1,
-      }}
-      android_ripple={disabled ? undefined : { color: "#ffffff20" }}
-    >
-      <View
-        className="w-7 h-7 rounded-full items-center justify-center"
-        style={{
-          backgroundColor: isPrimary ? "rgba(255,255,255,0.2)" : "transparent",
-        }}
-      >
-        {icon}
-      </View>
-      <Text
-        className="font-kumbh text-[13px]"
-        style={{ color: isPrimary ? "#fff" : PRIMARY }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
+    const isPrimary = variant === "primary";
+    return (
+        <Pressable
+            onPress={onPress}
+            disabled={disabled}
+            className="flex-row items-center justify-center rounded-2xl px-4 py-4"
+            style={{
+                backgroundColor: isPrimary ? PRIMARY : "transparent",
+                borderWidth: isPrimary ? 0 : 1,
+                borderColor: isPrimary ? "transparent" : PRIMARY,
+                gap: 10,
+                opacity: disabled ? 0.5 : 1,
+            }}
+            android_ripple={disabled ? undefined : { color: "#ffffff20" }}
+        >
+            <View
+                className="w-7 h-7 rounded-full items-center justify-center"
+                style={{
+                    backgroundColor: isPrimary
+                        ? "rgba(255,255,255,0.2)"
+                        : "transparent",
+                }}
+            >
+                {icon}
+            </View>
+            <Text
+                className="font-kumbh text-[13px]"
+                style={{ color: isPrimary ? "#fff" : PRIMARY }}
+            >
+                {label}
+            </Text>
+        </Pressable>
+    );
 }
 
 function formatMoneyNaira(v?: number) {
-  if (typeof v !== "number" || !isFinite(v)) return "₦ 0.00";
-  try {
-    return (
-      "₦ " +
-      new Intl.NumberFormat("en-NG", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(v)
-    );
-  } catch {
-    return `₦ ${v.toFixed(2)}`;
-  }
+    if (typeof v !== "number" || !isFinite(v)) return "₦ 0.00";
+    try {
+        return (
+            "₦ " +
+            new Intl.NumberFormat("en-NG", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(v)
+        );
+    } catch {
+        return `₦ ${v.toFixed(2)}`;
+    }
 }
 
 function moneyToInput(v?: number) {
-  if (typeof v !== "number" || !isFinite(v)) return "0.00";
-  return v.toFixed(2);
+    if (typeof v !== "number" || !isFinite(v)) return "0.00";
+    return v.toFixed(2);
 }
 
 function formatGroupedMoneyInput(input: string) {
-  const n = parseMoney(input);
-  try {
-    return new Intl.NumberFormat("en-NG", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(n);
-  } catch {
-    return n.toFixed(2);
-  }
+    const n = parseMoney(input);
+    try {
+        return new Intl.NumberFormat("en-NG", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(n);
+    } catch {
+        return n.toFixed(2);
+    }
 }
 
 function sanitizeMoneyInput(input: string) {
-  const cleaned = input.replace(/[^\d.]/g, "");
-  const [whole = "", ...rest] = cleaned.split(".");
-  if (rest.length === 0) return whole;
-  return `${whole}.${rest.join("").slice(0, 2)}`;
+    const cleaned = input.replace(/[^\d.]/g, "");
+    const [whole = "", ...rest] = cleaned.split(".");
+    if (rest.length === 0) return whole;
+    return `${whole}.${rest.join("").slice(0, 2)}`;
 }
 
 function parseMoney(input: string): number {
-  const cleaned = input.replace(/[^\d.]/g, "");
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
+    const cleaned = input.replace(/[^\d.]/g, "");
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : 0;
 }
 function formatDate(d?: string) {
-  if (!d) return "—";
-  try {
-    return new Date(d).toLocaleDateString();
-  } catch {
-    return d;
-  }
+    if (!d) return "—";
+    try {
+        return new Date(d).toLocaleDateString();
+    } catch {
+        return d;
+    }
+}
+
+function toIsoDateInput(d?: string) {
+    if (!d) return "";
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return "";
+    return dt.toISOString().slice(0, 10);
+}
+
+function toIsoDateOrUndefined(input?: string) {
+    const raw = String(input ?? "").trim();
+    if (!raw) return undefined;
+    const dt = new Date(raw);
+    if (Number.isNaN(dt.getTime())) return undefined;
+    return dt.toISOString();
+}
+
+function parseDateOrNow(input?: string) {
+    const dt = input ? new Date(input) : new Date();
+    return Number.isNaN(dt.getTime()) ? new Date() : dt;
 }
 
 const INDUSTRY_VALUES = new Set(INDUSTRY_OPTIONS.map((opt) => opt.value));
 function resolveIndustrySelection(value?: string) {
-  const trimmed = value?.trim() ?? "";
-  if (!trimmed) return { selection: "", other: "" };
-  if (INDUSTRY_VALUES.has(trimmed) && trimmed !== "Other") {
-    return { selection: trimmed, other: "" };
-  }
-  return { selection: "Other", other: trimmed === "Other" ? "" : trimmed };
+    const trimmed = value?.trim() ?? "";
+    if (!trimmed) return { selection: "", other: "" };
+    if (INDUSTRY_VALUES.has(trimmed) && trimmed !== "Other") {
+        return { selection: trimmed, other: "" };
+    }
+    return { selection: "Other", other: trimmed === "Other" ? "" : trimmed };
 }
 
 export default function ClientDetails() {
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const dispatch = useAppDispatch();
+    const router = useRouter();
+    const isIOS = Platform.OS === "ios";
 
-  const users = useAppSelector(selectAdminUsers);
+    const { id } = useLocalSearchParams<{ id: string }>();
+    const dispatch = useAppDispatch();
 
-  const selectClient = useMemo(
-    () => (id ? makeSelectClientById(String(id)) : () => null),
-    [id]
-  );
-  const clientFromStore = useAppSelector(selectClient) as Client | null;
-  const documentLink = clientFromStore?.document;
-  const documentLabel = useMemo(() => {
-    if (documentName) return documentName;
-    if (documentLink) {
-      const tail = documentLink.split("/").pop();
-      return tail || "Document.pdf";
-    }
-    return "No document uploaded";
-  }, [documentLink, documentName]);
+    const users = useAppSelector(selectAdminUsers);
 
-  const detailLoading = useAppSelector(selectClientDetailLoading);
-  const mutationLoading = useAppSelector(selectClientMutationLoading);
+    const selectClient = useMemo(
+        () => (id ? makeSelectClientById(String(id)) : () => null),
+        [id],
+    );
+    const clientFromStore = useAppSelector(selectClient) as Client | null;
+    const documentLink = clientFromStore?.document;
 
-  const lastFetchRef = useRef<number>(0);
-  useEffect(() => {
-    if (!id) return;
-    const now = Date.now();
-    const STALE_MS = 30_000;
-    if (clientFromStore && now - lastFetchRef.current < STALE_MS) return;
-    lastFetchRef.current = now;
-    dispatch(fetchClientById(String(id)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, id]);
+    const detailLoading = useAppSelector(selectClientDetailLoading);
+    const mutationLoading = useAppSelector(selectClientMutationLoading);
 
-  const fallbackUser: BaseUser = {
-    _id: String(id ?? "unknown"),
-    email: "unknown@example.com",
-    phoneNumber: "",
-    fullname: "Unknown User",
-    username: "unknown",
-    role: "client",
-    isSuspended: false,
-    createdAt: new Date().toISOString(),
-    projectName: "Ogba  Milk App",
-    industry: "Food",
-    staffSize: 12,
-    description: "All good",
-    problems: "A lot",
-    strength: "unknown",
-    opportunities: "unknown",
-    weakness: "unknown",
-    threats: "unknown",
-    engagement: "Core Consulting",
-    deliverables: "UI Screens",
-    payableAmount: 240573.04,
-    status: "pending",
-    statusApi: "pending",
-  };
+    const lastFetchRef = useRef<number>(0);
+    useEffect(() => {
+        if (!id) return;
+        const now = Date.now();
+        const STALE_MS = 30_000;
+        if (clientFromStore && now - lastFetchRef.current < STALE_MS) return;
+        lastFetchRef.current = now;
+        dispatch(fetchClientById(String(id)));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dispatch, id]);
 
-  const baseUser = useMemo<BaseUser>(() => {
-    if (clientFromStore) {
-      return {
-        _id: clientFromStore._id,
-        email: (clientFromStore as any).email ?? "",
-        phoneNumber: (clientFromStore as any).phoneNumber ?? "",
-        fullname: clientFromStore.name,
-        username: clientFromStore.name,
+    const fallbackUser: BaseUser = {
+        _id: String(id ?? "unknown"),
+        email: "unknown@example.com",
+        phoneNumber: "",
+        fullname: "Unknown User",
+        username: "unknown",
         role: "client",
         isSuspended: false,
-        createdAt: clientFromStore.createdAt,
-        projectName: clientFromStore.projectName,
-        industry: clientFromStore.industry,
-        staffSize: clientFromStore.staffSize,
-        description: clientFromStore.description,
-        problems: clientFromStore.problems,
-        strength: clientFromStore.strength,
-        weakness: clientFromStore.weakness,
-        opportunities: clientFromStore.opportunities,
-        threats: clientFromStore.threats,
-        engagement: clientFromStore.engagement,
-        deliverables: clientFromStore.deliverables,
-        payableAmount: clientFromStore.payableAmount,
-        status: clientFromStore.status as ApiStatus,
-        statusApi: (clientFromStore.status as ApiStatus) ?? "pending",
-      };
-    }
-    if (id) {
-      const fromAdmin = users.find((u: any) => u._id === id);
-      if (fromAdmin) {
-        return {
-          ...(fromAdmin as AdminUser),
-          statusApi: ["current", "pending", "completed"].includes(
-            String(fromAdmin.status)
-          )
-            ? (fromAdmin.status as ApiStatus)
-            : "pending",
-        } as BaseUser;
-      }
-    }
-    return fallbackUser;
-  }, [clientFromStore, users, id]);
-  const resolvedIndustry = useMemo(
-    () => resolveIndustrySelection(baseUser.industry),
-    [baseUser.industry]
-  );
+        createdAt: new Date().toISOString(),
+        projectName: "Ogba  Milk App",
+        industry: "Food",
+        staffSize: 12,
+        description: "All good",
+        problems: "A lot",
+        strength: "unknown",
+        opportunities: "unknown",
+        weakness: "unknown",
+        threats: "unknown",
+        engagement: "Core Consulting",
+        deliverables: "UI Screens",
+        payableAmount: 240573.04,
+        status: "pending",
+        statusApi: "pending",
+    };
 
-  const [name, setName] = useState(
-    baseUser.fullname || baseUser.username || baseUser.email || ""
-  );
-  const [email, setEmail] = useState(baseUser.email ?? "");
-  const [phoneNumber, setPhoneNumber] = useState(baseUser.phoneNumber ?? "");
-
-  const [projectName, setProjectName] = useState(baseUser.projectName ?? "");
-  const [industry, setIndustry] = useState(resolvedIndustry.selection);
-  const [industryOther, setIndustryOther] = useState(resolvedIndustry.other);
-  const [staffSize, setstaffSize] = useState(String(baseUser.staffSize ?? ""));
-  const [description, setDescription] = useState(baseUser.description ?? "");
-  const [problems, setProblems] = useState(baseUser.problems ?? "");
-  const [strength, setStrength] = useState(baseUser.strength ?? "");
-  const [opportunities, setOpportunities] = useState(
-    baseUser.opportunities ?? ""
-  );
-  const [weakness, setWeakness] = useState(baseUser.weakness ?? "");
-  const [threats, setThreats] = useState(baseUser.threats ?? "");
-  const [engagement, setEngagement] = useState(baseUser.engagement ?? "");
-  const [deliverables, setDeliverables] = useState(baseUser.deliverables ?? "");
-  const [payable, setPayable] = useState(moneyToInput(baseUser.payableAmount));
-  const [payableFocused, setPayableFocused] = useState(false);
-  const [statusApi, setStatusApi] = useState<ApiStatus>(baseUser.statusApi);
-  const [statusOpen, setStatusOpen] = useState(false);
-  const [showIndustrySheet, setShowIndustrySheet] = useState(false);
-  const [showStaffSizeSheet, setShowStaffSizeSheet] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [documentName, setDocumentName] = useState("");
-  const [documentFile, setDocumentFile] = useState<{
-    uri: string;
-    name: string;
-    type?: string;
-  } | null>(null);
-  const [uploadingDocument, setUploadingDocument] = useState(false);
-  const [documentRemoved, setDocumentRemoved] = useState(false);
-  const effectiveIndustry =
-    industry === "Other" ? industryOther.trim() : industry.trim();
-  const joined = formatDate(baseUser.createdAt);
-  const handleSaveDocument = useCallback(async () => {
-    if (!documentLink && !documentFile) return;
-    try {
-      if (Platform.OS === "web") {
-        if (documentLink) {
-          await Linking.openURL(documentLink);
+    const baseUser = useMemo<BaseUser>(() => {
+        if (clientFromStore) {
+            return {
+                _id: clientFromStore._id,
+                email: (clientFromStore as any).email ?? "",
+                phoneNumber: (clientFromStore as any).phoneNumber ?? "",
+                fullname: clientFromStore.name,
+                username: clientFromStore.name,
+                role: "client",
+                isSuspended: false,
+                createdAt: clientFromStore.createdAt,
+                projectName: clientFromStore.projectName,
+                industry: clientFromStore.industry,
+                staffSize: clientFromStore.staffSize,
+                description: clientFromStore.description,
+                problems: clientFromStore.problems,
+                strength: clientFromStore.strength,
+                weakness: clientFromStore.weakness,
+                opportunities: clientFromStore.opportunities,
+                threats: clientFromStore.threats,
+                engagement: clientFromStore.engagement,
+                deliverables: clientFromStore.deliverables,
+                payableAmount: clientFromStore.payableAmount,
+                status: normalizeApiStatus(clientFromStore.status),
+                statusApi: normalizeApiStatus(clientFromStore.status),
+            };
         }
-        return;
-      }
+        if (id) {
+            const fromAdmin = users.find((u: any) => u._id === id);
+            if (fromAdmin) {
+                return {
+                    ...(fromAdmin as AdminUser),
+                    statusApi: normalizeApiStatus(fromAdmin.status),
+                } as BaseUser;
+            }
+        }
+        return fallbackUser;
+    }, [clientFromStore, users, id]);
+    const resolvedIndustry = useMemo(
+        () => resolveIndustrySelection(baseUser.industry),
+        [baseUser.industry],
+    );
 
-      const safeName =
+    const [name, setName] = useState(
+        baseUser.fullname || baseUser.username || baseUser.email || "",
+    );
+    const [email, setEmail] = useState(baseUser.email ?? "");
+    const [phoneNumber, setPhoneNumber] = useState(baseUser.phoneNumber ?? "");
+
+    const [projectName, setProjectName] = useState(baseUser.projectName ?? "");
+    const [industry, setIndustry] = useState(resolvedIndustry.selection);
+    const [industryOther, setIndustryOther] = useState(resolvedIndustry.other);
+    const [staffSize, setstaffSize] = useState(
+        String(baseUser.staffSize ?? ""),
+    );
+    const [description, setDescription] = useState(baseUser.description ?? "");
+    const [problems, setProblems] = useState(baseUser.problems ?? "");
+    const [strength, setStrength] = useState(baseUser.strength ?? "");
+    const [opportunities, setOpportunities] = useState(
+        baseUser.opportunities ?? "",
+    );
+    const [weakness, setWeakness] = useState(baseUser.weakness ?? "");
+    const [threats, setThreats] = useState(baseUser.threats ?? "");
+    const [engagement, setEngagement] = useState(baseUser.engagement ?? "");
+    const [deliverables, setDeliverables] = useState(
+        baseUser.deliverables ?? "",
+    );
+    const [payable, setPayable] = useState(
+        moneyToInput(baseUser.payableAmount),
+    );
+    const [payableFocused, setPayableFocused] = useState(false);
+    const [statusApi, setStatusApi] = useState<ApiStatus>(baseUser.statusApi);
+    const [statusOpen, setStatusOpen] = useState(false);
+    const [showIndustrySheet, setShowIndustrySheet] = useState(false);
+    const [showStaffSizeSheet, setShowStaffSizeSheet] = useState(false);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [documentName, setDocumentName] = useState("");
+    const [documentFile, setDocumentFile] = useState<{
+        uri: string;
+        name: string;
+        type?: string;
+    } | null>(null);
+    const [uploadingDocument, setUploadingDocument] = useState(false);
+    const [documentRemoved, setDocumentRemoved] = useState(false);
+    const [showJoinedDatePicker, setShowJoinedDatePicker] = useState(false);
+    const effectiveIndustry =
+        industry === "Other" ? industryOther.trim() : industry.trim();
+    const documentLabel =
         documentName ||
-        documentFile?.name ||
-        (documentLink ? documentLink.split("/").pop() : "document.pdf") ||
-        "document.pdf";
-      const filename = safeName.toLowerCase().endsWith(".pdf")
-        ? safeName
-        : `${safeName}.pdf`;
-      const dest = `${FileSystem.cacheDirectory}${filename}`;
+        (documentLink ? documentLink.split("/").pop() : undefined) ||
+        "No document uploaded";
+    const [joined, setJoined] = useState(toIsoDateInput(baseUser.createdAt));
+    const [joinedPickerDate, setJoinedPickerDate] = useState<Date>(
+        parseDateOrNow(baseUser.createdAt),
+    );
 
-      if (documentFile?.uri) {
-        await FileSystem.copyAsync({ from: documentFile.uri, to: dest });
-      } else if (documentLink) {
-        await FileSystem.downloadAsync(documentLink, dest);
-      }
+    const handleSaveDocument = useCallback(async () => {
+        if (!documentLink && !documentFile) return;
+        try {
+            if (Platform.OS === "web") {
+                if (documentLink) {
+                    await Linking.openURL(documentLink);
+                }
+                return;
+            }
 
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(dest, {
-          UTI: "com.adobe.pdf",
-          mimeType: "application/pdf",
-          dialogTitle: "Save document",
-        });
-      } else {
-        Alert.alert(
-          "Sharing unavailable",
-          "Sharing is not available on this device."
-        );
-      }
-    } catch {
-      Alert.alert("Unable to save document", "Please try again.");
-    }
-  }, [documentFile, documentLink, documentName]);
+            const safeName =
+                documentName ||
+                documentFile?.name ||
+                (documentLink
+                    ? documentLink.split("/").pop()
+                    : "document.pdf") ||
+                "document.pdf";
+            const filename = safeName.toLowerCase().endsWith(".pdf")
+                ? safeName
+                : `${safeName}.pdf`;
+            const dest = `${FileSystem.cacheDirectory}${filename}`;
 
-  const handleAttachDocument = useCallback(async () => {
-    if (uploadingDocument) return;
-    setUploadingDocument(true);
-    try {
-      const res = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: true,
-        type: DOCUMENT_TYPES,
-      });
-      if (res.canceled) return;
-      const asset = res.assets?.[0];
-      if (!asset) return;
+            if (documentFile?.uri) {
+                await FileSystem.copyAsync({
+                    from: documentFile.uri,
+                    to: dest,
+                });
+            } else if (documentLink) {
+                await FileSystem.downloadAsync(documentLink, dest);
+            }
 
-      const name = asset.name ?? `document_${Date.now()}.pdf`;
-      setDocumentFile({
-        uri: asset.uri,
-        name,
-        type: asset.mimeType ?? "application/pdf",
-      });
-      setDocumentName(name);
-      setDocumentRemoved(false);
-    } catch {
-      Alert.alert(
-        "Upload failed",
-        "Unable to attach document. Please try again."
-      );
-    } finally {
-      setUploadingDocument(false);
-    }
-  }, [uploadingDocument]);
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(dest, {
+                    UTI: "com.adobe.pdf",
+                    mimeType: "application/pdf",
+                    dialogTitle: "Save document",
+                });
+            } else {
+                Alert.alert(
+                    "Sharing unavailable",
+                    "Sharing is not available on this device.",
+                );
+            }
+        } catch {
+            Alert.alert("Unable to save document", "Please try again.");
+        }
+    }, [documentFile, documentLink, documentName]);
 
-  const handleRemoveDocument = useCallback(() => {
-    setDocumentFile(null);
-    setDocumentName("");
-    setDocumentRemoved(true);
-  }, []);
+    const handleAttachDocument = useCallback(async () => {
+        if (uploadingDocument) return;
+        setUploadingDocument(true);
+        try {
+            const res = await DocumentPicker.getDocumentAsync({
+                copyToCacheDirectory: true,
+                type: DOCUMENT_TYPES,
+            });
+            if (res.canceled) return;
+            const asset = res.assets?.[0];
+            if (!asset) return;
 
-  const handleShareClientPdf = useCallback(async () => {
-    const displayName = name.trim() || baseUser.fullname || "Client";
-    const safeProjectName = projectName.trim() || "Untitled Project";
-    const payableAmount = parseMoney(payable);
-    const generatedAt = new Date();
+            const name = asset.name ?? `document_${Date.now()}.pdf`;
+            setDocumentFile({
+                uri: asset.uri,
+                name,
+                type: asset.mimeType ?? "application/pdf",
+            });
+            setDocumentName(name);
+            setDocumentRemoved(false);
+        } catch {
+            Alert.alert(
+                "Upload failed",
+                "Unable to attach document. Please try again.",
+            );
+        } finally {
+            setUploadingDocument(false);
+        }
+    }, [uploadingDocument]);
 
-    const html = `<!DOCTYPE html>
+    const handleRemoveDocument = useCallback(() => {
+        setDocumentFile(null);
+        setDocumentName("");
+        setDocumentRemoved(true);
+    }, []);
+
+    const handleShareClientPdf = useCallback(async () => {
+        const displayName = name.trim() || baseUser.fullname || "Client";
+        const safeProjectName = projectName.trim() || "Untitled Project";
+        const payableAmount = parseMoney(payable);
+        const generatedAt = new Date();
+        const joinedLabel = formatDate(toIsoDateOrUndefined(joined));
+
+        const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -680,8 +728,8 @@ export default function ClientDetails() {
         <div>
           <div class="h1">Client Detail Report</div>
           <div class="brand-subtitle">${escapeHtml(displayName)} • ${escapeHtml(
-      safeProjectName
-    )}</div>
+              safeProjectName,
+          )}</div>
         </div>
         <div class="header-chips">
           <div class="chip">HEXAVIA</div>
@@ -689,11 +737,11 @@ export default function ClientDetails() {
         </div>
       </div>
 
-      <div class="report-meta">
+                <div class="report-meta">
         <div><strong>Generated:</strong> ${escapeHtml(
-          generatedAt.toLocaleDateString()
+            generatedAt.toLocaleDateString(),
         )}</div>
-        <div><strong>Joined:</strong> ${escapeHtml(joined)}</div>
+                <div><strong>Joined:</strong> ${escapeHtml(joinedLabel)}</div>
         <div><strong>Email:</strong> ${escapeHtml(email || "—")}</div>
         <div><strong>Phone:</strong> ${escapeHtml(phoneNumber || "—")}</div>
       </div>
@@ -723,43 +771,43 @@ export default function ClientDetails() {
             <tbody>
               <tr><td class="k">Name</td><td>${escapeHtml(displayName)}</td></tr>
               <tr><td class="k">Project Name</td><td>${escapeHtml(
-                safeProjectName
+                  safeProjectName,
               )}</td></tr>
               <tr><td class="k">Status</td><td>${escapeHtml(
-                toUiLabel(statusApi)
+                  toUiLabel(statusApi),
               )}</td></tr>
               <tr><td class="k">Industry</td><td>${escapeHtml(
-                effectiveIndustry || "—"
+                  effectiveIndustry || "—",
               )}</td></tr>
               <tr><td class="k">Staff Size</td><td>${escapeHtml(
-                staffSize || "—"
+                  staffSize || "—",
               )}</td></tr>
               <tr><td class="k">Description</td><td>${escapeHtml(
-                description || "—"
+                  description || "—",
               )}</td></tr>
               <tr><td class="k">Problems Faced</td><td>${escapeHtml(
-                problems || "—"
+                  problems || "—",
               )}</td></tr>
               <tr><td class="k">Strengths</td><td>${escapeHtml(
-                strength || "—"
+                  strength || "—",
               )}</td></tr>
               <tr><td class="k">Weakness</td><td>${escapeHtml(
-                weakness || "—"
+                  weakness || "—",
               )}</td></tr>
               <tr><td class="k">Opportunities</td><td>${escapeHtml(
-                opportunities || "—"
+                  opportunities || "—",
               )}</td></tr>
               <tr><td class="k">Threats</td><td>${escapeHtml(
-                threats || "—"
+                  threats || "—",
               )}</td></tr>
               <tr><td class="k">Engagement Offered</td><td>${escapeHtml(
-                engagement || "—"
+                  engagement || "—",
               )}</td></tr>
               <tr><td class="k">Deliverables</td><td>${escapeHtml(
-                deliverables || "—"
+                  deliverables || "—",
               )}</td></tr>
               <tr><td class="k">Document</td><td>${escapeHtml(
-                documentLink || "No document uploaded"
+                  documentLink || "No document uploaded",
               )}</td></tr>
             </tbody>
           </table>
@@ -772,636 +820,769 @@ export default function ClientDetails() {
 </body>
 </html>`;
 
-    setIsGeneratingPdf(true);
-    try {
-      if (Platform.OS === "web") {
-        await Print.printAsync({ html });
-        return;
-      }
+        setIsGeneratingPdf(true);
+        try {
+            if (Platform.OS === "web") {
+                await Print.printAsync({ html });
+                return;
+            }
 
-      const file = await Print.printToFileAsync({ html });
-      const canShare = await Sharing.isAvailableAsync();
+            const file = await Print.printToFileAsync({ html });
+            const canShare = await Sharing.isAvailableAsync();
 
-      if (!canShare) {
-        Alert.alert("Share unavailable", "Sharing is not available on this device.");
-        return;
-      }
+            if (!canShare) {
+                Alert.alert(
+                    "Share unavailable",
+                    "Sharing is not available on this device.",
+                );
+                return;
+            }
 
-      const dialogTitle = `Client Report - ${displayName}`;
-      await Sharing.shareAsync(file.uri, {
-        UTI: "com.adobe.pdf",
-        mimeType: "application/pdf",
-        dialogTitle,
-      });
-    } catch (err: any) {
-      Alert.alert("Share failed", err?.message ?? "Unable to generate PDF.");
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  }, [
-    baseUser.fullname,
-    deliverables,
-    description,
-    documentLink,
-    effectiveIndustry,
-    email,
-    engagement,
-    joined,
-    name,
-    opportunities,
-    payable,
-    phoneNumber,
-    problems,
-    projectName,
-    staffSize,
-    statusApi,
-    strength,
-    threats,
-    weakness,
-  ]);
+            const dialogTitle = `Client Report - ${displayName}`;
+            await Sharing.shareAsync(file.uri, {
+                UTI: "com.adobe.pdf",
+                mimeType: "application/pdf",
+                dialogTitle,
+            });
+        } catch (err: any) {
+            Alert.alert(
+                "Share failed",
+                err?.message ?? "Unable to generate PDF.",
+            );
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    }, [
+        baseUser.fullname,
+        deliverables,
+        description,
+        documentLink,
+        effectiveIndustry,
+        email,
+        engagement,
+        joined,
+        name,
+        opportunities,
+        payable,
+        phoneNumber,
+        problems,
+        projectName,
+        staffSize,
+        statusApi,
+        strength,
+        threats,
+        weakness,
+    ]);
 
-  const dirty = useMemo(() => {
-    const basePay = moneyToInput(baseUser.payableAmount);
-    const baseName =
-      baseUser.fullname || baseUser.username || baseUser.email || "";
-    const baseEmail = baseUser.email ?? "";
-    const basePhone = baseUser.phoneNumber ?? "";
-    const baseIndustry = (baseUser.industry ?? "").trim();
+    const dirty = useMemo(() => {
+        const basePay = moneyToInput(baseUser.payableAmount);
+        const baseName =
+            baseUser.fullname || baseUser.username || baseUser.email || "";
+        const baseEmail = baseUser.email ?? "";
+        const basePhone = baseUser.phoneNumber ?? "";
+        const baseIndustry = (baseUser.industry ?? "").trim();
+        const baseJoined = toIsoDateInput(baseUser.createdAt);
+
+        return (
+            name !== baseName ||
+            email !== baseEmail ||
+            phoneNumber !== basePhone ||
+            projectName !== (baseUser.projectName ?? "") ||
+            effectiveIndustry !== baseIndustry ||
+            staffSize !== String(baseUser.staffSize ?? "") ||
+            description !== (baseUser.description ?? "") ||
+            problems !== (baseUser.problems ?? "") ||
+            strength !== (baseUser.strength ?? "") ||
+            weakness !== (baseUser.weakness ?? "") ||
+            opportunities !== (baseUser.opportunities ?? "") ||
+            threats !== (baseUser.threats ?? "") ||
+            engagement !== (baseUser.engagement ?? "") ||
+            deliverables !== (baseUser.deliverables ?? "") ||
+            payable !== basePay ||
+            statusApi !== baseUser.statusApi ||
+            joined !== baseJoined ||
+            documentRemoved ||
+            !!documentFile
+        );
+    }, [
+        baseUser,
+        name,
+        email,
+        phoneNumber,
+        projectName,
+        effectiveIndustry,
+        staffSize,
+        description,
+        problems,
+        strength,
+        weakness,
+        opportunities,
+        threats,
+        engagement,
+        deliverables,
+        payable,
+        statusApi,
+        joined,
+        documentRemoved,
+        documentFile,
+    ]);
+
+    useEffect(() => {
+        setName(baseUser.fullname || baseUser.username || baseUser.email || "");
+        setProjectName(baseUser.projectName ?? "");
+        setEmail(baseUser.email ?? "");
+        setPhoneNumber(baseUser.phoneNumber ?? "");
+        setIndustry(resolvedIndustry.selection);
+        setIndustryOther(resolvedIndustry.other);
+        setstaffSize(String(baseUser.staffSize ?? ""));
+        setDescription(baseUser.description ?? "");
+        setProblems(baseUser.problems ?? "");
+        setStrength(baseUser.strength ?? "");
+        setWeakness(baseUser.weakness ?? "");
+        setOpportunities(baseUser.opportunities ?? "");
+        setThreats(baseUser.threats ?? "");
+        setEngagement(baseUser.engagement ?? "");
+        setDeliverables(baseUser.deliverables ?? "");
+        setPayable(moneyToInput(baseUser.payableAmount));
+        setPayableFocused(false);
+        setStatusApi(baseUser.statusApi);
+        setJoined(toIsoDateInput(baseUser.createdAt));
+        setJoinedPickerDate(parseDateOrNow(baseUser.createdAt));
+        setDocumentFile(null);
+        setDocumentName("");
+        setDocumentRemoved(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [baseUser._id]);
+
+    const onSave = async () => {
+        if (!id || !dirty) return;
+
+        const toNullableText = (value: string) => {
+            const v = value.trim();
+            return v.length ? v : null;
+        };
+
+        const parsedStaffSize = Number(staffSize);
+        const hasStaffSize =
+            String(staffSize).trim().length > 0 &&
+            Number.isFinite(parsedStaffSize);
+
+        const payableRaw = String(payable ?? "").trim();
+        const parsedPayable = payableRaw.length ? parseMoney(payableRaw) : null;
+
+        const body: any = {
+            name: toNullableText(name),
+            projectName: toNullableText(projectName),
+            email: toNullableText(email),
+            phoneNumber: toNullableText(phoneNumber),
+            industry: toNullableText(effectiveIndustry),
+            staffSize: hasStaffSize ? parsedStaffSize : null,
+            description: toNullableText(description),
+            problems: toNullableText(problems),
+            strength: toNullableText(strength),
+            weakness: toNullableText(weakness),
+            opportunities: toNullableText(opportunities),
+            threats: toNullableText(threats),
+            engagement: toNullableText(engagement),
+            deliverables: toNullableText(deliverables),
+            payableAmount: parsedPayable,
+            status: statusApi,
+            createdAt: toIsoDateOrUndefined(joined),
+            document: documentRemoved ? null : undefined,
+            documentFile: documentRemoved
+                ? undefined
+                : (documentFile ?? undefined),
+        };
+
+        try {
+            await dispatch(updateClient({ id: String(id), body })).unwrap();
+            // Alert.alert("Saved", "Client info updated successfully.");
+            router.back();
+        } catch (e: any) {
+            Alert.alert("Update failed", e?.message || "Please try again.");
+        }
+    };
+
+    const saveDisabled = !dirty || mutationLoading;
+
+    const onDelete = () => {
+        if (!id) return;
+        Alert.alert(
+            "Delete Client",
+            "This action cannot be undone. Are you sure you want to delete this client?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await dispatch(deleteClient(String(id))).unwrap();
+                            Alert.alert("Deleted", "Client has been removed.");
+                            router.back();
+                        } catch (e: any) {
+                            Alert.alert(
+                                "Delete failed",
+                                e?.message || "Please try again.",
+                            );
+                        }
+                    },
+                },
+            ],
+        );
+    };
 
     return (
-      name !== baseName ||
-      email !== baseEmail ||
-      phoneNumber !== basePhone ||
-      projectName !== (baseUser.projectName ?? "") ||
-      effectiveIndustry !== baseIndustry ||
-      staffSize !== String(baseUser.staffSize ?? "") ||
-      description !== (baseUser.description ?? "") ||
-      problems !== (baseUser.problems ?? "") ||
-      strength !== (baseUser.strength ?? "") ||
-      weakness !== (baseUser.weakness ?? "") ||
-      opportunities !== (baseUser.opportunities ?? "") ||
-      threats !== (baseUser.threats ?? "") ||
-      engagement !== (baseUser.engagement ?? "") ||
-      deliverables !== (baseUser.deliverables ?? "") ||
-      payable !== basePay ||
-      statusApi !== baseUser.statusApi ||
-      documentRemoved ||
-      !!documentFile
-    );
-  }, [
-    baseUser,
-    name,
-    email,
-    phoneNumber,
-    projectName,
-    effectiveIndustry,
-    staffSize,
-    description,
-    problems,
-    strength,
-    weakness,
-    opportunities,
-    threats,
-    engagement,
-    deliverables,
-    payable,
-    statusApi,
-    documentRemoved,
-    documentFile,
-  ]);
-
-  useEffect(() => {
-    setName(baseUser.fullname || baseUser.username || baseUser.email || "");
-    setProjectName(baseUser.projectName ?? "");
-    setEmail(baseUser.email ?? "");
-    setPhoneNumber(baseUser.phoneNumber ?? "");
-    setIndustry(resolvedIndustry.selection);
-    setIndustryOther(resolvedIndustry.other);
-    setstaffSize(String(baseUser.staffSize ?? ""));
-    setDescription(baseUser.description ?? "");
-    setProblems(baseUser.problems ?? "");
-    setStrength(baseUser.strength ?? "");
-    setWeakness(baseUser.weakness ?? "");
-    setOpportunities(baseUser.opportunities ?? "");
-    setThreats(baseUser.threats ?? "");
-    setEngagement(baseUser.engagement ?? "");
-    setDeliverables(baseUser.deliverables ?? "");
-    setPayable(moneyToInput(baseUser.payableAmount));
-    setPayableFocused(false);
-    setStatusApi(baseUser.statusApi);
-    setDocumentFile(null);
-    setDocumentName("");
-    setDocumentRemoved(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseUser._id]);
-
-  const onSave = async () => {
-    if (!id || !dirty) return;
-
-    const body = {
-      name: name.trim(),
-      projectName: projectName.trim(),
-      email: email.trim() || undefined,
-      phoneNumber: phoneNumber.trim() || undefined,
-      industry: effectiveIndustry || undefined,
-      staffsize: Number(staffSize) || undefined,
-      description: description.trim() || undefined,
-      problems: problems.trim() || undefined,
-      strength: strength.trim() || undefined,
-      weakness: weakness.trim() || undefined,
-      opportunities: opportunities.trim() || undefined,
-      threats: threats.trim() || undefined,
-      engagement: engagement.trim() || undefined,
-      deliverables: deliverables.trim() || undefined,
-      payableAmount: parseMoney(payable) || undefined,
-      status: statusApi,
-      document: documentRemoved ? null : undefined,
-      documentFile: documentRemoved ? undefined : documentFile ?? undefined,
-    };
-    console.log("Updating client with data:", body);
-
-    try {
-      await dispatch(updateClient({ id: String(id), body })).unwrap();
-      // Alert.alert("Saved", "Client info updated successfully.");
-      router.back();
-    } catch (e: any) {
-      Alert.alert("Update failed", e?.message || "Please try again.");
-    }
-  };
-
-  const saveDisabled = !dirty || mutationLoading;
-
-  const onDelete = () => {
-    if (!id) return;
-    Alert.alert(
-      "Delete Client",
-      "This action cannot be undone. Are you sure you want to delete this client?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await dispatch(deleteClient(String(id))).unwrap();
-              Alert.alert("Deleted", "Client has been removed.");
-              router.back();
-            } catch (e: any) {
-              Alert.alert("Delete failed", e?.message || "Please try again.");
+        <SafeAreaView
+            edges={
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-          },
-        },
-      ]
-    );
-  };
-
-  return (
-    <SafeAreaView
-      className="flex-1 bg-white"
-      style={{ paddingTop: Platform.select({ ios: 8, android: 0 }) }}
-    >
-      {/* Header */}
-      <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
-        <Pressable
-          onPress={() => router.back()}
-          className="w-10 h-10 rounded-full items-center justify-center"
-          disabled={mutationLoading}
-          style={{ opacity: mutationLoading ? 0.6 : 1 }}
+            className="flex-1 bg-white px-4"
+            // style={{ paddingTop: Platform.select({ ios: 8, android: 0 }) }}
         >
-          <ArrowLeft size={24} color="#111827" />
-        </Pressable>
-
-        <Text className="text-[22px] font-kumbhBold text-[#111827]">
-          Client Details
-        </Text>
-
-        <Pressable
-          disabled={saveDisabled}
-          onPress={onSave}
-          className="w-10 h-10 rounded-full items-center justify-center"
-          style={{ opacity: saveDisabled ? 0.4 : 1 }}
-        >
-          {mutationLoading ? (
-            <ActivityIndicator size="small" color={PRIMARY} />
-          ) : (
-            <Save size={22} color={saveDisabled ? "#9CA3AF" : PRIMARY} />
-          )}
-        </Pressable>
-      </View>
-
-      {detailLoading && !clientFromStore ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator />
-          <Text className="mt-2 text-gray-500 font-kumbh">Loading client…</Text>
-        </View>
-      ) : (
-        <>
-          <KeyboardAvoidingWidget>
-            <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-              <View className="px-5 mt-3">
-                {/* Name */}
-                <FieldLabel>Name</FieldLabel>
-                <Input value={name} onChangeText={setName} />
-
-                {/* Project Name */}
-                <View className="mt-4">
-                  <FieldLabel>Project Name</FieldLabel>
-                  <Input value={projectName} onChangeText={setProjectName} />
-                </View>
-
-                {/* Email */}
-                <View className="mt-4">
-                  <FieldLabel>Email</FieldLabel>
-                  <Input
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="example@domain.com"
-                  />
-                </View>
-
-                {/* Phone Number */}
-                <View className="mt-4">
-                  <FieldLabel>Phone Number</FieldLabel>
-                  <Input
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    placeholder="080..."
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                {/* Industry | Staff Size */}
-                <View className="mt-4">
-                  <TwoCol>
-                    <View style={{ flex: 1 }}>
-                      <FieldLabel>Industry</FieldLabel>
-                      <Pressable
-                        onPress={() => setShowIndustrySheet(true)}
-                        className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
+            {/* Header */}
+            <PlatformAdaptiveHeader
+                title="Client Details"
+                headerRight={({ tintColor }) => (
+                    <Pressable
+                        disabled={saveDisabled}
+                        onPress={onSave}
                         style={{
-                          backgroundColor: BG_INPUT,
-                          borderColor: BORDER,
+                            marginLeft: mutationLoading ? 8 : 4,
                         }}
-                      >
-                        <Text className="font-kumbh text-[#111827]">
-                          {industry ? industry : "Select Industry"}
-                        </Text>
-                        <ChevronDown size={18} color="#111827" />
-                      </Pressable>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <FieldLabel>Staff Size</FieldLabel>
-                      <Pressable
-                        onPress={() => setShowStaffSizeSheet(true)}
-                        className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
-                        style={{
-                          backgroundColor: BG_INPUT,
-                          borderColor: BORDER,
-                        }}
-                      >
-                        <Text className="font-kumbh text-[#111827]">
-                          {staffSize
-                            ? STAFF_SIZE_OPTIONS.find(
-                                (opt) => opt.value === Number(staffSize)
-                              )?.label ?? staffSize
-                            : "Select Staff Size"}
-                        </Text>
-                        <ChevronDown size={18} color="#111827" />
-                      </Pressable>
-                    </View>
-                  </TwoCol>
+                    >
+                        {mutationLoading ? (
+                            <ActivityIndicator size="small" color={tintColor} />
+                        ) : (
+                            <Check
+                                size={28}
+                                color={saveDisabled ? "#9CA3AF" : tintColor}
+                            />
+                        )}
+                    </Pressable>
+                )}
+            />
+            {detailLoading && !clientFromStore ? (
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator />
+                    <Text className="mt-2 text-gray-500 font-kumbh">
+                        Loading client…
+                    </Text>
                 </View>
-                {industry === "Other" ? (
-                  <View className="mt-4">
-                    <FieldLabel>Other Industry</FieldLabel>
-                    <Input
-                      value={industryOther}
-                      onChangeText={setIndustryOther}
-                      placeholder="Enter industry"
-                    />
-                  </View>
-                ) : null}
+            ) : (
+                <>
+                    <KeyboardAvoidingWidget>
+                        <ScrollView
+                            contentContainerStyle={{ paddingBottom: 24 }}
+                        >
+                            <View className="mt-3">
+                                {/* Name */}
+                                <FieldLabel>Name</FieldLabel>
+                                <Input value={name} onChangeText={setName} />
 
-                {/* Description */}
-                <View className="mt-4">
-                  <FieldLabel>Description</FieldLabel>
-                  <Input
-                    value={description}
-                    onChangeText={setDescription}
-                    multiline
-                  />
-                </View>
+                                {/* Project Name */}
+                                <View className="mt-4">
+                                    <FieldLabel>Project Name</FieldLabel>
+                                    <Input
+                                        value={projectName}
+                                        onChangeText={setProjectName}
+                                    />
+                                </View>
 
-                {/* Problems Faced */}
-                <View className="mt-4">
-                  <FieldLabel>Problems Faced</FieldLabel>
-                  <Input
-                    value={problems}
-                    onChangeText={setProblems}
-                    multiline
-                  />
-                </View>
+                                {/* Email */}
+                                <View className="mt-4">
+                                    <FieldLabel>Email</FieldLabel>
+                                    <Input
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        placeholder="example@domain.com"
+                                    />
+                                </View>
 
-                {/* Strengths */}
-                <View className="mt-4">
-                  <FieldLabel>Strengths</FieldLabel>
-                  <Input
-                    value={strength}
-                    onChangeText={setStrength}
-                    multiline
-                  />
-                </View>
+                                {/* Phone Number */}
+                                <View className="mt-4">
+                                    <FieldLabel>Phone Number</FieldLabel>
+                                    <Input
+                                        value={phoneNumber}
+                                        onChangeText={setPhoneNumber}
+                                        placeholder="080..."
+                                        keyboardType="numeric"
+                                    />
+                                </View>
 
-                {/* Weakness */}
-                <View className="mt-4">
-                  <FieldLabel>Weakness</FieldLabel>
-                  <Input
-                    value={weakness}
-                    onChangeText={setWeakness}
-                    multiline
-                  />
-                </View>
+                                {/* Industry | Staff Size */}
+                                <View className="mt-4">
+                                    <TwoCol>
+                                        <View style={{ flex: 1 }}>
+                                            <FieldLabel>Industry</FieldLabel>
+                                            <Pressable
+                                                onPress={() =>
+                                                    setShowIndustrySheet(true)
+                                                }
+                                                className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
+                                                style={{
+                                                    backgroundColor: BG_INPUT,
+                                                    borderColor: BORDER,
+                                                }}
+                                            >
+                                                <Text className="font-kumbh text-[#111827]">
+                                                    {industry
+                                                        ? industry
+                                                        : "Select Industry"}
+                                                </Text>
+                                                <ChevronDown
+                                                    size={18}
+                                                    color="#111827"
+                                                />
+                                            </Pressable>
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <FieldLabel>Staff Size</FieldLabel>
+                                            <Pressable
+                                                onPress={() =>
+                                                    setShowStaffSizeSheet(true)
+                                                }
+                                                className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
+                                                style={{
+                                                    backgroundColor: BG_INPUT,
+                                                    borderColor: BORDER,
+                                                }}
+                                            >
+                                                <Text className="font-kumbh text-[#111827]">
+                                                    {staffSize
+                                                        ? (STAFF_SIZE_OPTIONS.find(
+                                                              (opt) =>
+                                                                  opt.value ===
+                                                                  Number(
+                                                                      staffSize,
+                                                                  ),
+                                                          )?.label ?? staffSize)
+                                                        : "Select Staff Size"}
+                                                </Text>
+                                                <ChevronDown
+                                                    size={18}
+                                                    color="#111827"
+                                                />
+                                            </Pressable>
+                                        </View>
+                                    </TwoCol>
+                                </View>
+                                {industry === "Other" ? (
+                                    <View className="mt-4">
+                                        <FieldLabel>Other Industry</FieldLabel>
+                                        <Input
+                                            value={industryOther}
+                                            onChangeText={setIndustryOther}
+                                            placeholder="Enter industry"
+                                        />
+                                    </View>
+                                ) : null}
 
-                {/* Opportunities */}
-                <View className="mt-4">
-                  <FieldLabel>Opportunities</FieldLabel>
-                  <Input
-                    value={opportunities}
-                    onChangeText={setOpportunities}
-                    multiline
-                  />
-                </View>
+                                {/* Description */}
+                                <View className="mt-4">
+                                    <FieldLabel>Description</FieldLabel>
+                                    <Input
+                                        value={description}
+                                        onChangeText={setDescription}
+                                        multiline
+                                    />
+                                </View>
 
-                {/* Threats */}
-                <View className="mt-4">
-                  <FieldLabel>Threats</FieldLabel>
-                  <Input value={threats} onChangeText={setThreats} multiline />
-                </View>
+                                {/* Problems Faced */}
+                                <View className="mt-4">
+                                    <FieldLabel>Problems Faced</FieldLabel>
+                                    <Input
+                                        value={problems}
+                                        onChangeText={setProblems}
+                                        multiline
+                                    />
+                                </View>
 
-                {/* Engagement Offered */}
-                <View className="mt-4">
-                  <FieldLabel>Engagement Offered</FieldLabel>
-                  <Input value={engagement} onChangeText={setEngagement} />
-                </View>
+                                {/* Strengths */}
+                                <View className="mt-4">
+                                    <FieldLabel>Strengths</FieldLabel>
+                                    <Input
+                                        value={strength}
+                                        onChangeText={setStrength}
+                                        multiline
+                                    />
+                                </View>
 
-                {/* Deliverables */}
-                <View className="mt-4">
-                  <FieldLabel>Deliverables</FieldLabel>
-                  <Input value={deliverables} onChangeText={setDeliverables} />
-                </View>
+                                {/* Weakness */}
+                                <View className="mt-4">
+                                    <FieldLabel>Weakness</FieldLabel>
+                                    <Input
+                                        value={weakness}
+                                        onChangeText={setWeakness}
+                                        multiline
+                                    />
+                                </View>
 
-                {/* Payable Amount | Status */}
-                <View className="mt-4">
-                  <TwoCol>
-                    <View style={{ flex: 1 }}>
-                      <FieldLabel>Payable Amount</FieldLabel>
-                      <Input
-                        value={
-                          payableFocused
-                            ? payable
-                            : formatGroupedMoneyInput(payable)
-                        }
-                        onChangeText={(t) => setPayable(sanitizeMoneyInput(t))}
-                        onFocus={() => setPayableFocused(true)}
-                        onBlur={() => {
-                          setPayable(moneyToInput(parseMoney(payable)));
-                          setPayableFocused(false);
-                        }}
-                        keyboardType={
-                          Platform.OS === "ios" ? "decimal-pad" : "numeric"
-                        }
-                      />
-                    </View>
+                                {/* Opportunities */}
+                                <View className="mt-4">
+                                    <FieldLabel>Opportunities</FieldLabel>
+                                    <Input
+                                        value={opportunities}
+                                        onChangeText={setOpportunities}
+                                        multiline
+                                    />
+                                </View>
 
-                    <View style={{ flex: 1 }}>
-                      <FieldLabel>Status</FieldLabel>
-                      <Pressable
-                        onPress={() => setStatusOpen(true)}
-                        className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
-                        style={{
-                          backgroundColor: BG_INPUT,
-                          borderColor: BORDER,
-                        }}
-                      >
-                        <Text className="font-kumbh text-[#111827]">
-                          {toUiLabel(statusApi)}
-                        </Text>
-                        <ChevronDown size={18} color="#111827" />
-                      </Pressable>
-                    </View>
-                  </TwoCol>
-                </View>
+                                {/* Threats */}
+                                <View className="mt-4">
+                                    <FieldLabel>Threats</FieldLabel>
+                                    <Input
+                                        value={threats}
+                                        onChangeText={setThreats}
+                                        multiline
+                                    />
+                                </View>
 
-                {/* tiny footer note */}
-                {/* <View className="items-center mt-3">
+                                {/* Engagement Offered */}
+                                <View className="mt-4">
+                                    <FieldLabel>Engagement Offered</FieldLabel>
+                                    <Input
+                                        value={engagement}
+                                        onChangeText={setEngagement}
+                                    />
+                                </View>
+
+                                {/* Deliverables */}
+                                <View className="mt-4">
+                                    <FieldLabel>Deliverables</FieldLabel>
+                                    <Input
+                                        value={deliverables}
+                                        onChangeText={setDeliverables}
+                                    />
+                                </View>
+
+                                {/* Payable Amount | Status */}
+                                <View className="mt-4">
+                                    <TwoCol>
+                                        <View style={{ flex: 1 }}>
+                                            <FieldLabel>
+                                                Payable Amount
+                                            </FieldLabel>
+                                            <Input
+                                                value={
+                                                    payableFocused
+                                                        ? parseMoney(payable)
+                                                        : formatGroupedMoneyInput(
+                                                              payable,
+                                                          )
+                                                }
+                                                onChangeText={(t) =>
+                                                    setPayable(
+                                                        sanitizeMoneyInput(t),
+                                                    )
+                                                }
+                                                onFocus={() =>
+                                                    setPayableFocused(true)
+                                                }
+                                                onBlur={() => {
+                                                    setPayable(
+                                                        moneyToInput(
+                                                            parseMoney(payable),
+                                                        ),
+                                                    );
+                                                    setPayableFocused(false);
+                                                }}
+                                                keyboardType={
+                                                    Platform.OS === "ios"
+                                                        ? "decimal-pad"
+                                                        : "numeric"
+                                                }
+                                            />
+                                        </View>
+
+                                        <View style={{ flex: 1 }}>
+                                            <FieldLabel>Status</FieldLabel>
+                                            <Pressable
+                                                onPress={() =>
+                                                    setStatusOpen(true)
+                                                }
+                                                className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
+                                                style={{
+                                                    backgroundColor: BG_INPUT,
+                                                    borderColor: BORDER,
+                                                }}
+                                            >
+                                                <Text className="font-kumbh text-[#111827]">
+                                                    {toUiLabel(statusApi)}
+                                                </Text>
+                                                <ChevronDown
+                                                    size={18}
+                                                    color="#111827"
+                                                />
+                                            </Pressable>
+                                        </View>
+                                    </TwoCol>
+                                </View>
+
+                                {/* tiny footer note */}
+                                {/* <View className="items-center mt-3">
                   <Text className="text-[12px] text-[#6B7280] font-kumbh">
                     Generate Invoice
                   </Text>
                 </View> */}
 
-                {/* Joined (read-only) */}
-                <View className="mt-6">
-                  <FieldLabel>Joined</FieldLabel>
-                  <View
-                    className="rounded-2xl px-4 py-3"
-                    style={{ backgroundColor: BG_INPUT }}
-                  >
-                    <Text className="font-kumbh text-[#111827]">{joined}</Text>
-                  </View>
-                </View>
+                                {/* Joined (read-only) */}
+                                <View className="mt-6">
+                                    <FieldLabel>Joined</FieldLabel>
+                                    <Pressable
+                                        onPress={() => {
+                                            setJoinedPickerDate(
+                                                parseDateOrNow(joined),
+                                            );
+                                            setShowJoinedDatePicker(true);
+                                        }}
+                                        className="rounded-2xl px-4 py-3"
+                                        style={{
+                                            backgroundColor: BG_INPUT,
+                                            borderColor: BORDER,
+                                        }}
+                                    >
+                                        <Text className="font-kumbh text-[#111827]">
+                                            {formatDate(
+                                                toIsoDateOrUndefined(joined),
+                                            )}
+                                        </Text>
+                                    </Pressable>
+                                </View>
 
-                {/* Client Document */}
-                <View className="mt-6">
-                  <FieldLabel>Client Document (PDF)</FieldLabel>
-                  <View
-                    className="rounded-2xl border border-gray-200 p-4"
-                    style={{ backgroundColor: BG_INPUT }}
-                  >
-                    <Text className="font-kumbh text-[#111827]">
-                      {documentLabel}
-                    </Text>
-                    <View className="mt-3 flex-row" style={{ gap: 10 }}>
-                      <Pressable
-                        onPress={handleSaveDocument}
-                        disabled={!documentLink && !documentFile}
-                        className="flex-1 rounded-2xl px-3 py-3 items-center"
-                        style={{
-                          backgroundColor: PRIMARY,
-                          opacity:
-                            !documentLink && !documentFile ? 0.5 : 1,
-                        }}
-                      >
-                        <Text className="font-kumbhBold text-white">
-                          Save PDF
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={handleAttachDocument}
-                        disabled={uploadingDocument}
-                        className="flex-1 rounded-2xl px-3 py-3 items-center border"
-                        style={{
-                          borderColor: PRIMARY,
-                          backgroundColor: "transparent",
-                          opacity: uploadingDocument ? 0.6 : 1,
-                        }}
-                      >
-                        <Text className="font-kumbhBold" style={{ color: PRIMARY }}>
-                          {documentFile ? "Replace" : "Upload"}
-                        </Text>
-                      </Pressable>
-                    </View>
-                    <Pressable
-                      onPress={handleRemoveDocument}
-                      disabled={!documentLink && !documentFile}
-                      className="mt-3 rounded-2xl px-3 py-3 items-center border"
-                      style={{
-                        borderColor: "#DC2626",
-                        backgroundColor: "transparent",
-                        opacity: !documentLink && !documentFile ? 0.5 : 1,
-                      }}
-                    >
-                      <Text className="font-kumbhBold" style={{ color: "#DC2626" }}>
-                        Remove Document
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
+                                {/* Client Document */}
+                                <View className="mt-6">
+                                    <FieldLabel>
+                                        Client Document (PDF)
+                                    </FieldLabel>
+                                    <View
+                                        className="rounded-2xl border border-gray-200 p-4"
+                                        style={{ backgroundColor: BG_INPUT }}
+                                    >
+                                        <Text className="font-kumbh text-[#111827]">
+                                            {documentLabel}
+                                        </Text>
+                                        <View
+                                            className="mt-3 flex-row"
+                                            style={{ gap: 10 }}
+                                        >
+                                            <Pressable
+                                                onPress={handleSaveDocument}
+                                                disabled={
+                                                    !documentLink &&
+                                                    !documentFile
+                                                }
+                                                className="flex-1 rounded-2xl px-3 py-3 items-center"
+                                                style={{
+                                                    backgroundColor: PRIMARY,
+                                                    opacity:
+                                                        !documentLink &&
+                                                        !documentFile
+                                                            ? 0.5
+                                                            : 1,
+                                                }}
+                                            >
+                                                <Text className="font-kumbhBold text-white">
+                                                    Save PDF
+                                                </Text>
+                                            </Pressable>
+                                            <Pressable
+                                                onPress={handleAttachDocument}
+                                                disabled={uploadingDocument}
+                                                className="flex-1 rounded-2xl px-3 py-3 items-center border"
+                                                style={{
+                                                    borderColor: PRIMARY,
+                                                    backgroundColor:
+                                                        "transparent",
+                                                    opacity: uploadingDocument
+                                                        ? 0.6
+                                                        : 1,
+                                                }}
+                                            >
+                                                <Text
+                                                    className="font-kumbhBold"
+                                                    style={{ color: PRIMARY }}
+                                                >
+                                                    {documentFile
+                                                        ? "Replace"
+                                                        : "Upload"}
+                                                </Text>
+                                            </Pressable>
+                                        </View>
+                                        <Pressable
+                                            onPress={handleRemoveDocument}
+                                            disabled={
+                                                !documentLink && !documentFile
+                                            }
+                                            className="mt-3 rounded-2xl px-3 py-3 items-center border"
+                                            style={{
+                                                borderColor: "#DC2626",
+                                                backgroundColor: "transparent",
+                                                opacity:
+                                                    !documentLink &&
+                                                    !documentFile
+                                                        ? 0.5
+                                                        : 1,
+                                            }}
+                                        >
+                                            <Text
+                                                className="font-kumbhBold"
+                                                style={{ color: "#DC2626" }}
+                                            >
+                                                Remove Document
+                                            </Text>
+                                        </Pressable>
+                                    </View>
+                                </View>
 
-                {/* Buttons row */}
-                <View className="mt-6 flex-row" style={{ gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <PillButton
-                      variant="primary"
-                      icon={<ClipboardCheck size={16} color="#fff" />}
-                      label="Client Installment"
-                      onPress={() => {
-                        router.push({
-                          pathname: "/(admin)/clients/installments",
-                          params: { clientId: id },
-                        });
-                      }}
+                                {/* Buttons row */}
+                                <View
+                                    className="mt-6 flex-row"
+                                    style={{ gap: 12 }}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <PillButton
+                                            variant="primary"
+                                            icon={
+                                                <ClipboardCheck
+                                                    size={16}
+                                                    color="#fff"
+                                                />
+                                            }
+                                            label="Client Installment"
+                                            onPress={() => {
+                                                router.push({
+                                                    pathname:
+                                                        "/(admin)/clients/installments",
+                                                    params: { clientId: id },
+                                                });
+                                            }}
+                                        />
+                                    </View>
+                                </View>
+                                <View className="mt-3">
+                                    <PillButton
+                                        variant="outline"
+                                        icon={
+                                            isGeneratingPdf ? (
+                                                <ActivityIndicator
+                                                    size="small"
+                                                    color={PRIMARY}
+                                                />
+                                            ) : (
+                                                <Share2
+                                                    size={16}
+                                                    color={PRIMARY}
+                                                />
+                                            )
+                                        }
+                                        label={
+                                            isGeneratingPdf
+                                                ? "Generating..."
+                                                : "Share Client PDF"
+                                        }
+                                        disabled={isGeneratingPdf}
+                                        onPress={handleShareClientPdf}
+                                    />
+                                </View>
+
+                                {/* Delete */}
+                                <View className="mt-6">
+                                    <Pressable
+                                        disabled={mutationLoading}
+                                        onPress={onDelete}
+                                        className="rounded-2xl py-4 items-center border"
+                                        style={{
+                                            borderColor: mutationLoading
+                                                ? "#FCA5A5"
+                                                : "#DC2626",
+                                            backgroundColor: mutationLoading
+                                                ? "#FEE2E2"
+                                                : "#FEE2E2",
+                                            opacity: mutationLoading ? 0.7 : 1,
+                                        }}
+                                    >
+                                        <Text
+                                            className="font-kumbhBold"
+                                            style={{ color: "#B91C1C" }}
+                                        >
+                                            {mutationLoading
+                                                ? "Processing..."
+                                                : "Delete Client"}
+                                        </Text>
+                                    </Pressable>
+                                </View>
+                            </View>
+                        </ScrollView>
+                    </KeyboardAvoidingWidget>
+
+                    <OptionSheet
+                        visible={showStaffSizeSheet}
+                        onClose={() => setShowStaffSizeSheet(false)}
+                        onSelect={(value) => {
+                            setstaffSize(String(value));
+                            setShowStaffSizeSheet(false);
+                        }}
+                        title="Select Staff Size"
+                        options={STAFF_SIZE_OPTIONS}
+                        selectedValue={
+                            staffSize ? Number(staffSize) : undefined
+                        }
                     />
-                  </View>
-                </View>
-                <View className="mt-3">
-                  <PillButton
-                    variant="outline"
-                    icon={
-                      isGeneratingPdf ? (
-                        <ActivityIndicator size="small" color={PRIMARY} />
-                      ) : (
-                        <Share2 size={16} color={PRIMARY} />
-                      )
-                    }
-                    label={isGeneratingPdf ? "Generating..." : "Share Client PDF"}
-                    disabled={isGeneratingPdf}
-                    onPress={handleShareClientPdf}
-                  />
-                </View>
 
-                {/* Delete */}
-                <View className="mt-6">
-                  <Pressable
-                    disabled={mutationLoading}
-                    onPress={onDelete}
-                    className="rounded-2xl py-4 items-center border"
-                    style={{
-                      borderColor: mutationLoading ? "#FCA5A5" : "#DC2626",
-                      backgroundColor: mutationLoading ? "#FEE2E2" : "#FEE2E2",
-                      opacity: mutationLoading ? 0.7 : 1,
-                    }}
-                  >
-                    <Text
-                      className="font-kumbhBold"
-                      style={{ color: "#B91C1C" }}
-                    >
-                      {mutationLoading ? "Processing..." : "Delete Client"}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingWidget>
+                    <OptionSheet
+                        visible={showIndustrySheet}
+                        onClose={() => setShowIndustrySheet(false)}
+                        onSelect={(value) => {
+                            setIndustry(value as string);
+                            if (value !== "Other") {
+                                setIndustryOther("");
+                            }
+                            setShowIndustrySheet(false);
+                        }}
+                        title="Select Industry"
+                        options={INDUSTRY_OPTIONS}
+                        selectedValue={industry}
+                    />
 
-          <OptionSheet
-            visible={showStaffSizeSheet}
-            onClose={() => setShowStaffSizeSheet(false)}
-            onSelect={(value) => {
-              setstaffSize(String(value));
-              setShowStaffSizeSheet(false);
-            }}
-            title="Select Staff Size"
-            options={STAFF_SIZE_OPTIONS}
-            selectedValue={staffSize ? Number(staffSize) : undefined}
-          />
+                    <OptionSheet
+                        visible={statusOpen}
+                        onClose={() => setStatusOpen(false)}
+                        onSelect={(value) => {
+                            setStatusApi(value as ApiStatus);
+                            setStatusOpen(false);
+                        }}
+                        title="Select Status"
+                        options={STATUS_OPTIONS}
+                        selectedValue={statusApi}
+                    />
 
-          <OptionSheet
-            visible={showIndustrySheet}
-            onClose={() => setShowIndustrySheet(false)}
-            onSelect={(value) => {
-              setIndustry(value as string);
-              if (value !== "Other") {
-                setIndustryOther("");
-              }
-              setShowIndustrySheet(false);
-            }}
-            title="Select Industry"
-            options={INDUSTRY_OPTIONS}
-            selectedValue={industry}
-          />
-
-          {/* Status picker modal */}
-          <Modal
-            transparent
-            visible={statusOpen}
-            animationType="fade"
-            onRequestClose={() => setStatusOpen(false)}
-          >
-            <Pressable
-              onPress={() => setStatusOpen(false)}
-              className="flex-1 bg-black/30"
-            >
-              <View className="absolute left-5 right-5 bottom-8 rounded-2xl bg-white p-4">
-                <Text className="font-kumbhBold text-[#111827] mb-2">
-                  Select Status
-                </Text>
-                <FlatList
-                  data={STATUS_OPTIONS}
-                  keyExtractor={(x) => x.value}
-                  ItemSeparatorComponent={() => (
-                    <View style={{ height: 1, backgroundColor: "#EEF0F3" }} />
-                  )}
-                  renderItem={({ item }) => (
-                    <Pressable
-                      onPress={() => {
-                        setStatusApi(item.value);
-                        setStatusOpen(false);
-                      }}
-                      className="py-3"
-                    >
-                      <Text className="font-kumbh text-[#111827]">
-                        {item.label}
-                      </Text>
-                    </Pressable>
-                  )}
-                />
-              </View>
-            </Pressable>
-          </Modal>
-        </>
-      )}
-    </SafeAreaView>
-  );
+                    <DatePickerModal
+                        visible={showJoinedDatePicker}
+                        value={joinedPickerDate}
+                        onCancel={() => setShowJoinedDatePicker(false)}
+                        onDone={() => setShowJoinedDatePicker(false)}
+                        onDateChange={(d) => {
+                            setJoinedPickerDate(d);
+                            setJoined(toIsoDateInput(d.toISOString()));
+                        }}
+                    />
+                </>
+            )}
+        </SafeAreaView>
+    );
 }
 
 function KeyboardAvoidingWidget({ children }: { children: React.ReactNode }) {
-  return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-      keyboardVerticalOffset={Platform.select({ ios: 70, android: 0 }) ?? 0}
-    >
-      {children}
-    </KeyboardAvoidingView>
-  );
+    return (
+        <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.select({ ios: "padding", android: undefined })}
+            keyboardVerticalOffset={
+                Platform.select({ ios: 70, android: 0 }) ?? 0
+            }
+        >
+            {children}
+        </KeyboardAvoidingView>
+    );
 }
