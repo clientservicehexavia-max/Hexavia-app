@@ -1,7 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Tabs, useRouter } from "expo-router";
+import { Tabs } from "expo-router";
 import React from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const PRIMARY = "#4C5FAB";
 const INACTIVE = "#9CA3AF";
@@ -51,7 +52,7 @@ function TabButton({
 }
 
 export default function AdminTabsLayout() {
-    const router = useRouter();
+    const inset = useSafeAreaInsets();
 
     return (
         <Tabs
@@ -61,11 +62,16 @@ export default function AdminTabsLayout() {
                 tabBarActiveTintColor: PRIMARY,
                 tabBarInactiveTintColor: INACTIVE,
                 tabBarStyle: {
-                    height: 75,
-                    backgroundColor: "#FFFFFF",
+                    height:
+                        Platform.OS === "android" && inset.bottom !== 0
+                            ? 49 + inset.bottom
+                            : Platform.OS === "ios"
+                              ? 83
+                              : 75,
+                    backgroundColor: "#F3F4F6",
                     borderTopWidth: 1,
                     paddingHorizontal: 8,
-                    paddingVertical: 10,
+                    // paddingVertical: 10,
                     // paddingTop: 6,
                     borderTopColor: "#eee",
                 },

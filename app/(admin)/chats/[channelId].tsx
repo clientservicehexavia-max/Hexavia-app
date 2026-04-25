@@ -865,10 +865,7 @@ export default function ChatScreen() {
     );
 
     return (
-        <SafeAreaView
-            className="flex-1 bg-white"
-            // edges={["top", "left", "right"]}
-        >
+        <SafeAreaView className="flex-1 bg-white">
             <StatusBar style="dark" />
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}

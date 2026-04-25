@@ -42,11 +42,7 @@ export default function AdminDashboard() {
 
     return (
         <SafeAreaView
-            edges={
-                isIOS
-                    ? ["top", "left", "right"]
-                    : ["top", "left", "right", "bottom"]
-            }
+            edges={isIOS ? ["top", "left", "right"] : ["top", "left", "right"]}
             className="flex-1 bg-white px-4"
         >
             <ScrollView

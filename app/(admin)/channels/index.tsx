@@ -179,9 +179,7 @@ export default function ChannelsIndex() {
 
     return (
         <SafeAreaView
-            edges={
-                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
-            }
+            edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
             className="flex-1 bg-white px-2"
         >
             {/* Header */}
