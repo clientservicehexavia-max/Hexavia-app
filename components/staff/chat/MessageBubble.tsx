@@ -396,9 +396,9 @@ export default function MessageBubble({
             <View className="px-3 mb-2 items-end">
                 <Pressable
                     onLongPress={() => onLongPress?.(msg)}
-                    className="max-w-[82%]"
+                    className="max-w-[75%]"
                 >
-                    <View className="bg-[#C9CEEA] rounded-xl px-5 py-3">
+                    <View className="bg-[#C9CEEA] rounded-xl p-3">
                         {BubbleCore}
                     </View>
                 </Pressable>
@@ -420,15 +420,15 @@ export default function MessageBubble({
     }
 
     return (
-        <View className="px-3 mb-2 items-start">
-            <View className="flex-row items-start">
+        <View className="px-2 mb-2 items-start">
+            <View className="flex-row items-end">
                 {avatar ? (
                     <Image
                         source={{ uri: avatar }}
-                        className="h-9 w-9 rounded-full mr-3 flex-shrink-0"
+                        className="h-9 w-9 mb-[16px] rounded-full mr-1.5 flex-shrink-0"
                     />
                 ) : (
-                    <View className="h-9 w-9 rounded-full bg-emerald-700 mr-3 flex-shrink-0 items-center justify-center">
+                    <View className="h-9 w-9 mb-[16px] rounded-full bg-emerald-700 mr-1.5 flex-shrink-0 items-center justify-center">
                         {initials ? (
                             <Text className="text-white text-[12px] font-kumbhBold">
                                 {initials}
@@ -439,10 +439,10 @@ export default function MessageBubble({
 
                 <Pressable
                     onLongPress={() => onLongPress?.(msg)}
-                    style={{ maxWidth: "82%", flexShrink: 1 }}
+                    style={{ maxWidth: "75%", flexShrink: 1 }}
                 >
                     <View
-                        className="bg-gray-200 rounded-xl px-5 py-3"
+                        className="bg-gray-200 rounded-xl p-3"
                         style={{ flexShrink: 1 }}
                     >
                         {BubbleCore}
