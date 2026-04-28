@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:689271215633:android:357a163a4546ae8a52c3b0",
+        "android_client_info": {
+          "package_name": "com.chinexx.hexavia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA34Jpkr94UlfJw9MuYaD18lsvflnfNUpg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:689271215633:android:7e33ff223d3fea8052c3b0",
         "android_client_info": {
           "package_name": "com.chinexx.hexavia.dev"
