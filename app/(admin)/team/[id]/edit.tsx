@@ -1,108 +1,107 @@
 // app/(admin)/team/[id]/edit.tsx
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
     KeyboardAvoidingView,
     Platform,
-    Pressable,
     ScrollView,
-    Text,
     TextInput,
-    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Field from "@/components/admin/Field";
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import HexButton from "@/components/ui/HexButton";
 import { showError, showSuccess } from "@/components/ui/toast";
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
 import { useAppSelector } from "@/store/hooks";
 
 export default function EditStaff() {
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const users = useAppSelector(selectAdminUsers);
+    const router = useRouter();
+    const isIOS = Platform.OS === "ios";
 
-  const existing = users.find((u) => u._id === id);
-  const [fullname, setFullname] = useState(existing?.fullname ?? "");
-  const [username, setUsername] = useState(existing?.username ?? "");
-  const [email, setEmail] = useState(existing?.email ?? "");
+    const { id } = useLocalSearchParams<{ id: string }>();
+    const users = useAppSelector(selectAdminUsers);
 
-  useEffect(() => {
-    if (existing) {
-      setFullname(existing.fullname ?? "");
-      setUsername(existing.username ?? "");
-      setEmail(existing.email ?? "");
-    }
-  }, [existing]);
+    const existing = users.find((u) => u._id === id);
+    const [fullname, setFullname] = useState(existing?.fullname ?? "");
+    const [username, setUsername] = useState(existing?.username ?? "");
+    const [email, setEmail] = useState(existing?.email ?? "");
 
-  const onSave = async () => {
-    if (!fullname.trim()) return showError("Full name is required");
-    if (!email.trim()) return showError("Email is required");
-    // TODO: dispatch(updateUser({ userId: id as string, fullname, username, email }))
-    showSuccess("Saved (mock)");
-    router.back();
-  };
+    useEffect(() => {
+        if (existing) {
+            setFullname(existing.fullname ?? "");
+            setUsername(existing.username ?? "");
+            setEmail(existing.email ?? "");
+        }
+    }, [existing]);
 
-  return (
-    <SafeAreaView className="flex-1 bg-background">
-      <View className="px-5 pt-6 pb-2 flex-row items-center gap-4">
-        <Pressable
-          onPress={() => router.back()}
-          className="w-10 h-10 items-center justify-center"
+    const onSave = async () => {
+        if (!fullname.trim()) return showError("Full name is required");
+        if (!email.trim()) return showError("Email is required");
+        // TODO: dispatch(updateUser({ userId: id as string, fullname, username, email }))
+        showSuccess("Saved (mock)");
+        router.back();
+    };
+
+    return (
+        <SafeAreaView
+            edges={
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
+            }
+            className="flex-1 bg-white px-4"
         >
-          <ArrowLeft size={24} color="#111827" />
-        </Pressable>
-        <Text className="text-3xl font-kumbh text-text">Edit Staff</Text>
-      </View>
+            <PlatformAdaptiveHeader title="Edit Staff" />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.select({ ios: "padding", android: "height" })}
-      >
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-5 pb-10 pt-4"
-          keyboardShouldPersistTaps="handled"
-        >
-          <Field label="Full name">
-            <TextInput
-              placeholder="Enter full name"
-              placeholderTextColor="#9CA3AF"
-              value={fullname}
-              onChangeText={setFullname}
-              className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
-              autoCapitalize="words"
-            />
-          </Field>
+            <KeyboardAvoidingView
+                className="flex-1"
+                behavior={Platform.select({
+                    ios: "padding",
+                    android: "height",
+                })}
+            >
+                <ScrollView
+                    className="flex-1"
+                    contentContainerClassName="pb-10 pt-4"
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <Field label="Full name">
+                        <TextInput
+                            placeholder="Enter full name"
+                            placeholderTextColor="#9CA3AF"
+                            value={fullname}
+                            onChangeText={setFullname}
+                            className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
+                            autoCapitalize="words"
+                        />
+                    </Field>
 
-          <Field label="Username">
-            <TextInput
-              placeholder="Enter username"
-              placeholderTextColor="#9CA3AF"
-              value={username}
-              onChangeText={setUsername}
-              className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
-              autoCapitalize="none"
-            />
-          </Field>
+                    <Field label="Username">
+                        <TextInput
+                            placeholder="Enter username"
+                            placeholderTextColor="#9CA3AF"
+                            value={username}
+                            onChangeText={setUsername}
+                            className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
+                            autoCapitalize="none"
+                        />
+                    </Field>
 
-          <Field label="Email">
-            <TextInput
-              placeholder="Enter email"
-              placeholderTextColor="#9CA3AF"
-              value={email}
-              onChangeText={setEmail}
-              className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </Field>
+                    <Field label="Email">
+                        <TextInput
+                            placeholder="Enter email"
+                            placeholderTextColor="#9CA3AF"
+                            value={email}
+                            onChangeText={setEmail}
+                            className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                        />
+                    </Field>
 
-          <HexButton title="Save" onPress={onSave} />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+                    <HexButton title="Save" onPress={onSave} />
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
+    );
 }

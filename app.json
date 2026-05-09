@@ -1,102 +1,112 @@
 {
-  "expo": {
-    "name": "Hexavian Business Management",
-    "slug": "hexavia",
-    "version": "1.1.5",
-    "orientation": "portrait",
-    "icon": "./assets/images/logo-icon.png",
-    "scheme": "hexavia",
-    "userInterfaceStyle": "automatic",
-    "jsEngine": "hermes",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/logo2.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.chinexx.hexavia",
-      "icon": "./assets/images/logo-icon.png",
-      "infoPlist": {
-        "NSMicrophoneUsageDescription": "We use the mic for sending voice notes.",
-        "NSCameraUsageDescription": "We use the camera for sharing photos in chat.",
-        "NSPhotoLibraryUsageDescription": "We use your photos so you can upload a profile picture or media to your chat.",
-        "ITSAppUsesNonExemptEncryption": false
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo-android.png",
-        "backgroundColor": "#4C5FAB"
-      },
-      "edgeToEdgeEnabled": true,
-      "package": "com.chinexx.hexavia",
-      "softwareKeyboardLayoutMode": "resize",
-      "permissions": [
-        "RECORD_AUDIO",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
-      ]
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/logo-icon.png"
-    },
-    "plugins": [
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/logo2.png",
-          "backgroundColor": "#FFFFFF",
-          "resizeMode": "contain",
-          "imageWidth": 200
-        }
-      ],
-      "expo-router",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true,
-            "buildArchs": [
-              "arm64-v8a",
-              "armeabi-v7a"
+    "expo": {
+        "name": "Hexavian Business Management",
+        "slug": "hexavia",
+        "version": "1.1.6",
+        "orientation": "portrait",
+        "icon": "./assets/images/logo-icon.png",
+        "scheme": "hexavia",
+        "userInterfaceStyle": "automatic",
+        "jsEngine": "hermes",
+        "newArchEnabled": true,
+        "splash": {
+            "image": "./assets/images/logo2.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#FFFFFF"
+        },
+        "ios": {
+            "supportsTablet": true,
+            "bundleIdentifier": "com.chinexx.hexavia",
+            "icon": "./assets/images/logo-icon.png",
+            "infoPlist": {
+                "NSMicrophoneUsageDescription": "We use the mic for sending voice notes.",
+                "NSCameraUsageDescription": "We use the camera for sharing photos in chat.",
+                "NSPhotoLibraryUsageDescription": "We use your photos so you can upload a profile picture or media to your chat.",
+                "ITSAppUsesNonExemptEncryption": false
+            }
+        },
+        "android": {
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/images/logo-android.png",
+                "backgroundColor": "#4C5FAB"
+            },
+            "edgeToEdgeEnabled": true,
+            "package": "com.chinexx.hexavia",
+            "googleServicesFile": "./google-services.json",
+            "softwareKeyboardLayoutMode": "resize",
+            "permissions": [
+                "RECORD_AUDIO",
+                "CAMERA",
+                "READ_EXTERNAL_STORAGE",
+                "WRITE_EXTERNAL_STORAGE",
+                "android.permission.RECORD_AUDIO",
+                "android.permission.MODIFY_AUDIO_SETTINGS",
+                "RECORD_AUDIO",
+                "CAMERA",
+                "READ_EXTERNAL_STORAGE",
+                "WRITE_EXTERNAL_STORAGE",
+                "android.permission.RECORD_AUDIO",
+                "android.permission.MODIFY_AUDIO_SETTINGS"
+            ]
+        },
+        "web": {
+            "bundler": "metro",
+            "output": "static",
+            "favicon": "./assets/images/logo-icon.png"
+        },
+        "plugins": [
+            [
+                "expo-splash-screen",
+                {
+                    "image": "./assets/images/logo2.png",
+                    "backgroundColor": "#FFFFFF",
+                    "resizeMode": "contain",
+                    "imageWidth": 200
+                }
             ],
-            "enableMinifyInReleaseBuilds": true
-          }
+            "expo-router",
+            [
+                "expo-build-properties",
+                {
+                    "android": {
+                        "enableProguardInReleaseBuilds": true,
+                        "enableShrinkResourcesInReleaseBuilds": true,
+                        "buildArchs": ["arm64-v8a", "armeabi-v7a"],
+                        "enableMinifyInReleaseBuilds": true
+                    }
+                }
+            ],
+            "expo-web-browser",
+            [
+                "expo-audio",
+                {
+                    "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+                }
+            ],
+            [
+                "expo-notifications",
+                {
+                    "icon": "./assets/images/logo2.png",
+                    "mode": "production"
+                }
+            ],
+            "@react-native-community/datetimepicker"
+        ],
+        "experiments": {
+            "typedRoutes": true
+        },
+        "owner": "hexavia",
+        "extra": {
+            "router": {},
+            "eas": {
+                "projectId": "9fc2dc7e-748f-4416-9cbe-8653dc584903"
+            }
+        },
+        "runtimeVersion": {
+            "policy": "appVersion"
+        },
+        "updates": {
+            "url": "https://u.expo.dev/9fc2dc7e-748f-4416-9cbe-8653dc584903"
         }
-      ],
-      "expo-web-browser",
-      [
-        "expo-audio",
-        {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/logo2.png",
-          "mode": "production"
-        }
-      ],
-      "@react-native-community/datetimepicker"
-    ],
-    "experiments": {
-      "typedRoutes": true
-    },
-    "owner": "chinexx",
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "9fc2dc7e-748f-4416-9cbe-8653dc584903"
-      }
     }
-  }
 }

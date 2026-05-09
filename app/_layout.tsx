@@ -26,116 +26,117 @@ attachStore(store);
 
 /** Global handler (safe at module scope) */
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+    handleNotification: async () => ({
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+    }),
 });
 
 if (Platform.OS === "android") {
-  Notifications.setNotificationChannelAsync("default", {
-    name: "Hexavia",
-    importance: Notifications.AndroidImportance.MAX,
-    sound: "default",
-    enableVibrate: true,
-    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-  });
+    Notifications.setNotificationChannelAsync("default", {
+        name: "Hexavia",
+        importance: Notifications.AndroidImportance.MAX,
+        sound: "default",
+        enableVibrate: true,
+        lockscreenVisibility:
+            Notifications.AndroidNotificationVisibility.PUBLIC,
+    });
 }
 
 const PENDING_CHANNEL_KEY = "PENDING_CHANNEL_ID";
 
 /** Unify chat path by role → always navigates to channels route */
 const chatPathForRole = (role?: string | null | undefined) =>
-  role === "client"
-    ? "/(client)/(tabs)/chats/[channelId]"
-    : role === "staff"
-      ? "/(staff)/(tabs)/chats/[channelId]"
-      : "/(admin)/chats/[channelId]";
+    role === "client"
+        ? "/(client)/(tabs)/chats/[channelId]"
+        : role === "staff"
+          ? "/(staff)/(tabs)/chats/[channelId]"
+          : "/(admin)/chats/[channelId]";
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
-    "KumbhSans-Regular": require("../assets/fonts/KumbhSans-Regular.ttf"),
-    "KumbhSans-Light": require("../assets/fonts/KumbhSans-Light.ttf"),
-    "KumbhSans-Bold": require("../assets/fonts/KumbhSans-Bold.ttf"),
-  });
+    const [fontsLoaded] = useFonts({
+        "KumbhSans-Regular": require("../assets/fonts/KumbhSans-Regular.ttf"),
+        "KumbhSans-Light": require("../assets/fonts/KumbhSans-Light.ttf"),
+        "KumbhSans-Bold": require("../assets/fonts/KumbhSans-Bold.ttf"),
+    });
 
-  useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    useEffect(() => {
+        if (fontsLoaded) SplashScreen.hideAsync();
+    }, [fontsLoaded]);
 
-  if (!fontsLoaded) return null;
+    if (!fontsLoaded) return null;
 
-  return (
-    <>
-      <Provider store={store}>
-        <PersistGate loading={null} persistor={persistor}>
-          <TasksProvider>
-            <AppFrame />
-          </TasksProvider>
-        </PersistGate>
-      </Provider>
-      <Toast
-        config={toastConfig}
-        position="top"
-        topOffset={TOAST_TOP_OFFSET}
-        visibilityTime={4000}
-      />
-    </>
-  );
+    return (
+        <>
+            <Provider store={store}>
+                <PersistGate loading={null} persistor={persistor}>
+                    <TasksProvider>
+                        <AppFrame />
+                    </TasksProvider>
+                </PersistGate>
+            </Provider>
+            <Toast
+                config={toastConfig}
+                position="top"
+                topOffset={TOAST_TOP_OFFSET}
+                visibilityTime={4000}
+            />
+        </>
+    );
 }
 
 function AppFrame() {
-  const role = useAppSelector((s: RootState) => s.auth.user?.role);
-  const phase = useAppSelector((s: RootState) => s.auth.phase);
-  const dispatch = useAppDispatch();
+    const role = useAppSelector((s: RootState) => s.auth.user?.role);
+    const phase = useAppSelector((s: RootState) => s.auth.phase);
+    const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const tok = await getExpoPushToken();
-        dispatch(setPushToken(tok));
-      } catch {
-        dispatch(setPushToken(null));
-      }
-    })();
-  }, [dispatch]);
+    useEffect(() => {
+        (async () => {
+            try {
+                const tok = await getExpoPushToken();
 
-  useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener(
-      async (response) => {
-        const data = response.notification.request.content.data as any;
-        const channelId = data?.channelId as string | undefined;
-        const kind = data?.kind as string | undefined;
+                dispatch(setPushToken(tok));
+            } catch {
+                dispatch(setPushToken(null));
+            }
+        })();
+    }, [dispatch]);
 
-        if (channelId && phase !== "authenticated") {
-          await AsyncStorage.setItem(PENDING_CHANNEL_KEY, channelId);
-          return;
-        }
+    useEffect(() => {
+        const sub = Notifications.addNotificationResponseReceivedListener(
+            async (response) => {
+                const data = response.notification.request.content.data as any;
+                const channelId = data?.channelId as string | undefined;
+                const kind = data?.kind as string | undefined;
 
-        if (kind === "chat" && channelId) {
-          router.push({
-            pathname: chatPathForRole(role),
-            params: { channelId },
-          } as any);
-          return;
-        }
+                if (channelId && phase !== "authenticated") {
+                    await AsyncStorage.setItem(PENDING_CHANNEL_KEY, channelId);
+                    return;
+                }
 
-        if (kind === "finance") {
-          router.push("/(admin)/finance");
-          return;
-        }
-      }
+                if (kind === "chat" && channelId) {
+                    router.push({
+                        pathname: chatPathForRole(role),
+                        params: { channelId },
+                    } as any);
+                    return;
+                }
+
+                if (kind === "finance") {
+                    router.push("/(admin)/finance");
+                    return;
+                }
+            },
+        );
+        return () => sub.remove();
+    }, [role, phase]);
+
+    return (
+        <View style={{ flex: 1 }}>
+            <Slot />
+            <AppUpdatePrompt />
+        </View>
     );
-    return () => sub.remove();
-  }, [role, phase]);
-
-  return (
-    <View style={{ flex: 1 }}>
-      <Slot />
-      <AppUpdatePrompt />
-    </View>
-  );
 }
