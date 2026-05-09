@@ -124,7 +124,7 @@ export default function TeamIndex() {
     return (
         <SafeAreaView
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-white"
         >
             {/* Header */}
             <PlatformAdaptiveHeader
@@ -134,7 +134,7 @@ export default function TeamIndex() {
                         onPress={() =>
                             router.push("/(admin)/team/sanctions/create")
                         }
-                        className="w-10 h-10 rounded-full items-center justify-center mr-2"
+                        className="w-10 h-10 rounded-full items-center justify-center ios:mr-3"
                         hitSlop={8}
                         style={{
                             backgroundColor: PRIMARY,
@@ -149,7 +149,7 @@ export default function TeamIndex() {
             {/* Sanction Grid Card */}
             <Pressable
                 onPress={() => router.push("/(admin)/team/sanctions")}
-                className="my-3 rounded-xl flex-row justify-between items-center bg-primary-50 p-4 border border-primary-100"
+                className="my-3 mx-4 rounded-xl flex-row justify-between items-center bg-primary-50 p-4 border border-primary-100"
             >
                 <View>
                     <Text className="text-2xl font-kumbh text-text">
@@ -160,33 +160,10 @@ export default function TeamIndex() {
                     </Text>
                 </View>
                 <ChevronRight />
-
-                {/* <View className="mt-4 flex-row gap-3">
-                    <Pressable
-                        onPress={() => router.push("/(admin)/team/sanctions")}
-                        className="flex-1 h-12 rounded-xl border border-primary-400 items-center justify-center"
-                    >
-                        <Text className="text-primary-600 font-kumbhBold">
-                            View
-                        </Text>
-                    </Pressable>
-
-                    <Pressable
-                        onPress={() =>
-                            router.push("/(admin)/team/sanctions/create")
-                        }
-                        className="flex-1 h-12 rounded-xl bg-primary-500 items-center justify-center active:opacity-90 flex-row gap-2"
-                    >
-                        <Plus size={18} color="#fff" />
-                        <Text className="text-white font-kumbhBold">
-                            Add New
-                        </Text>
-                    </Pressable>
-                </View> */}
             </Pressable>
 
             {/* Search + Filters */}
-            <View>
+            <View className="px-4">
                 <View className="flex-row items-center rounded-xl bg-gray-200 ios:py-2 android:py-0.5 px-4">
                     <Search size={18} color="#6B7280" />
                     <TextInput
@@ -234,7 +211,7 @@ export default function TeamIndex() {
                 <FlatList
                     data={data}
                     keyExtractor={(i) => i._id}
-                    contentContainerClassName="pt-6 pb-12"
+                    contentContainerClassName="pt-6 pb-12 px-4"
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}

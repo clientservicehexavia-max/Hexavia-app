@@ -1037,7 +1037,7 @@ export default function ClientDetails() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-white"
             // style={{ paddingTop: Platform.select({ ios: 8, android: 0 }) }}
         >
             {/* Header */}
@@ -1047,9 +1047,10 @@ export default function ClientDetails() {
                     <Pressable
                         disabled={saveDisabled}
                         onPress={onSave}
-                        style={{
-                            marginLeft: mutationLoading ? 8 : 4,
-                        }}
+                        className="w-10 h-10 rounded-full items-center justify-center"
+                        // style={{
+                        //     marginLeft: mutationLoading ? 8 : 4,
+                        // }}
                     >
                         {mutationLoading ? (
                             <ActivityIndicator size="small" color={tintColor} />
@@ -1073,7 +1074,10 @@ export default function ClientDetails() {
                 <>
                     <KeyboardAvoidingWidget>
                         <ScrollView
-                            contentContainerStyle={{ paddingBottom: 24 }}
+                            contentContainerStyle={{
+                                paddingBottom: 24,
+                                paddingHorizontal: 14,
+                            }}
                         >
                             <View className="mt-3">
                                 {/* Name */}

@@ -17,6 +17,28 @@ const initialState: SanctionsState = {
   fetchedFor: {},
 };
 
+const getSanctionUserId = (sanction: ApiSanction) =>
+  String(
+    (sanction as any)?.sanctionUser?._id ??
+      sanction.user?._id ??
+      sanction.userId ??
+      ""
+  );
+
+const getSanctionTime = (sanction: ApiSanction) => {
+  const raw =
+    sanction.createdAt ??
+    (sanction as any)?.date ??
+    (sanction as any)?.created_at ??
+    (sanction as any)?.sanctionedAt ??
+    (sanction as any)?.timestamp;
+  const time = raw ? new Date(raw).getTime() : 0;
+  return Number.isFinite(time) ? time : 0;
+};
+
+const sortSanctionsNewestFirst = (rows: ApiSanction[]) =>
+  rows.sort((a, b) => getSanctionTime(b) - getSanctionTime(a));
+
 const sanctionsSlice = createSlice({
   name: "sanctions",
   initialState,
@@ -46,7 +68,18 @@ const sanctionsSlice = createSlice({
         }>
       ) => {
         state.loading = false;
-        state.items = action.payload.rows;
+        if (action.payload.userIdKey === "_all") {
+          state.items = sortSanctionsNewestFirst(action.payload.rows);
+        } else {
+          const fetchedUserId = String(action.payload.userIdKey);
+          const otherRows = state.items.filter(
+            (row) => getSanctionUserId(row) !== fetchedUserId
+          );
+          state.items = sortSanctionsNewestFirst([
+            ...otherRows,
+            ...action.payload.rows,
+          ]);
+        }
         state.fetchedFor[action.payload.userIdKey] = true;
       }
     );
@@ -64,6 +97,7 @@ const sanctionsSlice = createSlice({
       state.creating = false;
       if (!Array.isArray(state.items)) state.items = [];
       state.items.unshift(action.payload);
+      sortSanctionsNewestFirst(state.items);
     });
     builder.addCase(createSanction.rejected, (state, action) => {
       state.creating = false;
@@ -90,6 +124,7 @@ const sanctionsSlice = createSlice({
       state.updating = false;
       const idx = state.items.findIndex((s) => s._id === action.payload._id);
       if (idx !== -1) state.items[idx] = action.payload;
+      sortSanctionsNewestFirst(state.items);
     });
     builder.addCase(updateSanction.rejected, (state, action) => {
       state.updating = false;

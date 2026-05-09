@@ -1,3 +1,4 @@
+import BottomSheetModal from "@/components/ui/BottomSheetModal";
 import {
     FilterIcon,
     Mail,
@@ -5,6 +6,7 @@ import {
     Phone,
     Plus,
     Search,
+    X,
 } from "lucide-react-native";
 import React, {
     useCallback,
@@ -16,7 +18,6 @@ import React, {
 import {
     ActivityIndicator,
     FlatList,
-    Modal,
     Platform,
     Pressable,
     RefreshControl,
@@ -37,10 +38,9 @@ import { fetchAllClients } from "@/redux/client/client.thunks";
 import type { Client, ClientFilters } from "@/redux/client/client.types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { dialPhone, openEmail, openWhatsApp } from "@/utils/contact";
-import clsx from "clsx";
+import { clsx } from "clsx";
 import { useRouter } from "expo-router";
 
-const ENGAGEMENT_OPTS = ["Full-time", "Part-time", "Contract"] as const;
 const SORTBY_OPTS = ["createdAt", "updatedAt", "payableAmount"] as const;
 const ORDER_OPTS = ["desc", "asc"] as const;
 const LIMIT_OPTS = [10, 20, 50, 100] as const;
@@ -238,6 +238,72 @@ export default function ProspectsIndex() {
         return arr;
     }, [clients]);
 
+    function normalizeEngagement(val: string): string {
+        return val
+            .trim()
+            .toLowerCase()
+            .replace(/[\s_-]+/g, " ")
+            .replace(/[^a-z0-9 ]/g, "")
+            .replace(/ +/g, " ")
+            .replace(/^./, (c) => c.toUpperCase());
+    }
+
+    const dynamicEngagementOpts = useMemo(() => {
+        const map = new Map<string, string>();
+        clients.forEach((c) => {
+            if (c.engagement) {
+                const norm = normalizeEngagement(c.engagement);
+                if (norm && !map.has(norm)) {
+                    map.set(norm, c.engagement);
+                }
+            }
+        });
+        return Array.from(map.values()).sort();
+    }, [clients]);
+
+    const appliedFilterCount = useMemo(
+        () =>
+            [
+                filters.industry,
+                filters.engagement,
+                filters.sortBy && filters.sortBy !== "createdAt"
+                    ? filters.sortBy
+                    : undefined,
+                filters.sortOrder && filters.sortOrder !== "desc"
+                    ? filters.sortOrder
+                    : undefined,
+                filters.limit && filters.limit !== 10
+                    ? filters.limit
+                    : undefined,
+            ].filter(Boolean).length,
+        [
+            filters.engagement,
+            filters.industry,
+            filters.limit,
+            filters.sortBy,
+            filters.sortOrder,
+        ],
+    );
+
+    const hasAppliedFilters = appliedFilterCount > 0;
+
+    const clearFilters = useCallback(() => {
+        const cleared: ClientFilters = {
+            page: 1,
+            limit: 10,
+            sortOrder: "desc",
+            sortBy: "createdAt",
+            status: "pending",
+            industry: undefined,
+            engagement: undefined,
+        };
+        if (JSON.stringify(cleared) !== JSON.stringify(filters)) {
+            dispatch(setClientFilters(cleared));
+        }
+        setForm(cleared);
+        setShowFilters(false);
+    }, [dispatch, filters]);
+
     return (
         <SafeAreaView
             edges={
@@ -252,9 +318,26 @@ export default function ProspectsIndex() {
                     headerRight={({ tintColor }) => (
                         <Pressable
                             onPress={() => setShowFilters(true)}
-                            className="w-10 h-10 rounded-full items-center justify-center"
+                            className={clsx(
+                                "w-10 h-10 rounded-full items-center justify-center",
+                                hasAppliedFilters
+                                    ? "bg-blue-50"
+                                    : "bg-transparent",
+                            )}
                         >
-                            <FilterIcon size={22} color={tintColor} />
+                            <FilterIcon
+                                size={22}
+                                color={
+                                    hasAppliedFilters ? "#2563EB" : tintColor
+                                }
+                            />
+                            {hasAppliedFilters ? (
+                                <View className="absolute right-1.5 top-1.5 min-w-4 h-4 rounded-full bg-blue-600 px-1 items-center justify-center">
+                                    <Text className="text-[9px] leading-3 font-kumbhBold text-white">
+                                        {appliedFilterCount}
+                                    </Text>
+                                </View>
+                            ) : null}
                         </Pressable>
                     )}
                 />
@@ -294,6 +377,24 @@ export default function ProspectsIndex() {
                         }}
                     />
                 </View>
+
+                {hasAppliedFilters ? (
+                    <View className="mt-3 flex-row items-center justify-between rounded-xl border border-blue-100 bg-blue-50 px-3 py-2">
+                        <Text className="text-xs font-kumbh text-blue-700">
+                            {appliedFilterCount} filter
+                            {appliedFilterCount > 1 ? "s" : ""} active
+                        </Text>
+                        <Pressable
+                            onPress={clearFilters}
+                            className="flex-row items-center gap-1 rounded-full bg-white px-3 py-1.5"
+                        >
+                            <X size={13} color="#2563EB" />
+                            <Text className="text-xs font-kumbhBold text-blue-700">
+                                Clear
+                            </Text>
+                        </Pressable>
+                    </View>
+                ) : null}
             </View>
 
             {loading && clients.length === 0 ? (
@@ -393,6 +494,7 @@ export default function ProspectsIndex() {
                 open={showFilters}
                 form={form}
                 industryOptions={dynamicIndustryOpts}
+                engagementOptions={dynamicEngagementOpts}
                 onClose={() => setShowFilters(false)}
                 onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
                 onApply={() => {
@@ -408,21 +510,7 @@ export default function ProspectsIndex() {
                     }
                     setShowFilters(false);
                 }}
-                onClear={() => {
-                    const cleared: ClientFilters = {
-                        page: 1,
-                        limit: 10,
-                        sortOrder: "desc",
-                        sortBy: "createdAt",
-                        status: "pending",
-                        industry: undefined,
-                        engagement: undefined,
-                    };
-                    if (JSON.stringify(cleared) !== JSON.stringify(filters)) {
-                        dispatch(setClientFilters(cleared));
-                    }
-                    setShowFilters(false);
-                }}
+                onClear={clearFilters}
             />
         </SafeAreaView>
     );
@@ -579,6 +667,7 @@ function FilterModal({
     open,
     form,
     industryOptions,
+    engagementOptions,
     onClose,
     onChange,
     onApply,
@@ -587,122 +676,126 @@ function FilterModal({
     open: boolean;
     form: ClientFilters;
     industryOptions: string[];
+    engagementOptions: string[];
     onClose: () => void;
     onChange: (patch: Partial<ClientFilters>) => void;
     onApply: () => void;
     onClear: () => void;
 }) {
+    const activeCount = [
+        form.industry,
+        form.engagement,
+        form.sortBy && form.sortBy !== "createdAt" ? form.sortBy : undefined,
+        form.sortOrder && form.sortOrder !== "desc"
+            ? form.sortOrder
+            : undefined,
+        form.limit && form.limit !== 10 ? form.limit : undefined,
+    ].filter(Boolean).length;
+
     return (
-        <Modal
+        <BottomSheetModal
             visible={open}
-            transparent
-            animationType="slide"
             onRequestClose={onClose}
+            showActionRow={false}
         >
-            <View className="flex-1 bg-black/30">
-                <View className="mt-auto bg-white rounded-t-3xl p-5">
-                    <View className="items-center mb-4">
-                        <View className="w-12 h-1.5 bg-gray-300 rounded-full" />
-                    </View>
+            <View className="mb-4 flex-row items-center justify-between">
+                <View>
                     <Text className="text-xl font-kumbhBold text-gray-900 mb-3">
-                        Filter Clients
+                        Filter Prospects
                     </Text>
+                    <Text className="mt-1 text-xs font-kumbh text-gray-500">
+                        {activeCount
+                            ? `${activeCount} active filter${activeCount > 1 ? "s" : ""}`
+                            : "No filters applied"}
+                    </Text>
+                </View>
+                <Pressable
+                    onPress={onClose}
+                    className="h-9 w-9 items-center justify-center rounded-full bg-gray-100"
+                    accessibilityLabel="Close filters"
+                >
+                    <X size={17} color="#374151" />
+                </Pressable>
+            </View>
 
-                    <Field label="Status">
-                        <PillGroup
-                            options={["Pending"]}
-                            value="Pending"
-                            onChange={() => onChange({ status: "pending" })}
-                        />
-                    </Field>
+            <Field label="Industry">
+                <PillGroup
+                    options={["Any", ...industryOptions]}
+                    value={form.industry ?? "Any"}
+                    onChange={(v) =>
+                        onChange({
+                            industry: v === "Any" ? undefined : v,
+                        })
+                    }
+                    scrollable
+                />
+            </Field>
 
-                    <Field label="Industry">
-                        <PillGroup
-                            options={["Any", ...industryOptions]}
-                            value={form.industry ?? "Any"}
-                            onChange={(v) =>
-                                onChange({
-                                    industry: v === "Any" ? undefined : v,
-                                })
-                            }
-                            scrollable
-                        />
-                    </Field>
+            <Field label="Engagement">
+                <PillGroup
+                    options={["Any", ...engagementOptions]}
+                    value={form.engagement ?? "Any"}
+                    onChange={(v) =>
+                        onChange({
+                            engagement: v === "Any" ? undefined : v,
+                        })
+                    }
+                    scrollable
+                />
+            </Field>
 
-                    <Field label="Engagement">
-                        <PillGroup
-                            options={["Any", ...ENGAGEMENT_OPTS]}
-                            value={form.engagement ?? "Any"}
-                            onChange={(v) =>
-                                onChange({
-                                    engagement: v === "Any" ? undefined : v,
-                                })
-                            }
-                        />
-                    </Field>
+            <Field label="Sort by">
+                <PillGroup
+                    options={[...SORTBY_OPTS]}
+                    value={(form.sortBy as any) ?? "createdAt"}
+                    onChange={(v) => onChange({ sortBy: v as any })}
+                />
+            </Field>
 
-                    <Field label="Sort by">
-                        <PillGroup
-                            options={[...SORTBY_OPTS]}
-                            value={(form.sortBy as any) ?? "createdAt"}
-                            onChange={(v) => onChange({ sortBy: v as any })}
-                        />
-                    </Field>
+            <Field label="Order">
+                <PillGroup
+                    options={[...ORDER_OPTS]}
+                    value={form.sortOrder ?? "desc"}
+                    onChange={(v) =>
+                        onChange({ sortOrder: v as "asc" | "desc" })
+                    }
+                />
+            </Field>
 
-                    <Field label="Order">
-                        <PillGroup
-                            options={[...ORDER_OPTS]}
-                            value={form.sortOrder ?? "desc"}
-                            onChange={(v) =>
-                                onChange({ sortOrder: v as "asc" | "desc" })
-                            }
-                        />
-                    </Field>
+            <Field label="Limit">
+                <PillGroup
+                    options={LIMIT_OPTS.map(String)}
+                    value={String(form.limit ?? 10)}
+                    onChange={(v) => onChange({ limit: parseInt(v, 10) })}
+                />
+            </Field>
 
-                    <Field label="Limit">
-                        <PillGroup
-                            options={LIMIT_OPTS.map(String)}
-                            value={String(form.limit ?? 10)}
-                            onChange={(v) =>
-                                onChange({ limit: parseInt(v, 10) })
-                            }
-                        />
-                    </Field>
-
-                    {/* Actions */}
-                    <View className="flex-row items-center justify-between mt-5">
-                        <Pressable
-                            onPress={onClear}
-                            className="px-4 py-3 rounded-2xl border border-gray-300"
-                        >
-                            <Text className="font-kumbh text-gray-700">
-                                Clear
-                            </Text>
-                        </Pressable>
-                        <View className="flex-row gap-3">
-                            <Pressable
-                                onPress={onClose}
-                                className="px-4 py-3 rounded-2xl border border-gray-300"
-                            >
-                                <Text className="font-kumbh text-gray-700">
-                                    Cancel
-                                </Text>
-                            </Pressable>
-                            <Pressable
-                                onPress={onApply}
-                                className="px-5 py-3 rounded-2xl bg-blue-600"
-                            >
-                                <Text className="font-kumbh text-white">
-                                    Apply
-                                </Text>
-                            </Pressable>
-                        </View>
-                    </View>
-
-                    <View className="h-3" />
+            {/* Actions */}
+            <View className="flex-row items-center justify-between border-t border-gray-100 pt-4 mt-2">
+                <Pressable
+                    onPress={onClear}
+                    className="h-11 px-4 rounded-xl border border-gray-200 items-center justify-center"
+                >
+                    <Text className="font-kumbh text-gray-700">Clear</Text>
+                </Pressable>
+                <View className="flex-row gap-3">
+                    <Pressable
+                        onPress={onClose}
+                        className="h-11 px-4 rounded-xl border border-gray-200 items-center justify-center"
+                    >
+                        <Text className="font-kumbh text-gray-700">Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                        onPress={onApply}
+                        className="h-11 px-5 rounded-xl bg-blue-600 items-center justify-center"
+                    >
+                        <Text className="font-kumbhBold text-white">Apply</Text>
+                    </Pressable>
                 </View>
             </View>
-        </Modal>
+
+            <View className="h-3" />
+        </BottomSheetModal>
     );
 }
 
@@ -715,7 +808,7 @@ function Field({
 }) {
     return (
         <View className="mb-3">
-            <Text className="text-[13px] font-kumbh text-gray-600 mb-1">
+            <Text className="text-[13px] font-kumbhBold text-gray-700 mb-1.5">
                 {label}
             </Text>
             {children}
@@ -742,16 +835,16 @@ function PillGroup({
                     <Pressable
                         key={opt}
                         onPress={() => onChange(opt)}
-                        className={`px-3 py-2 rounded-full border ${
+                        className={`px-3.5 py-2 rounded-full border ${
                             active
-                                ? "bg-blue-600 border-blue-600"
-                                : "bg-white border-gray-300"
+                                ? "bg-primary/10 border-primary/50"
+                                : "bg-white border-gray-200"
                         }`}
                     >
                         <Text
-                            className={`text-xs font-kumbh ${active ? "text-white" : "text-gray-800"}`}
+                            className={`text-xs font-kumbh ${active ? "text-primary font-kumbhBold" : "text-gray-700"}`}
                         >
-                            {opt}
+                            {filterLabel(opt)}
                         </Text>
                     </Pressable>
                 );
@@ -773,16 +866,16 @@ function PillGroup({
                 return (
                     <Pressable
                         onPress={() => onChange(item)}
-                        className={`px-3 py-2 rounded-full border ${
+                        className={`px-3.5 py-2 rounded-full border ${
                             active
-                                ? "bg-blue-600 border-blue-600"
-                                : "bg-white border-gray-300"
+                                ? "bg-primary/10 border-primary/50"
+                                : "bg-white border-gray-200"
                         }`}
                     >
                         <Text
-                            className={`text-xs font-kumbh ${active ? "text-white" : "text-gray-800"}`}
+                            className={`text-xs font-kumbh ${active ? "text-primary font-kumbhBold" : "text-gray-700"}`}
                         >
-                            {item}
+                            {filterLabel(item)}
                         </Text>
                     </Pressable>
                 );
@@ -790,6 +883,7 @@ function PillGroup({
         />
     );
 }
+
 function capitalize(s?: string) {
     if (!s) return "";
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -812,6 +906,19 @@ function formatDateTime(value?: string) {
     const dt = new Date(value);
     if (isNaN(dt.getTime())) return "—";
     return dt.toLocaleString();
+}
+
+function filterLabel(value: string) {
+    const labels: Record<string, string> = {
+        Pending: "Pending",
+        Any: "Any",
+        createdAt: "Created",
+        updatedAt: "Updated",
+        payableAmount: "Receivable",
+        desc: "Descending",
+        asc: "Ascending",
+    };
+    return labels[value] ?? value;
 }
 
 function RangeTabs({

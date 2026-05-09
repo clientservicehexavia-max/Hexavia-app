@@ -1,12 +1,14 @@
 import { api } from "@/api/axios";
 import LinkList from "@/components/channels/LinkList";
 import NoteList from "@/components/channels/NoteList";
-import TabBar from "@/components/channels/TabBar";
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import ResourceCard from "@/components/resources/ResourceCard";
 import SkeletonCard from "@/components/resources/SkeletonCard";
 import UploadChooser from "@/components/resources/UploadChooser";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import { SwipeableTabView } from "@/components/ui/SwipeableTabView";
 import { showError, showSuccess } from "@/components/ui/toast";
+import { PRIMARY } from "@/constants/Colors";
 import {
     clearLinksForChannel,
     selectChannelLinks,
@@ -51,11 +53,9 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
 import {
     ArrowUpDown,
-    ChevronLeft,
     CloudUpload,
     Maximize2,
     Plus,
@@ -83,7 +83,6 @@ import {
     SectionList,
     Text,
     TextInput,
-    useWindowDimensions,
     View,
 } from "react-native";
 import {
@@ -91,8 +90,10 @@ import {
     State as GestureState,
     TapGestureHandler,
 } from "react-native-gesture-handler";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { TabView } from "react-native-tab-view";
+import {
+    SafeAreaView,
+    useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 function ensureHttpUrl(u?: string | null) {
     if (!u) return "";
@@ -159,15 +160,20 @@ async function normalizeImageForUpload(asset: any) {
 export default function ChannelResourcesScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const isIOS = Platform.OS === "ios";
 
     const { channelId } = useLocalSearchParams<{ channelId: string }>();
     const dispatch = useAppDispatch();
     const channel = useAppSelector(selectChannelById(channelId || ""));
-    const links = useAppSelector(selectChannelLinks(channelId || ""));
+    const links = useAppSelector(
+        useMemo(() => selectChannelLinks(channelId || ""), [channelId]),
+    );
     const linksStatus = useAppSelector(
         selectChannelLinksStatus(channelId || ""),
     );
-    const notes = useAppSelector(selectChannelNotes(channelId || ""));
+    const notes = useAppSelector(
+        useMemo(() => selectChannelNotes(channelId || ""), [channelId]),
+    );
     const notesStatus = useAppSelector(
         selectChannelNotesStatus(channelId || ""),
     );
@@ -178,7 +184,6 @@ export default function ChannelResourcesScreen() {
     const [loadingInitial, setLoadingInitial] = useState(false);
     const [actionFor, setActionFor] = useState<ChannelResource | null>(null);
     const [emptyChooserOpen, setEmptyChooserOpen] = useState(false);
-    const layout = useWindowDimensions();
 
     const routes = useMemo(
         () => TABS.map((t) => ({ key: t.id, title: t.label })),
@@ -945,7 +950,7 @@ export default function ChannelResourcesScreen() {
         setNoteModalVisible(true);
     };
 
-    const headerPaddingTop = insets.top + 12;
+    // const headerPaddingTop = insets.top + 12;
 
     const sortedLinks = useMemo(() => {
         const toMs = (v: any) => {
@@ -1000,43 +1005,42 @@ export default function ChannelResourcesScreen() {
     }, []);
 
     return (
-        <View className="flex-1 bg-white">
-            <StatusBar style="dark" />
-            <View
-                style={{ paddingTop: headerPaddingTop }}
-                className="px-4 pb-2"
-            >
-                <View className="flex-row items-center mb-1.5">
-                    <Pressable
-                        onPress={() => router.back()}
-                        className="h-9 w-9 items-center justify-center"
-                    >
-                        <ChevronLeft size={22} color="#111827" />
-                    </Pressable>
-                    <Text className="flex-1 text-left text-[20px] font-kumbhBold text-gray-900">
-                        {channel?.name
-                            ? `${channel.name} Resources`
-                            : "Project Resources"}
-                    </Text>
-                    <View className="flex-row items-center gap-2">
+        <SafeAreaView
+            edges={
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
+            }
+            className="flex-1 bg-white"
+        >
+            <PlatformAdaptiveHeader
+                title="Resources"
+                headerRight={({ tintColor }) => (
+                    <View className="flex-row items-center gap-2 ios:mr-3">
                         <Pressable
                             onPress={() => toggleSortOrder(activeTab)}
-                            className="h-9 w-9 rounded-xl items-center justify-center"
+                            className="w-10 h-10 rounded-full items-center justify-center"
+                            hitSlop={8}
+                            style={{
+                                backgroundColor: PRIMARY,
+                            }}
                             accessibilityLabel={`Sort ${activeTab} ${
                                 sortOrder[activeTab] === "asc"
                                     ? "descending"
                                     : "ascending"
                             }`}
                         >
-                            <ArrowUpDown size={18} color="#111827" />
+                            <ArrowUpDown size={20} color="white" />
                         </Pressable>
                         {activeTab === "resources" ? (
                             <Pressable
                                 onPress={() => setChooser(true)}
-                                className="h-9 w-9 rounded-xl items-center justify-center"
                                 accessibilityLabel="Upload files"
+                                className="w-10 h-10 items-center justify-center"
+                                hitSlop={8}
                             >
-                                <CloudUpload size={20} color="#111827" />
+                                <CloudUpload
+                                    size={20}
+                                    color={tintColor ?? "#111827"}
+                                />
                             </Pressable>
                         ) : (
                             <Pressable
@@ -1045,37 +1049,27 @@ export default function ChannelResourcesScreen() {
                                         ? openLinkModal()
                                         : openNoteModal()
                                 }
-                                className="flex-row items-center gap-1 rounded-xl bg-[#4C5FAB] px-3 py-2"
+                                className="w-10 h-10 items-center justify-center"
+                                hitSlop={8}
                             >
-                                <Plus size={16} color="#fff" />
-                                <Text className="text-xs font-kumbhBold text-white">
-                                    {activeTab === "links"
-                                        ? "Add link"
-                                        : "Add note"}
-                                </Text>
+                                <Plus
+                                    size={22}
+                                    color={tintColor ?? "#111827"}
+                                />
                             </Pressable>
                         )}
                     </View>
-                </View>
-                <TabBar
-                    tabs={TABS.map((tab) => ({ id: tab.id, label: tab.label }))}
-                    activeTab={activeTab}
-                    onChange={(tabId) => {
-                        const idx = routes.findIndex((r) => r.key === tabId);
-                        if (idx >= 0) setIndex(idx);
-                    }}
-                />
-            </View>
-            <View className="h-px bg-gray-200" />
+                )}
+            />
 
             {/* Swipeable content */}
-            <TabView
+            <SwipeableTabView
                 navigationState={{ index, routes }}
                 onIndexChange={setIndex}
-                initialLayout={{ width: layout.width }}
-                swipeEnabled
-                lazy
-                renderTabBar={() => null} // we already render your TabBar above
+                tabBarProps={{
+                    activeColor: PRIMARY,
+                    inactiveColor: "#6B7280",
+                }}
                 renderScene={({ route }) => {
                     if (route.key === "resources") {
                         return (
@@ -1166,7 +1160,7 @@ export default function ChannelResourcesScreen() {
                                         renderSectionHeader={({
                                             section: { title },
                                         }) => (
-                                            <Text className="px-4 pt-4 pb-2 font-kumbhBold text-gray-900">
+                                            <Text className="px-4 py-4 font-kumbhBold text-gray-900">
                                                 {title}
                                             </Text>
                                         )}
@@ -1724,7 +1718,7 @@ export default function ChannelResourcesScreen() {
                     </View>
                 </View>
             )}
-        </View>
+        </SafeAreaView>
     );
 }
 

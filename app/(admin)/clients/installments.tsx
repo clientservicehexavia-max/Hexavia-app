@@ -728,9 +728,7 @@ export default function ClientInstallments() {
                     <Pressable
                         onPress={handleSave}
                         disabled={headerSaveDisabled}
-                        style={{
-                            marginLeft: adding || isSaving ? 8 : 4,
-                        }}
+                        className="w-10 h-10 rounded-full items-center justify-center"
                     >
                         {adding || isSaving ? (
                             <ActivityIndicator size="small" color={tintColor} />
@@ -748,19 +746,19 @@ export default function ClientInstallments() {
 
             {/* Body */}
             <KeyboardAvoidingView
-                className="flex-1 mt-5"
+                className="flex-1"
                 behavior={Platform.select({
                     ios: "padding",
                     android: "height",
                 })}
-                keyboardVerticalOffset={
-                    Platform.select({ ios: 8, android: 0 }) as number
-                }
+                // keyboardVerticalOffset={
+                //     Platform.select({ ios: 8, android: 0 }) as number
+                // }
             >
                 <ScrollView
                     className="flex-1"
                     keyboardShouldPersistTaps="handled"
-                    contentContainerClassName="px-5 pb-10"
+                    contentContainerClassName="px-5 pb-32"
                 >
                     {/* Summary card (Total only visible) */}
                     <View className="rounded-2xl p-3 bg-[#EEF1FF]">

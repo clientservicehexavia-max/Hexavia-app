@@ -137,7 +137,7 @@ export default function Composer({
     };
 
     return (
-        <View className="px-3 py-1.5 bg-white">
+        <View className="px-3 py-1.5 bg-white border-t border-gray-200">
             {/* Mention list */}
             {open && results.length ? (
                 <View
@@ -256,6 +256,7 @@ export default function Composer({
                         onChangeText={onChange}
                         placeholder="Write a message"
                         placeholderTextColor="#9CA3AF"
+                        // placeholderTextColor="#6B7280"
                         className="flex-1 text-gray-900"
                         style={{
                             fontFamily: "KumbhSans-Regular",

@@ -13,7 +13,7 @@ export default function Tile({
     return (
         <Pressable
             onPress={onPress}
-            className="flex-1 h-32 rounded-2xl bg-primary-500 active:opacity-90"
+            className="flex-1 h-32 rounded-xl bg-primary-500 active:opacity-90"
             style={{ overflow: "hidden" }}
         >
             <View className="flex-1 p-4 justify-between">

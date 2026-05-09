@@ -43,11 +43,11 @@ export default function AdminDashboard() {
     return (
         <SafeAreaView
             edges={isIOS ? ["top", "left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-white"
         >
             <ScrollView
-                className="flex-1 bg-white"
-                contentContainerClassName="pb-8"
+                className="flex-1"
+                contentContainerClassName="pb-8 px-4"
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -71,6 +71,7 @@ export default function AdminDashboard() {
                                 router.push("/(admin)/(tabs)/client")
                             }
                         />
+
                         <Tile
                             title="Projects"
                             icon={<UserPlus size={22} color="white" />}

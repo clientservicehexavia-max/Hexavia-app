@@ -13,10 +13,12 @@ import {
     Loader2,
     PauseCircle,
     PlayCircle,
+    Trash2,
     X,
 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
+    Alert,
     Dimensions,
     Image,
     Linking,
@@ -31,10 +33,12 @@ import {
  * Helpers
  * ------------------------*/
 function StatusTicks({ status }: { status?: Message["status"] }) {
-    if (status === "sending") return <Loader2 size={14} color="#9CA3AF" />;
+    if (status === "sending")
+        return <Loader2 className="animate-spin" size={14} color="#9CA3AF" />;
     if (status === "sent") return <Check size={14} color="#9CA3AF" />;
     if (status === "delivered") return <CheckCheck size={14} color="#9CA3AF" />;
     if (status === "seen") return <CheckCheck size={14} color="#4C5FAB" />;
+    if (status === "failed") return <X size={14} color="#DC2626" />;
     return null;
 }
 
@@ -102,10 +106,12 @@ function ImagePreviewModal({
     uri,
     visible,
     onClose,
+    onDelete,
 }: {
     uri: string;
     visible: boolean;
     onClose: () => void;
+    onDelete?: () => void;
 }) {
     const { width, height } = Dimensions.get("window");
     return (
@@ -116,12 +122,38 @@ function ImagePreviewModal({
             animationType="fade"
         >
             <View className="flex-1 bg-black/95">
-                <View className="absolute right-4 top-10 z-10">
+                <View className="absolute right-4 top-10 z-10 flex-row gap-3">
+                    {onDelete ? (
+                        <Pressable
+                            onPress={() => {
+                                Alert.alert(
+                                    "Delete image",
+                                    "Are you sure you want to delete this image? This action cannot be undone.",
+                                    [
+                                        {
+                                            text: "Cancel",
+                                            style: "cancel",
+                                        },
+                                        {
+                                            text: "Delete",
+                                            style: "destructive",
+                                            onPress: onDelete,
+                                        },
+                                    ],
+                                );
+                            }}
+                            className="h-10 w-10 rounded-full bg-red-800/60 items-center justify-center"
+                            hitSlop={8}
+                        >
+                            <Trash2 size={22} color="#fff" />
+                        </Pressable>
+                    ) : null}
                     <Pressable
                         onPress={onClose}
-                        className="h-9 w-9 rounded-full bg-black/60 items-center justify-center"
+                        className="h-10 w-10 rounded-full bg-black/60 items-center justify-center"
+                        hitSlop={8}
                     >
-                        <X size={18} color="#fff" />
+                        <X size={22} color="#fff" />
                     </Pressable>
                 </View>
                 <TouchableWithoutFeedback onPress={onClose}>
@@ -297,14 +329,20 @@ export default function MessageBubble({
     msg,
     isMe,
     onLongPress,
+    onRetry,
+    onDeleteMessage,
     mentionMap,
 }: {
     msg: Message;
     isMe: boolean;
     onLongPress?: (m: Message) => void;
+    onRetry?: (m: Message) => void;
+    onDeleteMessage?: (m: Message) => void;
     mentionMap?: Record<string, { id: string; name: string; handle: string }>;
 }) {
     const [imgOpen, setImgOpen] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+    const [imageError, setImageError] = useState(false);
     const me = useAppSelector(selectUser);
     const other = useAppSelector((s: any) => selectUserById(s, msg.senderId));
 
@@ -340,24 +378,69 @@ export default function MessageBubble({
                 <>
                     <Pressable
                         onPress={() => setImgOpen(true)}
-                        className="mb-2 overflow-hidden rounded-2xl"
+                        className="overflow-hidden rounded-lg"
                     >
-                        <Image
-                            source={{ uri: msg.mediaUri! }}
+                        <View
                             style={{
                                 width: 224,
                                 height: 168,
-                                borderRadius: 16,
                                 backgroundColor: "rgba(0,0,0,0.06)",
+                                justifyContent: "center",
+                                alignItems: "center",
                             }}
-                            resizeMode="cover"
-                        />
+                        >
+                            {imageError ? (
+                                <Text className="text-[12px] text-gray-500">
+                                    Image failed to load
+                                </Text>
+                            ) : (
+                                <>
+                                    <Image
+                                        source={{ uri: msg.mediaUri! }}
+                                        style={{
+                                            width: 224,
+                                            height: 168,
+                                        }}
+                                        resizeMode="cover"
+                                        onLoadStart={() =>
+                                            setImageLoading(true)
+                                        }
+                                        onLoad={() => setImageLoading(false)}
+                                        onError={() => {
+                                            setImageLoading(false);
+                                            setImageError(true);
+                                        }}
+                                    />
+                                    {imageLoading && (
+                                        <View
+                                            style={{
+                                                position: "absolute",
+                                            }}
+                                        >
+                                            <Loader2
+                                                size={24}
+                                                color="#9CA3AF"
+                                                className="animate-spin"
+                                            />
+                                        </View>
+                                    )}
+                                </>
+                            )}
+                        </View>
                     </Pressable>
-                    {msg.mediaUri ? (
+                    {msg.mediaUri && !imageError ? (
                         <ImagePreviewModal
                             uri={msg.mediaUri}
                             visible={imgOpen}
                             onClose={() => setImgOpen(false)}
+                            onDelete={
+                                isMe && onDeleteMessage
+                                    ? () => {
+                                          setImgOpen(false);
+                                          onDeleteMessage(msg);
+                                      }
+                                    : undefined
+                            }
                         />
                     ) : null}
                 </>
@@ -377,6 +460,7 @@ export default function MessageBubble({
             )}
 
             {!!msg.text &&
+                msg.text !== "Image resource uploaded" &&
                 renderTextWithMentionsAndLinks(
                     msg.text,
                     // Normalize keys to lowercase for O(1) lookup
@@ -398,7 +482,12 @@ export default function MessageBubble({
                     onLongPress={() => onLongPress?.(msg)}
                     className="max-w-[75%]"
                 >
-                    <View className="bg-[#C9CEEA] rounded-xl p-3">
+                    <View
+                        className="bg-[#C9CEEA] rounded-xl"
+                        style={{
+                            padding: isImage(msg) ? 5 : 10,
+                        }}
+                    >
                         {BubbleCore}
                     </View>
                 </Pressable>
@@ -409,6 +498,17 @@ export default function MessageBubble({
                     </Text>
                     <StatusTicks status={msg.status} />
                 </View>
+
+                {msg.status === "failed" && onRetry ? (
+                    <Pressable
+                        onPress={() => onRetry(msg)}
+                        className="mt-1 rounded-full border border-red-200 bg-red-50 px-3 py-1"
+                    >
+                        <Text className="text-[11px] font-kumbhBold text-red-600">
+                            Retry
+                        </Text>
+                    </Pressable>
+                ) : null}
 
                 {msg.status === "seen" && !!msg.seenBy?.length && (
                     <Text className="text-[11px] text-gray-400 mt-0.5">

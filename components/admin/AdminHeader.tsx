@@ -3,7 +3,7 @@ import { fetchProfile } from "@/redux/user/user.thunks";
 import { RootState } from "@/store";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useRouter } from "expo-router";
-import React, { useEffect } from "react";
+import { default as React, useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 import AvatarPlaceholder from "../staff/AvatarPlaceHolder";
 

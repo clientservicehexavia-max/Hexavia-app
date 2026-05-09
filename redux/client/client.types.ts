@@ -46,6 +46,10 @@ export interface ClientFilters {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     from?: string;
+    createdAtFrom?: string;
+    createdAtTo?: string;
+    updatedAtFrom?: string;
+    updatedAtTo?: string;
 }
 
 export interface Pagination {

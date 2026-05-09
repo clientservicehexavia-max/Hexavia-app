@@ -1,7 +1,7 @@
 // app/_layout.tsx
 import { persistor, store, type RootState } from "@/store";
 import { useFonts } from "expo-font";
-import { Slot, router } from "expo-router";
+import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { Platform, View } from "react-native";
@@ -90,6 +90,12 @@ export default function RootLayout() {
 function AppFrame() {
     const role = useAppSelector((s: RootState) => s.auth.user?.role);
     const phase = useAppSelector((s: RootState) => s.auth.phase);
+    const meId = useAppSelector(
+        (s: RootState) =>
+            String(
+                (s.auth.user as any)?._id ?? (s.user.user as any)?._id ?? "",
+            ) || null,
+    );
     const dispatch = useAppDispatch();
 
     useEffect(() => {
@@ -103,6 +109,16 @@ function AppFrame() {
             }
         })();
     }, [dispatch]);
+
+    useEffect(() => {
+        if (phase !== "authenticated" || !meId) return;
+
+        dispatch({ type: "chat/connect", payload: { meId } });
+
+        return () => {
+            dispatch({ type: "chat/disconnect" });
+        };
+    }, [dispatch, meId, phase]);
 
     useEffect(() => {
         const sub = Notifications.addNotificationResponseReceivedListener(
@@ -135,7 +151,14 @@ function AppFrame() {
 
     return (
         <View style={{ flex: 1 }}>
-            <Slot />
+            {/* <Slot /> */}
+            <Stack
+                screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: "#F3F4F6" }, // tailwind background
+                    animation: "ios_from_right",
+                }}
+            />
             <AppUpdatePrompt />
         </View>
     );

@@ -1,0 +1,95 @@
+/\*\*
+
+- SwipeableTabBar - Reusable TabBar Component
+-
+- A flexible, animated TabBar component that works with React Native Tab View.
+- Provides smooth animations and tap feedback out of the box.
+-
+- USAGE EXAMPLE:
+-
+- import { SwipeableTabBar } from "@/components/ui/SwipeableTabBar";
+- import { TabView } from "react-native-tab-view";
+-
+- export default function MyScreen() {
+- const layout = useWindowDimensions();
+- const [index, setIndex] = useState(0);
+- const routes = [
+-     { key: "resources", title: "Resources" },
+-     { key: "links", title: "Links" },
+-     { key: "notes", title: "Notes" },
+- ];
+-
+- return (
+-     <TabView
+-       navigationState={{ index, routes }}
+-       onIndexChange={setIndex}
+-       renderScene={renderScene}
+-       renderTabBar={(props) => (
+-         <SwipeableTabBar
+-           {...props}
+-           activeColor="#4C5FAB"
+-           inactiveColor="#9CA3AF"
+-           indicatorStyle={{ backgroundColor: "#FF6B6B" }}
+-         />
+-       )}
+-       initialLayout={{ width: layout.width }}
+-     />
+- );
+- }
+-
+- PROPS:
+-
+-   - navigationState: Required. The current tab navigation state {index, routes}
+-   - position: Required. Animated value from TabView
+-   - jumpTo: Required. Function to switch tabs
+-   - activeColor?: string - Active tab text color (default: "#4C5FAB")
+-   - inactiveColor?: string - Inactive tab text color (default: "#6B7280")
+-   - style?: ViewStyle - Tab bar container style
+-   - tabStyle?: ViewStyle - Individual tab style
+-   - indicatorStyle?: ViewStyle - Animated indicator style
+-   - indicatorContainerStyle?: ViewStyle - Indicator background style
+-   - renderTabLabel?: (props) => React.ReactNode - Custom label renderer
+-   - gap?: number - Spacing between tabs (default: 0)
+-   - scrollEnabled?: boolean - Make tab bar scrollable (default: false)
+-   - onTabPress?: (props) => void - Custom tab press handler
+-   - onTabLongPress?: (props) => void - Long press handler
+-
+- CUSTOMIZATION EXAMPLES:
+-
+-   1. With Icons:
+- <SwipeableTabBar
+-      {...props}
+-      renderTabLabel={({ route, focused, color }) => (
+-        <View style={{ alignItems: "center", gap: 4 }}>
+-          <Icon name={route.icon} color={color} size={20} />
+-          <Text style={{ color, fontSize: 12 }}>{route.title}</Text>
+-        </View>
+-      )}
+- />
+-
+-   2. With Scroll-to-top on Tab Press:
+- <SwipeableTabBar
+-      {...props}
+-      onTabPress={({ route, preventDefault }) => {
+-        if (currentIndex === newIndex) {
+-          preventDefault();
+-          listRef.current?.scrollToOffset({ offset: 0, animated: true });
+-        }
+-      }}
+- />
+-
+-   3. Scrollable Tab Bar:
+- <SwipeableTabBar
+-      {...props}
+-      scrollEnabled={true}
+-      tabStyle={{ minWidth: 100 }}
+- />
+-
+- ANIMATION DETAILS:
+-   - The component uses Animated API from React Native
+-   - Tab colors interpolate smoothly between active/inactive colors
+-   - Indicator position follows the swipe gesture with native driver
+-   - Memoized to prevent unnecessary re-renders
+      \*/
+
+export {}; // This is a documentation file

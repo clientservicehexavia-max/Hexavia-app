@@ -1,6 +1,5 @@
 import React from "react";
 import { View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
     tray?: React.ReactNode;
@@ -12,12 +11,16 @@ export default function BottomStack({
     composer,
     isAdmin = false,
 }: Props) {
-    const { bottom } = useSafeAreaInsets();
-
     void isAdmin;
 
     return (
-        <View style={{ minHeight: 60 }} pointerEvents="box-none">
+        <View
+            style={{
+                minHeight: 60,
+                paddingBottom: 0,
+            }}
+            pointerEvents="box-none"
+        >
             {tray ? <View pointerEvents="auto">{tray}</View> : null}
             <View
                 style={{

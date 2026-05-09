@@ -34,6 +34,7 @@ import { fetchFinance } from "@/redux/finance/finance.thunks";
 
 /* ───────── Clients (for Receivables) ───────── */
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { SwipeableTabView } from "@/components/ui/SwipeableTabView";
 import { selectClientFilters } from "@/redux/client/client.selectors";
 import { fetchClients } from "@/redux/client/client.thunks";
 
@@ -331,7 +332,6 @@ export default function FinanceIndex() {
 
     /* Refresh */
     const onRefresh = useCallback(() => {
-        console.log("Loading");
         if (pinLocked) return;
 
         if (tab === "Receivables") {
@@ -427,9 +427,7 @@ export default function FinanceIndex() {
     return (
         <SafeAreaView
             edges={
-                isIOS
-                    ? ["left", "right", "bottom"]
-                    : ["top", "left", "right", "bottom"]
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
             className="flex-1 bg-white"
         >
@@ -449,7 +447,7 @@ export default function FinanceIndex() {
                             Enter the secret admin pin to continue.
                         </Text>
 
-                        <View className="rounded-2xl border border-gray-200 px-4 py-3 mb-2">
+                        <View className="rounded-2xl border border-gray-200 ios:px-4 android:px-2 ios:py-3 mb-2">
                             <TextInput
                                 value={pinInput}
                                 onChangeText={(text) =>
@@ -504,20 +502,6 @@ export default function FinanceIndex() {
             {/* Header */}
             <PlatformAdaptiveHeader title="Finance" />
 
-            {/* Tabs */}
-            <View className="mt-2 flex-row items-end justify-between">
-                <TabButton
-                    label="Receivables"
-                    active={tab === "Receivables"}
-                    onPress={() => setTab("Receivables")}
-                />
-                <TabButton
-                    label="Expenses"
-                    active={tab === "Expenses"}
-                    onPress={() => setTab("Expenses")}
-                />
-            </View>
-
             {/* Total card */}
             <View className="px-5 mt-2">
                 <View className="rounded-[28px] bg-primary-500 px-6 py-7">
@@ -541,61 +525,74 @@ export default function FinanceIndex() {
                 </View>
             </View>
 
-            {/* Sectioned list */}
-            <SectionList
-                className="mt-5"
-                sections={sections}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={{ paddingBottom: 24 }}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        tintColor="#4C5FAB"
-                        // tintColor="#F00"
-                    />
+            {/* Tabs with content */}
+            <SwipeableTabView
+                navigationState={{
+                    index: tab === "Receivables" ? 0 : 1,
+                    routes: [
+                        { key: "receivables", title: "Receivables" },
+                        { key: "expenses", title: "Expenses" },
+                    ],
+                }}
+                onIndexChange={(index) =>
+                    setTab(index === 0 ? "Receivables" : "Expenses")
                 }
-                onEndReachedThreshold={0.2}
-                onEndReached={loadMore}
-                renderSectionHeader={({ section: { title } }) => (
-                    <Text className="px-5 py-3 text-gray-500 font-kumbh">
-                        {title}
-                    </Text>
+                renderScene={() => (
+                    <View className="flex-1 pt-2">
+                        <SectionList
+                            sections={sections}
+                            keyExtractor={(item) => item.id}
+                            contentContainerStyle={{ paddingBottom: 24 }}
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={onRefresh}
+                                    tintColor="#4C5FAB"
+                                />
+                            }
+                            onEndReachedThreshold={0.2}
+                            onEndReached={loadMore}
+                            renderSectionHeader={({ section: { title } }) => (
+                                <Text className="px-5 py-3 text-gray-500 font-kumbh">
+                                    {title}
+                                </Text>
+                            )}
+                            ItemSeparatorComponent={() => (
+                                <View className="h-[1px] bg-gray-200 ml-[76px]" />
+                            )}
+                            renderItem={({ item }) => (
+                                <TxnRow
+                                    item={item}
+                                    onPress={() =>
+                                        item.kind === "expense"
+                                            ? router.push(
+                                                  `/(admin)/finance/${item.id}`,
+                                              )
+                                            : router.push({
+                                                  pathname:
+                                                      "/(admin)/clients/installments",
+                                                  params: {
+                                                      clientId: item.id,
+                                                  },
+                                              })
+                                    }
+                                />
+                            )}
+                            ListFooterComponent={
+                                isLoadingMore ? (
+                                    <Text className="text-center text-gray-400 font-kumbh my-3">
+                                        Loading more…
+                                    </Text>
+                                ) : null
+                            }
+                            stickySectionHeadersEnabled
+                        />
+                    </View>
                 )}
-                ItemSeparatorComponent={() => (
-                    <View className="h-[1px] bg-gray-200 ml-[76px]" />
-                )}
-                renderItem={({ item }) => (
-                    <TxnRow
-                        item={item}
-                        onPress={() =>
-                            item.kind === "expense"
-                                ? router.push(`/(admin)/finance/${item.id}`)
-                                : router.push({
-                                      pathname: "/(admin)/clients/installments",
-                                      params: { clientId: item.id },
-                                  })
-                        }
-                    />
-                )}
-                // ListEmptyComponent={
-                //     tab === "Receivables" && clientsLoading ? (
-                //         <View className="py-8 items-center justify-center">
-                //             <ActivityIndicator size="small" color="#4C5FAB" />
-                //             <Text className="mt-2 text-gray-400 font-kumbh">
-                //                 Loading receivables…
-                //             </Text>
-                //         </View>
-                //     ) : null
-                // }
-                ListFooterComponent={
-                    isLoadingMore ? (
-                        <Text className="text-center text-gray-400 font-kumbh my-3">
-                            Loading more…
-                        </Text>
-                    ) : null
-                }
-                stickySectionHeadersEnabled
+                tabBarProps={{
+                    activeColor: "#4C5FAB",
+                    inactiveColor: "#6B7280",
+                }}
             />
 
             {/* Floating button */}
@@ -784,37 +781,6 @@ export default function FinanceIndex() {
 }
 
 /* ───────── UI bits ───────── */
-
-function TabButton({
-    label,
-    active,
-    onPress,
-}: {
-    label: "Receivables" | "Expenses";
-    active: boolean;
-    onPress: () => void;
-}) {
-    return (
-        <View className="flex-1 items-center">
-            <Pressable onPress={onPress}>
-                <Text
-                    className={clsx(
-                        "font-kumbh text-base",
-                        active ? "text-blue-500 font-kumbhBold" : "text-text",
-                    )}
-                >
-                    {label}
-                </Text>
-            </Pressable>
-            <View
-                className={clsx(
-                    "h-[3px] w-40 rounded-full mt-2",
-                    active ? "bg-blue-300" : "bg-transparent",
-                )}
-            />
-        </View>
-    );
-}
 
 function TxnRow({
     item,

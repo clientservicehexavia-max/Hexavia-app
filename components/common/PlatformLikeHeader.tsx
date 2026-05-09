@@ -5,20 +5,36 @@ import { Pressable, Text, View } from "react-native";
 
 type Props = {
     title: string;
+    description?: string;
+    multilineTitle?: boolean;
+    onTitlePress?: () => void;
     // onBackPress: () => void;
     right?: React.ReactNode;
+    backgroundColor?: string;
 };
 
 export default function PlatformLikeHeader({
     title,
+    description,
+    multilineTitle = false,
+    onTitlePress,
+    backgroundColor,
     // onBackPress,
     right,
 }: Props) {
     const router = useRouter();
 
     return (
-        <View className=" px-2" style={{ height: 50 }}>
-            <View className="flex-1 flex-row items-center justify-between">
+        <View
+            style={{
+                height: 52,
+                backgroundColor: backgroundColor,
+            }}
+        >
+            <View
+                className="flex-1 flex-row items-center justify-between"
+                style={multilineTitle ? { alignItems: "center" } : undefined}
+            >
                 <Pressable
                     // onPress={onBackPress}
                     onPress={() => router.back()}
@@ -28,9 +44,30 @@ export default function PlatformLikeHeader({
                     <ArrowLeft size={24} color="#111827" />
                 </Pressable>
 
-                <Text className="font-kumbhBold text-[20px] text-center text-[#111827] ml-1">
-                    {title}
-                </Text>
+                {multilineTitle ? (
+                    <Pressable
+                        onPress={onTitlePress}
+                        disabled={!onTitlePress}
+                        hitSlop={8}
+                        className="flex-1 px-2 pt-2"
+                    >
+                        <Text className="font-kumbhBold text-[20px] text-left text-[#111827]">
+                            {title}
+                        </Text>
+                        {description ? (
+                            <Text
+                                numberOfLines={1}
+                                className="mt-0.5 font-kumbh text-[12px] leading-4 text-[#6B7280]"
+                            >
+                                {description}
+                            </Text>
+                        ) : null}
+                    </Pressable>
+                ) : (
+                    <Text className="font-kumbhBold text-[20px] text-center text-[#111827] ml-1">
+                        {title}
+                    </Text>
+                )}
 
                 <View className="pr-1">
                     {right || <View className="w-12" />}

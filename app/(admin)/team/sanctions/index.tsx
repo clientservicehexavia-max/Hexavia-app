@@ -1,7 +1,7 @@
 // app/(admin)/team/sanctions/index.tsx
-import clsx from "clsx";
-import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { clsx } from "clsx";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
@@ -18,28 +18,57 @@ import {
     selectSanctions,
     selectSanctionsError,
     selectSanctionsLoading,
-    selectSanctionsUpdating,
 } from "@/redux/sanctions/sanctions.slice";
 import { fetchSanctions } from "@/redux/sanctions/sanctions.thunks";
+import type { ApiSanction } from "@/redux/sanctions/sanctions.type";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
-type RowStatus = "Active" | "Resolved";
 type RangeKey = "24H" | "7D" | "30D" | "1Y";
+
+type StaffRow = {
+    id: string;
+    name: string;
+    sanctions: SanctionRow[];
+    activeCount: number;
+    totalCount: number;
+};
+
+type SanctionUser = {
+    _id: string;
+    fullname?: string;
+    username?: string;
+    email?: string;
+    name?: string;
+};
+
+type SanctionRow = ApiSanction & {
+    created_at?: string;
+    date?: string;
+    sanctionedAt?: string;
+    timestamp?: string;
+    sanctionUser?: SanctionUser;
+    user?: SanctionUser;
+};
 
 function getSinceDate(range: RangeKey) {
     const now = new Date();
     const d = new Date(now);
 
-    if (range === "24H") d.setHours(d.getHours() - 24);
-    if (range === "7D") d.setDate(d.getDate() - 7);
-    if (range === "30D") d.setDate(d.getDate() - 30);
+    if (range === "24H") {
+        d.setHours(d.getHours() - 24);
+        return d;
+    }
+
+    d.setHours(0, 0, 0, 0);
+    if (range === "7D") d.setDate(d.getDate() - 6);
+    if (range === "30D") d.setDate(d.getDate() - 29);
     if (range === "1Y") d.setFullYear(d.getFullYear() - 1);
 
     return d;
 }
 
 // tries common keys your API might use
-function getRowDate(row: any): Date | null {
+function getRowDate(row: SanctionRow): Date | null {
     const raw =
         row?.createdAt ??
         row?.created_at ??
@@ -55,23 +84,26 @@ function getRowDate(row: any): Date | null {
 }
 
 export default function SanctionsView() {
-    const router = useRouter();
     const dispatch = useAppDispatch();
 
     const isIOS = Platform.OS === "ios";
     const [range, setRange] = useState<RangeKey>("7D");
 
     const rawRows = useAppSelector(selectSanctions);
-    const rows = Array.isArray(rawRows) ? rawRows : [];
+    const rows = useMemo(
+        () => (Array.isArray(rawRows) ? (rawRows as SanctionRow[]) : []),
+        [rawRows],
+    );
     const loading = useAppSelector(selectSanctionsLoading);
-    const updating = useAppSelector(selectSanctionsUpdating);
     const error = useAppSelector(selectSanctionsError) ?? null;
 
     const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        dispatch(fetchSanctions() as any);
-    }, [dispatch]);
+    useFocusEffect(
+        useCallback(() => {
+            dispatch(fetchSanctions() as any);
+        }, [dispatch]),
+    );
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -82,29 +114,21 @@ export default function SanctionsView() {
         }
     }, [dispatch]);
 
-    const staffs = useMemo(() => {
+    const staffs = useMemo<StaffRow[]>(() => {
         const since = getSinceDate(range);
-        const dates = rows
-            .map((r: any) => getRowDate(r)?.getTime())
-            .filter(Boolean) as number[];
 
-        // if (dates.length) {
-        //   console.log("Newest:", new Date(Math.max(...dates)).toISOString());
-        //   console.log("Oldest:", new Date(Math.min(...dates)).toISOString());
-        //   console.log("Range:", range, "Since:", since.toISOString());
-        // }
-
-        const filteredRows = rows.filter((r: any) => {
-            if (r?.isActive) return true; // keep active regardless of time
-
+        const filteredRows = rows.filter((r) => {
             const dt = getRowDate(r);
-            if (!dt) return true;
+            if (!dt) return false;
             return dt >= since;
         });
 
-        const map = new Map<string, any>();
+        const map = new Map<
+            string,
+            Omit<StaffRow, "activeCount" | "totalCount">
+        >();
 
-        filteredRows.forEach((r: any) => {
+        filteredRows.forEach((r) => {
             const user = r?.sanctionUser || r?.user;
             if (!user || !user._id) return;
 
@@ -114,20 +138,21 @@ export default function SanctionsView() {
                 map.set(id, {
                     id,
                     name:
-                        user.username ||
-                        user.email ||
                         user.fullname ||
+                        user.username ||
+                        user.name ||
+                        user.email ||
                         "Unknown",
                     sanctions: [],
                 });
             }
 
-            map.get(id).sanctions.push(r);
+            map.get(id)?.sanctions.push(r);
         });
 
         return Array.from(map.values()).map((staff) => ({
             ...staff,
-            activeCount: staff.sanctions.filter((s: any) => s.isActive).length,
+            activeCount: staff.sanctions.filter((s) => s.isActive).length,
             totalCount: staff.sanctions.length,
         }));
     }, [rows, range]);
@@ -137,12 +162,12 @@ export default function SanctionsView() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-white"
         >
             {/* Header */}
             <PlatformAdaptiveHeader title="Sanctions" />
 
-            <View className="pt-2 pb-1">
+            <View className="pt-2 pb-1 px-4">
                 <RangeTabs value={range} onChange={setRange} />
             </View>
 
@@ -158,7 +183,7 @@ export default function SanctionsView() {
                 <FlatList
                     data={staffs}
                     keyExtractor={(i) => i.id}
-                    contentContainerClassName="pt-4 pb-10"
+                    contentContainerClassName="pt-4 pb-10 px-4"
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -184,7 +209,7 @@ export default function SanctionsView() {
 
 /* ───────── light-themed building blocks ───────── */
 
-function StaffCard({ item }: { item: any }) {
+function StaffCard({ item }: { item: StaffRow }) {
     const router = useRouter();
     return (
         <Pressable
@@ -219,84 +244,6 @@ function Card({ children }: { children: React.ReactNode }) {
         </View>
     );
 }
-function Divider() {
-    return <View className="h-px bg-gray-100 my-3" />;
-}
-function Row({
-    children,
-    icon,
-}: {
-    children: React.ReactNode;
-    icon?: React.ReactNode;
-}) {
-    return (
-        <View className="flex-row items-center justify-between py-1">
-            <View className="flex-row items-center gap-2 flex-1">
-                {icon}
-                <View className="flex-row items-center flex-1">{children}</View>
-            </View>
-        </View>
-    );
-}
-function Label({ children }: { children: React.ReactNode }) {
-    return <Text className="text-gray-600 font-kumbh">{children}</Text>;
-}
-function Value({
-    children,
-    numberOfLines,
-}: {
-    children: React.ReactNode;
-    numberOfLines?: number;
-}) {
-    return (
-        <Text
-            numberOfLines={numberOfLines}
-            className="text-gray-900 font-kumbhBold ml-auto max-w-[60%] text-right"
-        >
-            {children}
-        </Text>
-    );
-}
-
-function ShieldBadge({ status }: { status: RowStatus }) {
-    const map = {
-        Active: { bg: "bg-red-50", dot: "bg-red-500", text: "text-red-700" },
-        Resolved: {
-            bg: "bg-green-50",
-            dot: "bg-green-600",
-            text: "text-green-700",
-        },
-    } as const;
-    const s = map[status];
-    return (
-        <View
-            className={clsx(
-                "px-2 py-1 rounded-lg flex-row items-center gap-1",
-                s.bg,
-            )}
-        >
-            <View className={clsx("w-2 h-2 rounded-full", s.dot)} />
-            <Text className={clsx("text-xs font-kumbhBold", s.text)}>
-                {status}
-            </Text>
-        </View>
-    );
-}
-
-function formatDate(d?: string) {
-    if (!d) return "—";
-    try {
-        const dt = new Date(d);
-        return dt.toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-        });
-    } catch {
-        return d;
-    }
-}
-
 function RangeTabs({
     value,
     onChange,

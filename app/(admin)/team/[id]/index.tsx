@@ -25,7 +25,6 @@ export default function StaffDetails() {
 
     const users = useAppSelector(selectAdminUsers);
     const channels = useAppSelector(selectAllChannels);
-    // console.log(channels[0]["members"]);
 
     useEffect(() => {
         dispatch(fetchChannels());
@@ -49,7 +48,6 @@ export default function StaffDetails() {
     // }, [channels, id]);
     const userId = String(id ?? "");
     const memberChannels = useAppSelector(selectChannelsForUser(userId));
-    // console.log(memberChannels)
 
     const name = user.fullname || user.username || user.email || "Unknown";
     const joined = formatDate(user.createdAt);

@@ -1,22 +1,31 @@
 import { Stack, useRouter } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, Pressable, Text } from "react-native";
 
 import PlatformLikeHeader from "@/components/common/PlatformLikeHeader";
 import { HeaderBackButton } from "@react-navigation/elements";
+import { StatusBar } from "expo-status-bar";
 import React from "react";
 
 type Props = {
     title: string;
+    description?: string;
+    multilineTitle?: boolean;
+    onTitlePress?: () => void;
     // onBackPress: () => void;
     headerRight?: (props: { tintColor?: string }) => React.ReactNode;
     headerLeft?: (props: { tintColor?: string }) => React.ReactNode;
+    backgroundColor?: string;
 };
 
 export default function PlatformAdaptiveHeader({
     title,
+    description,
+    multilineTitle = false,
+    onTitlePress,
     // onBackPress,
     headerRight,
     headerLeft,
+    backgroundColor = "#FFF",
 }: Props) {
     const isIOS = Platform.OS === "ios";
     const router = useRouter();
@@ -26,10 +35,55 @@ export default function PlatformAdaptiveHeader({
             <Stack.Screen
                 options={{
                     headerShown: isIOS,
+                    headerStyle: {
+                        backgroundColor,
+                    },
                     headerBackVisible: !isIOS,
-                    title,
+                    title: multilineTitle ? undefined : title,
                     headerShadowVisible: false,
-                    // headerStyle: { backgroundColor: "transparent" },
+                    headerTitleAlign: multilineTitle ? "left" : "center",
+                    headerTitle: multilineTitle
+                        ? () => (
+                              <Pressable
+                                  onPress={onTitlePress}
+                                  disabled={!onTitlePress}
+                                  hitSlop={8}
+                                  style={{
+                                      flex: 1,
+                                      justifyContent: "flex-end",
+                                      alignItems: "flex-start",
+                                      opacity: onTitlePress ? 1 : 1,
+                                      marginRight: 50,
+                                  }}
+                              >
+                                  <Text
+                                      numberOfLines={1}
+                                      style={{
+                                          fontFamily: "KumbhSans-Bold",
+                                          color: "#111827",
+                                          fontSize: 20,
+                                          textAlign: "left",
+                                      }}
+                                  >
+                                      {title}
+                                  </Text>
+                                  {description ? (
+                                      <Text
+                                          numberOfLines={1}
+                                          style={{
+                                              marginTop: 2,
+                                              fontFamily: "KumbhSans-Regular",
+                                              color: "#6B7280",
+                                              fontSize: 12,
+                                              textAlign: "left",
+                                          }}
+                                      >
+                                          {description}
+                                      </Text>
+                                  ) : null}
+                              </Pressable>
+                          )
+                        : undefined,
                     headerTitleStyle: {
                         fontFamily: "KumbhSans-Bold",
                         color: "#111827",
@@ -51,6 +105,10 @@ export default function PlatformAdaptiveHeader({
             {!isIOS ? (
                 <PlatformLikeHeader
                     title={title}
+                    description={description}
+                    multilineTitle={multilineTitle}
+                    onTitlePress={onTitlePress}
+                    backgroundColor={backgroundColor}
                     // onBackPress={onBackPress}
                     right={
                         headerRight
@@ -59,6 +117,8 @@ export default function PlatformAdaptiveHeader({
                     }
                 />
             ) : null}
+
+            <StatusBar style="dark" backgroundColor={backgroundColor} />
         </>
     );
 }
