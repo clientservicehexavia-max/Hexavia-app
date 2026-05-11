@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
     Pressable,
+    ScrollView,
     StyleSheet,
     View,
     ViewStyle,
@@ -97,7 +98,7 @@ export const SwipeableTabBar = React.memo(function SwipeableTabBar({
     indicatorContainerStyle,
     renderTabLabel,
     gap = 0,
-    scrollEnabled = false,
+    scrollEnabled,
     onTabPress,
     onTabLongPress,
 }: SwipeableTabBarProps) {
@@ -161,68 +162,138 @@ export const SwipeableTabBar = React.memo(function SwipeableTabBar({
     return (
         <View style={[styles.tabBarContainer, { gap }, style]}>
             {/* Tab items */}
-            <View
-                ref={tabsWrapperRef}
-                onLayout={handleTabsLayout}
-                style={[
-                    styles.tabsWrapper,
-                    scrollEnabled && styles.tabsWrapperScrollable,
-                ]}
-            >
-                {routes.map((route, i) => {
-                    const isActive = i === activeIndex;
+            {scrollEnabled ? (
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                    onContentSizeChange={(w) => {
+                        if (w > 0) setTabsWidth(w);
+                    }}
+                >
+                    <View
+                        ref={tabsWrapperRef}
+                        onLayout={handleTabsLayout}
+                        style={[
+                            styles.tabsWrapper,
+                            styles.tabsWrapperScrollable,
+                            // {
+                            //     backgroundColor: "red",
+                            // },
+                        ]}
+                    >
+                        {routes.map((route, i) => {
+                            const isActive = i === activeIndex;
 
-                    return (
-                        <Pressable
-                            key={route.key}
-                            onPress={() => handleTabPress(route, i)}
-                            onLongPress={() => handleTabLongPress(route)}
-                            style={[
-                                styles.tab,
-                                scrollEnabled && styles.tabScrollable,
-                                tabStyle,
-                            ]}
-                        >
-                            {renderTabLabel ? (
-                                renderTabLabel({
-                                    route,
-                                    focused: isActive,
-                                    color: isActive
-                                        ? activeColor
-                                        : inactiveColor,
-                                })
-                            ) : (
-                                <Animated.Text
+                            return (
+                                <Pressable
+                                    key={route.key}
+                                    onPress={() => handleTabPress(route, i)}
+                                    onLongPress={() =>
+                                        handleTabLongPress(route)
+                                    }
                                     style={[
-                                        styles.tabLabel,
+                                        styles.tab,
+                                        styles.tabScrollable,
+                                        tabStyle,
                                         {
-                                            color: isActive
+                                            backgroundColor: isActive
                                                 ? activeColor
-                                                : inactiveColor,
+                                                : undefined,
+                                            borderRadius: 4,
                                         },
                                     ]}
                                 >
-                                    {route.title}
-                                </Animated.Text>
-                            )}
-                        </Pressable>
-                    );
-                })}
-            </View>
+                                    {renderTabLabel ? (
+                                        renderTabLabel({
+                                            route,
+                                            focused: isActive,
+                                            color: isActive
+                                                ? "white"
+                                                : inactiveColor,
+                                        })
+                                    ) : (
+                                        <Animated.Text
+                                            style={[
+                                                styles.tabLabel,
+                                                {
+                                                    color: isActive
+                                                        ? "white"
+                                                        : inactiveColor,
+                                                },
+                                            ]}
+                                        >
+                                            {route.title}
+                                        </Animated.Text>
+                                    )}
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+                </ScrollView>
+            ) : (
+                <View
+                    ref={tabsWrapperRef}
+                    onLayout={handleTabsLayout}
+                    style={styles.tabsWrapper}
+                >
+                    {routes.map((route, i) => {
+                        const isActive = i === activeIndex;
+
+                        return (
+                            <Pressable
+                                key={route.key}
+                                onPress={() => handleTabPress(route, i)}
+                                onLongPress={() => handleTabLongPress(route)}
+                                style={[styles.tab, tabStyle]}
+                            >
+                                {renderTabLabel ? (
+                                    renderTabLabel({
+                                        route,
+                                        focused: isActive,
+                                        color: isActive
+                                            ? activeColor
+                                            : inactiveColor,
+                                    })
+                                ) : (
+                                    <Animated.Text
+                                        style={[
+                                            styles.tabLabel,
+                                            {
+                                                color: isActive
+                                                    ? activeColor
+                                                    : inactiveColor,
+                                            },
+                                        ]}
+                                    >
+                                        {route.title}
+                                    </Animated.Text>
+                                )}
+                            </Pressable>
+                        );
+                    })}
+                </View>
+            )}
 
             {/* Animated indicator */}
-            <View style={[styles.indicatorContainer, indicatorContainerStyle]}>
-                <Animated.View
-                    style={[
-                        styles.indicator,
-                        {
-                            width: tabWidth,
-                            transform: [{ translateX: indicatorTranslateX }],
-                        },
-                        indicatorStyle,
-                    ]}
-                />
-            </View>
+            {!scrollEnabled ? (
+                <View
+                    style={[styles.indicatorContainer, indicatorContainerStyle]}
+                >
+                    <Animated.View
+                        style={[
+                            styles.indicator,
+                            {
+                                width: tabWidth,
+                                transform: [
+                                    { translateX: indicatorTranslateX },
+                                ],
+                            },
+                            indicatorStyle,
+                        ]}
+                    />
+                </View>
+            ) : null}
         </View>
     );
 });
@@ -230,7 +301,6 @@ export const SwipeableTabBar = React.memo(function SwipeableTabBar({
 const styles = StyleSheet.create({
     tabBarContainer: {
         backgroundColor: "#fff",
-        marginHorizontal: 16,
     },
     tabsWrapper: {
         flexDirection: "row",
@@ -238,7 +308,10 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     tabsWrapperScrollable: {
-        overflow: "scroll",
+        justifyContent: "flex-start",
+    },
+    scrollContent: {
+        flexGrow: 1,
     },
     tab: {
         flex: 1,

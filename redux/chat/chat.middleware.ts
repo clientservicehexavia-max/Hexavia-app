@@ -13,6 +13,7 @@ import {
     setError,
     setMe,
     setMessageStatus,
+    setCurrentThread,
     wsConnected,
     wsConnecting,
     wsDisconnected,
@@ -121,8 +122,12 @@ export const chatMiddleware: Middleware<{}, RootState> =
                     // ✅ replace with this
                     socket.on("receiveChannelMessage", async (data: any) => {
                         const stateBefore = store.getState();
-                        const isFromMe = data.sender === stateBefore.chat.meId; // <-- compute first
+                        const meId = String(stateBefore.chat.meId ?? "");
+                        const senderId = String(
+                            data.senderId ?? data.sender ?? "",
+                        );
                         const threadId = String(data.channelId);
+                        const isFromMe = Boolean(meId && senderId && senderId === meId);
 
                         // If it's my own message, we ALREADY handled it with ack (replaceTempId).
                         // Do NOT add again.
@@ -211,7 +216,7 @@ export const chatMiddleware: Middleware<{}, RootState> =
 
                         const state = store.getState();
                         const isOnThread =
-                            state.chat.currentThreadId === threadId;
+                            String(state.chat.currentThreadId ?? "") === threadId;
 
                         if (!isOnThread) {
                             await Notifications.scheduleNotificationAsync({
@@ -275,6 +280,7 @@ export const chatMiddleware: Middleware<{}, RootState> =
                 store.dispatch(
                     ensureThread({ id: channelId, kind: "community" }),
                 );
+                store.dispatch(setCurrentThread(channelId));
                 const emitJoin = () =>
                     socket?.emit("joinChannel", { userId: meId, channelId });
 
@@ -391,6 +397,7 @@ export const chatMiddleware: Middleware<{}, RootState> =
                 store.dispatch(
                     ensureThread({ id: channelId, kind: "community" }),
                 );
+                store.dispatch(setCurrentThread(channelId));
                 const normalizedTaggedUsers = normalizeTaggedUsers(taggedUsers);
                 const tag = normalizedTaggedUsers.map((u) => u.id);
                 const createdAt = Date.now();

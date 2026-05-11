@@ -39,6 +39,7 @@ import {
 } from "@/redux/channels/channels.selectors";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { SwipeableTabView } from "@/components/ui/SwipeableTabView";
 import { STATUS_META } from "@/features/staff/types";
 import { formatDateLabel, getDateKey } from "@/utils/format";
 
@@ -64,6 +65,19 @@ export default function StatusScreen() {
         (params.status as ChannelStatusKey) || "in-progress";
     const paramChannelId = (params.channelId as string) || null;
     const isIOS = Platform.OS === "ios";
+    const routes = useMemo(
+        () =>
+            TABS.map((tab) => ({
+                key: tab.key,
+                title: tab.label,
+            })),
+        [],
+    );
+    const initialTabIndex = Math.max(
+        0,
+        TABS.findIndex((tab) => tab.key === statusKey),
+    );
+    const [tabIndex, setTabIndex] = useState(initialTabIndex);
 
     const dispatch = useAppDispatch();
 
@@ -163,6 +177,10 @@ export default function StatusScreen() {
         return out;
     }, [list]);
 
+    useEffect(() => {
+        setTabIndex(initialTabIndex);
+    }, [initialTabIndex]);
+
     const goTab = (key: ChannelStatusKey) => {
         router.setParams({ status: key, channelId: channelId ?? undefined });
     };
@@ -193,107 +211,144 @@ export default function StatusScreen() {
             {/* Header */}
             <PlatformAdaptiveHeader title="Task Boards" />
 
-            {/* Tabs */}
-            <View className="flex-row px-4 gap-1 mt-3">
-                {TABS.map((t) => {
-                    const active = t.key === statusKey;
-                    return (
-                        <Pressable
-                            key={t.key}
-                            onPress={() => goTab(t.key)}
-                            className={`px-3 py-1.5 rounded-full border ${
-                                active
-                                    ? "bg-[#4C5FAB] border-[#4C5FAB]"
-                                    : "border-[#E5E7EB]"
-                            }`}
-                        >
-                            <Text
-                                className={`font-kumbh text-sm ${active ? "text-white" : "text-[#374151]"}`}
-                            >
-                                {t.label}
-                            </Text>
-                        </Pressable>
+            {/* Swipeable Tabs */}
+            <SwipeableTabView
+                navigationState={{ index: tabIndex, routes }}
+                scrollEnabled={true}
+                onIndexChange={(index) => {
+                    setTabIndex(index);
+                    const nextStatus = TABS[index]?.key;
+                    if (nextStatus && nextStatus !== statusKey) {
+                        goTab(nextStatus);
+                    }
+                }}
+                tabBarProps={{
+                    activeColor: PRIMARY,
+                    inactiveColor: "#6B7280",
+                    style: {
+                        marginTop: 12,
+                        paddingHorizontal: 16,
+                    },
+                    tabStyle: {
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                    },
+                }}
+                renderScene={({ route }) => {
+                    const activeTabIndex = TABS.findIndex(
+                        (tab) => tab.key === route.key,
                     );
-                })}
-            </View>
+                    const isActive = route.key === statusKey;
+                    const sceneData =
+                        activeTabIndex >= 0 && route.key === statusKey
+                            ? listData
+                            : [];
 
-            {/* List */}
-            {isLoading ? (
-                // ...spinner...
-                <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator size="small" color={PRIMARY} />
-                    <Text className="mt-2 text-[#6B7280] font-kumbh">
-                        Loading tasks…
-                    </Text>
-                </View>
-            ) : (
-                <FlatList
-                    contentContainerStyle={{
-                        paddingBottom: 120,
-                        paddingTop: 12,
-                    }}
-                    data={listData}
-                    keyExtractor={(i) => i.key}
-                    renderItem={({ item }) => {
-                        if (item.type === "date") {
-                            return (
-                                <View className="px-4 mt-3 mb-1 items-center">
-                                    <View className="px-3 py-1 rounded-full bg-gray-100">
-                                        <Text className="text-[11px] text-gray-500 font-kumbh">
-                                            {formatDateLabel(item.ts)}
-                                        </Text>
-                                    </View>
+                    return (
+                        <View className="flex-1">
+                            {isLoading && isActive ? (
+                                <View className="flex-1 items-center justify-center">
+                                    <ActivityIndicator
+                                        size="small"
+                                        color={PRIMARY}
+                                    />
+                                    <Text className="mt-2 text-[#6B7280] font-kumbh">
+                                        Loading tasks…
+                                    </Text>
                                 </View>
-                            );
-                        }
-                        const task = item.task;
-                        return (
-                            <Pressable onPress={() => setEdit(task as any)}>
-                                <BoardCard
-                                    project={task.channelCode || "—"}
-                                    title={task.title}
-                                    description={task.description || ""}
-                                    assignees={
-                                        (task.assignees || [])
-                                            .map(
-                                                (assignee) =>
-                                                    assignee.name ??
-                                                    assignee.email ??
-                                                    (assignee.id
-                                                        ? memberLookup.get(
-                                                              assignee.id,
-                                                          )
-                                                        : null) ??
-                                                    assignee.id ??
-                                                    null,
-                                            )
-                                            .filter(Boolean) as string[]
+                            ) : (
+                                <FlatList
+                                    contentContainerStyle={{
+                                        paddingBottom: 120,
+                                        paddingTop: 12,
+                                    }}
+                                    data={sceneData}
+                                    keyExtractor={(i) => i.key}
+                                    renderItem={({ item }) => {
+                                        if (item.type === "date") {
+                                            return (
+                                                <View className="px-4 mt-3 mb-1 items-center">
+                                                    <View className="px-3 py-1 rounded-full bg-gray-100">
+                                                        <Text className="text-[11px] text-gray-500 font-kumbh">
+                                                            {formatDateLabel(
+                                                                item.ts,
+                                                            )}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            );
+                                        }
+                                        const task = item.task;
+                                        return (
+                                            <Pressable
+                                                onPress={() =>
+                                                    setEdit(task as any)
+                                                }
+                                            >
+                                                <BoardCard
+                                                    project={
+                                                        task.channelCode || "—"
+                                                    }
+                                                    title={task.title}
+                                                    description={
+                                                        task.description || ""
+                                                    }
+                                                    assignees={
+                                                        (task.assignees || [])
+                                                            .map(
+                                                                (assignee) =>
+                                                                    assignee.name ??
+                                                                    assignee.email ??
+                                                                    (assignee.id
+                                                                        ? memberLookup.get(
+                                                                              assignee.id,
+                                                                          )
+                                                                        : null) ??
+                                                                    assignee.id ??
+                                                                    null,
+                                                            )
+                                                            .filter(
+                                                                Boolean,
+                                                            ) as string[]
+                                                    }
+                                                    statusLabel={
+                                                        TABS.find(
+                                                            (t) =>
+                                                                t.key ===
+                                                                task.status,
+                                                        )?.label ?? task.status
+                                                    }
+                                                    cardBg={
+                                                        STATUS_META[task.status]
+                                                            .bgColor
+                                                    }
+                                                    pillBg={
+                                                        STATUS_META[task.status]
+                                                            .arrowBg
+                                                    }
+                                                />
+                                            </Pressable>
+                                        );
+                                    }}
+                                    ListEmptyComponent={
+                                        <View className="px-4 mt-4">
+                                            <Text className="font-kumbh text-[#9CA3AF] text-center">
+                                                No tasks in this category yet.
+                                            </Text>
+                                        </View>
                                     }
-                                    statusLabel={
-                                        TABS.find((t) => t.key === task.status)
-                                            ?.label ?? task.status
+                                    refreshing={
+                                        refreshing ||
+                                        (channelsStatus === "loading" &&
+                                            !!allChannelTasks.length)
                                     }
-                                    cardBg={STATUS_META[task.status].bgColor}
-                                    pillBg={STATUS_META[task.status].arrowBg}
+                                    onRefresh={onRefresh}
                                 />
-                            </Pressable>
-                        );
-                    }}
-                    ListEmptyComponent={
-                        <View className="px-4 mt-4">
-                            <Text className="font-kumbh text-[#9CA3AF] text-center">
-                                No tasks in this category yet.
-                            </Text>
+                            )}
                         </View>
-                    }
-                    refreshing={
-                        refreshing ||
-                        (channelsStatus === "loading" &&
-                            !!allChannelTasks.length)
-                    }
-                    onRefresh={onRefresh}
-                />
-            )}
+                    );
+                }}
+            />
 
             <FabCreate onPress={() => setShowCreate(true)} />
 

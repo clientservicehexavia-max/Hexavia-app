@@ -121,31 +121,41 @@ function AppFrame() {
     }, [dispatch, meId, phase]);
 
     useEffect(() => {
+        const handleNotificationResponse = async (
+            response: Notifications.NotificationResponse,
+        ) => {
+            const data = response.notification.request.content.data ?? {};
+            const channelId = data?.channelId as string | undefined;
+            const kind = data?.kind as string | undefined;
+
+            if (kind === "finance") {
+                router.push("/(admin)/finance");
+                return;
+            }
+
+            if (!channelId) return;
+
+            if (phase !== "authenticated") {
+                await AsyncStorage.setItem(PENDING_CHANNEL_KEY, channelId);
+                return;
+            }
+
+            router.push({
+                pathname: chatPathForRole(role),
+                params: { channelId },
+            } as any);
+        };
+
         const sub = Notifications.addNotificationResponseReceivedListener(
-            async (response) => {
-                const data = response.notification.request.content.data as any;
-                const channelId = data?.channelId as string | undefined;
-                const kind = data?.kind as string | undefined;
-
-                if (channelId && phase !== "authenticated") {
-                    await AsyncStorage.setItem(PENDING_CHANNEL_KEY, channelId);
-                    return;
-                }
-
-                if (kind === "chat" && channelId) {
-                    router.push({
-                        pathname: chatPathForRole(role),
-                        params: { channelId },
-                    } as any);
-                    return;
-                }
-
-                if (kind === "finance") {
-                    router.push("/(admin)/finance");
-                    return;
-                }
-            },
+            handleNotificationResponse,
         );
+
+        Notifications.getLastNotificationResponseAsync().then((response) => {
+            if (response) {
+                void handleNotificationResponse(response);
+            }
+        });
+
         return () => sub.remove();
     }, [role, phase]);
 

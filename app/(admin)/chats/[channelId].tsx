@@ -905,7 +905,44 @@ export default function ChatScreen() {
         setDraftText("");
         setReplyTo(null);
         setTrayOpen(false);
+        // Ensure the view scrolls to show the newly-sent message immediately.
+        // Use a short timeout to allow the FlatList to update its content/layout.
+        setTimeout(() => {
+            try {
+                scrollToBottom();
+            } catch (e) {
+                // noop
+            }
+        }, 50);
     };
+
+    // Auto-scroll when new messages arrive. If the user is already at the
+    // bottom (showScrollToBottomRef is false) we should keep them pinned to
+    // the latest message. Also always scroll if the incoming message is from
+    // the current user so they can see their sent message.
+    const lastMessageIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        const lastMsg =
+            messagesFromRedux && messagesFromRedux.length
+                ? messagesFromRedux[messagesFromRedux.length - 1]
+                : undefined;
+        if (!lastMsg) return;
+        if (lastMsg.id === lastMessageIdRef.current) return;
+        lastMessageIdRef.current = lastMsg.id;
+
+        const shouldForceScroll =
+            !showScrollToBottomRef.current || lastMsg.senderId === meId;
+        if (shouldForceScroll) {
+            // Delay slightly to wait for layout/keyboard adjustments.
+            setTimeout(() => {
+                try {
+                    scrollToBottom();
+                } catch (e) {
+                    // ignore
+                }
+            }, 60);
+        }
+    }, [messagesFromRedux?.length]);
 
     const sendVoiceNote = useCallback(
         async (voice: {

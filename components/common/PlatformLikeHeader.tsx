@@ -51,7 +51,10 @@ export default function PlatformLikeHeader({
                         hitSlop={8}
                         className="flex-1 px-2 pt-2"
                     >
-                        <Text className="font-kumbhBold text-[20px] text-left text-[#111827]">
+                        <Text
+                            className="font-kumbhBold text-[18px] text-left text-[#111827]"
+                            numberOfLines={1}
+                        >
                             {title}
                         </Text>
                         {description ? (
@@ -64,7 +67,7 @@ export default function PlatformLikeHeader({
                         ) : null}
                     </Pressable>
                 ) : (
-                    <Text className="font-kumbhBold text-[20px] text-center text-[#111827] ml-1">
+                    <Text className="font-kumbhBold text-[18px] text-center text-[#111827] ml-1">
                         {title}
                     </Text>
                 )}

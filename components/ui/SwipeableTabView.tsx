@@ -22,6 +22,7 @@ export interface SwipeableTabViewProps<RouteType extends Route = Route> {
     ) => React.ReactNode;
     initialLayout?: { width: number; height?: number };
     swipeEnabled?: boolean;
+    scrollEnabled?: boolean;
     lazy?: boolean;
     tabBarProps?: SwipeableTabBarConfig;
 }
@@ -32,6 +33,7 @@ export function SwipeableTabView<RouteType extends Route = Route>({
     renderScene,
     initialLayout,
     swipeEnabled = true,
+    scrollEnabled = false,
     lazy = true,
     tabBarProps,
 }: SwipeableTabViewProps<RouteType>) {
@@ -48,6 +50,7 @@ export function SwipeableTabView<RouteType extends Route = Route>({
             renderTabBar={(props) => (
                 <SwipeableTabBar
                     navigationState={props.navigationState}
+                    scrollEnabled={scrollEnabled}
                     position={props.position}
                     jumpTo={props.jumpTo}
                     {...tabBarProps}

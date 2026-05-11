@@ -1,7 +1,7 @@
 import { logout } from "@/redux/auth/auth.slice";
 import { resetChat } from "@/redux/chat/chat.slice";
 import { selectPhase, selectUser } from "@/redux/user/user.slice";
-import { fetchProfile } from "@/redux/user/user.thunks";
+import { fetchProfile, updateProfile } from "@/redux/user/user.thunks";
 import { clearToken, clearUser } from "@/storage/auth";
 import { useAppDispatch } from "@/store/hooks";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -66,7 +66,12 @@ export default function Profile() {
         }, [dispatch, user]),
     );
     const avatarUri = user?.profilePicture || undefined;
-    const logoutHandler = useCallback(() => {
+    const logoutHandler = useCallback(async () => {
+        try {
+            await dispatch(
+                updateProfile({ expoPushToken: null, silent: true }),
+            );
+        } catch {}
         dispatch(logout());
         dispatch({ type: "chat/disconnect" });
         dispatch(resetChat());
