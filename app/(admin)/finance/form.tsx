@@ -1,8 +1,8 @@
 import DatePickerModal from "@/components/admin/DatePickerModal";
 import clsx from "clsx";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Calendar } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     KeyboardAvoidingView,
     Platform,
@@ -16,8 +16,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { showError, showSuccess } from "@/components/ui/toast";
-import { selectFinanceCreating } from "@/redux/finance/finance.selectors";
-import { createFinanceRecord } from "@/redux/finance/finance.thunks";
+import {
+    selectFinanceCreating,
+    selectFinanceFilters,
+    selectFinanceRecords,
+    selectFinanceUpdating,
+} from "@/redux/finance/finance.selectors";
+import {
+    createFinanceRecord,
+    fetchFinance,
+    updateFinanceRecord,
+} from "@/redux/finance/finance.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 type FinanceType = "receivable" | "expense";
@@ -39,8 +48,17 @@ function fmtDMY(d: Date) {
 export default function FinanceForm() {
     const router = useRouter();
     const dispatch = useAppDispatch();
+    const params = useLocalSearchParams<{ recordId?: string }>();
+    const records = useAppSelector(selectFinanceRecords);
+    const filters = useAppSelector(selectFinanceFilters);
     const creating = useAppSelector(selectFinanceCreating);
+    const updating = useAppSelector(selectFinanceUpdating);
     const isIOS = Platform.OS === "ios";
+
+    // Determine if we're editing
+    const recordId = params?.recordId;
+    const isEditing = !!recordId;
+    const currentRecord = records?.find((r) => r._id === recordId);
 
     const [type, setType] = useState<FinanceType>("expense");
     const [amount, setAmount] = useState("");
@@ -49,6 +67,19 @@ export default function FinanceForm() {
 
     const [showPicker, setShowPicker] = useState(false);
     const [pickerDate, setPickerDate] = useState<Date>(new Date());
+
+    // Initialize form with record data if editing
+    useEffect(() => {
+        if (isEditing && currentRecord) {
+            setType(currentRecord.type);
+            setAmount(String(currentRecord.amount));
+            setDesc(currentRecord.description || "");
+
+            // Parse date from ISO format to DMY
+            const recordDate = new Date(currentRecord.date);
+            setDate(fmtDMY(recordDate));
+        }
+    }, [isEditing, currentRecord]);
 
     const openPicker = () => {
         const m = date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -78,16 +109,41 @@ export default function FinanceForm() {
             const ss = String(now.getSeconds()).padStart(2, "0");
             const dateWithTime = `${toISO(date)}T${hh}:${mm}:${ss}`;
 
-            await dispatch(
-                createFinanceRecord({
-                    type,
-                    amount: amt,
-                    description: desc.trim() || undefined,
-                    date: dateWithTime,
-                }),
-            ).unwrap();
+            if (isEditing && recordId) {
+                // Update existing record
+                await dispatch(
+                    updateFinanceRecord({
+                        recordId,
+                        body: {
+                            type,
+                            amount: amt,
+                            description: desc.trim() || undefined,
+                            date: dateWithTime,
+                        },
+                    }),
+                ).unwrap();
 
-            showSuccess("Finance record added.");
+                showSuccess("Finance record updated.");
+            } else {
+                // Create new record
+                await dispatch(
+                    createFinanceRecord({
+                        type,
+                        amount: amt,
+                        description: desc.trim() || undefined,
+                        date: dateWithTime,
+                    }),
+                ).unwrap();
+                showSuccess("Finance record added.");
+            }
+
+            // Refetch to get updated data
+            await dispatch(
+                fetchFinance({
+                    ...filters,
+                    type: "expense",
+                } as any),
+            );
             router.back();
         } catch (e: any) {
             showError(e?.message || "Failed to save record");
@@ -122,7 +178,9 @@ export default function FinanceForm() {
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
         >
             {/* Header */}
-            <PlatformAdaptiveHeader title="Finance Form" />
+            <PlatformAdaptiveHeader
+                title={isEditing ? "Edit Expense" : "Record Expense"}
+            />
 
             <KeyboardAvoidingView
                 className="flex-1"
@@ -196,18 +254,22 @@ export default function FinanceForm() {
 
                     <Pressable
                         onPress={onSave}
-                        disabled={creating}
+                        disabled={creating || updating}
                         className={clsx(
                             "mt-10 h-12 rounded-xl items-center justify-center active:opacity-90",
-                            creating ? "bg-gray-400" : "bg-[#4C5FAB]",
+                            creating || updating
+                                ? "bg-gray-400"
+                                : "bg-[#4C5FAB]",
                         )}
                     >
                         <Text className="text-white font-kumbhBold">
-                            {creating
+                            {creating || updating
                                 ? "Saving…"
-                                : type === "expense"
-                                  ? "Save Expense"
-                                  : "Save Receivable"}
+                                : isEditing
+                                  ? "Update Record"
+                                  : type === "expense"
+                                    ? "Save Expense"
+                                    : "Save Receivable"}
                         </Text>
                     </Pressable>
                 </ScrollView>

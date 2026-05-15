@@ -3,7 +3,7 @@ import clsx from "clsx";
 import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { Check, Plus, Trash2 } from "lucide-react-native";
+import { Check, Plus, Printer, Trash2 } from "lucide-react-native";
 import React from "react";
 import {
     ActivityIndicator,
@@ -75,8 +75,11 @@ type PlanRow = {
     amount: string;
     due: string;
     paymentId?: string;
+    isPaid?: boolean;
     _localId?: string;
 };
+
+type DocumentMode = "invoice" | "receipt";
 
 const makeLocalRowId = () =>
     `row_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -118,6 +121,31 @@ function slugFileName(s: string) {
         .slice(0, 80);
 }
 
+function makeFriendlyFileName(s: string) {
+    return (s || "Hexavia")
+        .trim()
+        .replace(/[\\/:*?"<>|]+/g, "")
+        .replace(/\s+/g, " ")
+        .replace(/\s+/g, " ")
+        .slice(0, 120);
+}
+
+function ordinalWord(index: number) {
+    const ordinals = [
+        "first",
+        "second",
+        "third",
+        "fourth",
+        "fifth",
+        "sixth",
+        "seventh",
+        "eighth",
+        "ninth",
+        "tenth",
+    ];
+    return ordinals[index] || `${index + 1}th`;
+}
+
 function yyyymmdd(d = new Date()) {
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -157,8 +185,9 @@ const AmountInput = ({
     </View>
 );
 
-/* ---------- invoice HTML (Total only + bank details + POP instruction) ---------- */
-function htmlForInvoice(payload: {
+/* ---------- invoice / receipt HTML (shared format) ---------- */
+function htmlForDocument(payload: {
+    mode: DocumentMode;
     logoDataUrl?: string | null;
     companyName: string;
     clientName: string;
@@ -170,6 +199,7 @@ function htmlForInvoice(payload: {
     proofInstruction?: string;
 }) {
     const {
+        mode,
         logoDataUrl,
         companyName,
         clientName,
@@ -181,6 +211,11 @@ function htmlForInvoice(payload: {
         proofInstruction,
     } = payload;
 
+    const documentTitle = mode === "receipt" ? "Receipt" : "Invoice";
+    const documentChip =
+        mode === "receipt" ? "PAID INSTALLMENTS" : "INSTALLMENT PLAN";
+    const documentFooter = `${companyName} ${documentTitle}`;
+
     const bodyRows = rows.length
         ? rows
               .map((r, i) => {
@@ -191,11 +226,13 @@ function htmlForInvoice(payload: {
             <td>${i + 1}</td>
             <td>${r.due || ""}</td>
             <td style="text-align:right">${N(amountNum)}</td>
-            <td>${r.paymentId ? `<span class="pill ok">Recorded</span>` : `<span class="pill">Pending</span>`}</td>
+            <td>${r.paymentId ? `<span class="pill ok">Paid</span>` : `<span class="pill warn">Not Paid</span>`}</td>
           </tr>`;
               })
               .join("")
         : `<tr><td colspan="4">No installments added.</td></tr>`;
+
+    const showPaymentSections = mode === "invoice";
 
     const logoMarkup = logoDataUrl
         ? `<img src="${logoDataUrl}" class="logo" alt="${companyName} logo" />`
@@ -205,7 +242,7 @@ function htmlForInvoice(payload: {
 <html>
 <head>
 <meta charset="utf-8" />
-<title>${companyName} Invoice</title>
+<title>${companyName} ${documentTitle}</title>
 <style>
   * { box-sizing: border-box; }
   body { margin:0; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, sans-serif; color:#0f172a; background:#eef2ff; }
@@ -231,6 +268,7 @@ function htmlForInvoice(payload: {
   .right { text-align:right; }
   .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background:#f1f5f9; color:#334155; }
   .pill.ok { background:#e8fff3; color:#047857; }
+  .pill.warn { background:#fff7ed; color:#c2410c; }
   .totals { margin-top: 16px; display:flex; justify-content:flex-end; }
   .totalCard { width: 280px; border: 1px solid #e5e7eb; border-radius: 18px; padding: 14px; background:#f8fafc; }
   .totalLabel { font-size: 12px; color:#64748b; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; }
@@ -252,12 +290,12 @@ function htmlForInvoice(payload: {
           ${logoMarkup}
           <div class="title">
             <div class="company">${companyName}</div>
-            <div class="inv">Invoice</div>
+            <div class="inv">${documentTitle}</div>
             <div class="muted">Generated: ${fmtDMY(new Date())}</div>
           </div>
         </div>
         <div style="text-align:right">
-          <div class="chip">INSTALLMENT PLAN</div>
+          <div class="chip">${documentChip}</div>
         </div>
       </div>
 
@@ -291,25 +329,36 @@ function htmlForInvoice(payload: {
         </div>
       </div>
 
-      <div class="payGrid">
-        <div class="card">
-          <h3>Payment Details</h3>
-          <div class="kv"><strong>Account Name:</strong> ${account.accountName}</div>
-          <div class="kv"><strong>Account Number:</strong> ${account.accountNumber}</div>
-          <div class="kv"><strong>Bank:</strong> ${account.bankName}</div>
-        </div>
+            ${
+                showPaymentSections
+                    ? `<div class="payGrid">
+                <div class="card">
+                    <h3>Payment Details</h3>
+                    <div class="kv"><strong>Account Name:</strong> ${account.accountName}</div>
+                    <div class="kv"><strong>Account Number:</strong> ${account.accountNumber}</div>
+                    <div class="kv"><strong>Bank:</strong> ${account.bankName}</div>
+                </div>
 
-        <div class="card">
-          <h3>Proof of Payment</h3>
-          <div class="kv">${proofInstruction || ""}</div>
-        </div>
-      </div>
+                <div class="card">
+                    <h3>Proof of Payment</h3>
+                    <div class="kv">${proofInstruction || ""}</div>
+                </div>
+            </div>`
+                    : ""
+            }
 
-      <div class="footer">${companyName} Invoice</div>
+      <div class="footer">${documentFooter}</div>
     </div>
   </div>
 </body>
 </html>`;
+}
+
+function sumRows(rows: PlanRow[]) {
+    return rows.reduce((sum, row) => {
+        const amount = Number(String(row.amount).replace(/[^\d]/g, ""));
+        return sum + (Number.isFinite(amount) ? amount : 0);
+    }, 0);
 }
 
 export default function ClientInstallments() {
@@ -345,7 +394,7 @@ export default function ClientInstallments() {
     const [pickerDate, setPickerDate] = React.useState<Date>(new Date());
     const hydratedClientRef = React.useRef<string | null>(null);
     const initialPersistedByIdRef = React.useRef<
-        Record<string, { amount: string; due: string }>
+        Record<string, { amount: string; due: string; isPaid: boolean }>
     >({});
 
     React.useEffect(() => {
@@ -383,7 +432,6 @@ export default function ClientInstallments() {
             router.back();
             return;
         }
-        // allow a fresh hydration pass when switching client
         hydratedClientRef.current = null;
         dispatch(setClientId(incomingClientId));
         dispatch(fetchClientById(incomingClientId));
@@ -392,7 +440,6 @@ export default function ClientInstallments() {
     React.useEffect(() => {
         if (!client) return;
 
-        // Hydrate form once per client load; avoid resetting inputs while user types
         const currentClientId = String((client as any)?._id || "");
         if (currentClientId && hydratedClientRef.current === currentClientId) {
             return;
@@ -413,25 +460,38 @@ export default function ClientInstallments() {
                 const d = p?.date ? new Date(p.date) : null;
                 const due = d && !Number.isNaN(d.getTime()) ? fmtDMY(d) : "";
                 const paymentId = p?._id ? String(p._id) : undefined;
-                return withLocalRowId({ amount, due, paymentId });
+                const isPaid = p?.isPaid !== false;
+                return withLocalRowId({
+                    amount,
+                    due,
+                    paymentId,
+                    isPaid,
+                });
             })
             .filter((r: PlanRow) => r.amount !== "0" || r.due || r.paymentId);
 
         initialPersistedByIdRef.current = mapped.reduce(
             (acc, r) => {
                 if (r.paymentId) {
-                    acc[r.paymentId] = { amount: r.amount, due: r.due };
+                    acc[r.paymentId] = {
+                        amount: r.amount,
+                        due: r.due,
+                        isPaid: r.isPaid ?? false,
+                    };
                 }
                 return acc;
             },
-            {} as Record<string, { amount: string; due: string }>,
+            {} as Record<
+                string,
+                { amount: string; due: string; isPaid: boolean }
+            >,
         );
 
         dispatch(
             setRows(
                 mapped.length
                     ? mapped
-                    : [withLocalRowId({ amount: "", due: "" })],
+                    : [withLocalRowId({ amount: "", due: "", isPaid: false })],
             ),
         );
 
@@ -479,7 +539,11 @@ export default function ClientInstallments() {
             if (!r.paymentId) return false;
             const prev = initialPersistedByIdRef.current[r.paymentId];
             if (!prev) return true;
-            return prev.amount !== r.amount || prev.due !== r.due;
+            return (
+                prev.amount !== r.amount ||
+                prev.due !== r.due ||
+                prev.isPaid !== (r.isPaid ?? false)
+            );
         });
 
         const brandNew = filledRows.filter((r) => !r.paymentId);
@@ -494,12 +558,23 @@ export default function ClientInstallments() {
         dispatch(updateRowAction({ index: idx, patch: cleaned }));
     };
 
+    const togglePaid = (idx: number) => {
+        const row = rows[idx];
+        if (!row) return;
+        updateRow(idx, { isPaid: !(row.isPaid ?? false) });
+    };
+
     const handleAmountChange = (idx: number, value: string) => {
         const cleaned = value.replace(/[^\d]/g, "");
         updateRow(idx, { amount: cleaned });
     };
     const addRow = () =>
-        dispatch(setRows([...rows, withLocalRowId({ amount: "", due: "" })]));
+        dispatch(
+            setRows([
+                ...rows,
+                withLocalRowId({ amount: "", due: "", isPaid: false }),
+            ]),
+        );
 
     const deleteRow = async (idx: number, paymentId?: string) => {
         if (!paymentId) {
@@ -565,7 +640,11 @@ export default function ClientInstallments() {
             if (!r.paymentId) return false;
             const prev = initialPersistedByIdRef.current[r.paymentId];
             if (!prev) return true;
-            return prev.amount !== r.amount || prev.due !== r.due;
+            return (
+                prev.amount !== r.amount ||
+                prev.due !== r.due ||
+                prev.isPaid !== (r.isPaid ?? false)
+            );
         });
 
         const brandNew = validRows.filter((r) => !r.paymentId);
@@ -573,6 +652,7 @@ export default function ClientInstallments() {
         const paymentsToAdd = [...brandNew, ...changedPersisted].map((r) => ({
             amount: Number(r.amount),
             date: toISO(r.due),
+            isPaid: r.isPaid ?? false,
         }));
 
         if (paymentsToAdd.length === 0) {
@@ -583,7 +663,6 @@ export default function ClientInstallments() {
         setIsSaving(true);
 
         try {
-            // Replace changed persisted rows: delete old records, then add updated values
             for (const r of changedPersisted) {
                 if (!r.paymentId) continue;
                 await dispatch(
@@ -598,7 +677,6 @@ export default function ClientInstallments() {
                 addClientInstallments({ clientId, payments: paymentsToAdd }),
             ).unwrap();
 
-            // Re-fetch to sync row ids and summaries
             hydratedClientRef.current = null;
             dispatch(fetchClientById(clientId));
         } catch (e: any) {
@@ -608,17 +686,36 @@ export default function ClientInstallments() {
         }
     };
 
-    /* ---------- Generate / Send Invoice (PDF) ---------- */
-    const onBuildInvoice = async (dialogTitle: string) => {
+    const paidRows = rows.filter((row) => row.isPaid ?? false);
+    const unpaidRows = rows.filter(
+        (row) => !(row.isPaid ?? false) && (row.amount || row.due),
+    );
+
+    /* ---------- Generate invoice / receipts (PDF) ---------- */
+    const onBuildDocument = async (
+        mode: DocumentMode,
+        rowsToPrint: PlanRow[],
+        dialogTitle: string,
+    ) => {
         try {
-            const html = htmlForInvoice({
+            if (rowsToPrint.length === 0) {
+                showError(
+                    mode === "receipt"
+                        ? "There are no paid installments to generate receipts for."
+                        : "There are no unpaid installments to generate an invoice for.",
+                );
+                return;
+            }
+
+            const html = htmlForDocument({
+                mode,
                 logoDataUrl,
                 companyName: COMPANY_NAME,
                 clientName: name,
                 projectName: project,
                 engagement: engagement,
-                rows: rows.filter((r) => r.amount || r.due),
-                total: totalAmount, // ONLY total (no paid/remaining yet)
+                rows: rowsToPrint,
+                total: sumRows(rowsToPrint),
                 account: {
                     accountName: ACCOUNT_DETAILS.accountName,
                     accountNumber: ACCOUNT_DETAILS.accountNumber,
@@ -627,11 +724,10 @@ export default function ClientInstallments() {
                 proofInstruction: PROOF_INSTRUCTION,
             });
 
-            const clientSlug = slugFileName(name || "client");
-            const projectSlug = slugFileName(project || "project");
-            const dateSlug = yyyymmdd(new Date());
-
-            const filename = `invoice_${clientSlug}_${projectSlug}_${dateSlug}.pdf`;
+            const fileTitle = mode === "receipt" ? "Receipt" : "Invoice";
+            const filename = `${makeFriendlyFileName(COMPANY_NAME)} ${makeFriendlyFileName(
+                name || "Client",
+            )} ${fileTitle}.pdf`;
 
             const result = await Print.printToFileAsync({
                 html,
@@ -674,14 +770,66 @@ export default function ClientInstallments() {
         }
     };
 
-    const ReadonlyBox = ({ children }: { children: React.ReactNode }) => (
-        <View
-            className="rounded-2xl px-4 py-3"
-            style={{ backgroundColor: BG_INPUT }}
-        >
-            <Text className="font-kumbh text-[#111827]">{children}</Text>
-        </View>
-    );
+    const onPrintReceipt = async (row: PlanRow, index: number) => {
+        const receiptLabel = ordinalWord(index);
+        const html = await htmlForDocument({
+            mode: "receipt",
+            logoDataUrl,
+            companyName: COMPANY_NAME,
+            clientName: name,
+            projectName: project,
+            engagement,
+            rows: [row],
+            total: sumRows([row]),
+            account: {
+                accountName: ACCOUNT_DETAILS.accountName,
+                accountNumber: ACCOUNT_DETAILS.accountNumber,
+                bankName: ACCOUNT_DETAILS.bankName,
+            },
+            proofInstruction: PROOF_INSTRUCTION,
+        });
+
+        const filename = `${makeFriendlyFileName(COMPANY_NAME)} ${makeFriendlyFileName(
+            name || "Client",
+        )} ${receiptLabel} Receipt.pdf`;
+
+        const result = await Print.printToFileAsync({
+            html,
+            base64: Platform.OS === "web",
+        });
+
+        let shareUri = result.uri;
+
+        if (Platform.OS !== "web") {
+            const dest =
+                (FileSystem.documentDirectory ||
+                    FileSystem.cacheDirectory ||
+                    "") + filename;
+            await FileSystem.copyAsync({ from: result.uri, to: dest });
+            shareUri = dest;
+        }
+
+        if (Platform.OS === "web") {
+            const base64 = (result as any).base64;
+            if (base64) {
+                const doc = (globalThis as any)?.document;
+                if (doc) {
+                    const a = doc.createElement("a");
+                    a.href = `data:application/pdf;base64,${base64}`;
+                    a.download = filename;
+                    a.click();
+                }
+            } else {
+                await Print.printAsync({ html });
+            }
+        } else {
+            await Sharing.shareAsync(shareUri, {
+                UTI: "com.adobe.pdf",
+                mimeType: "application/pdf",
+                dialogTitle: "Print Receipt",
+            });
+        }
+    };
 
     const Labeled = ({
         label,
@@ -723,7 +871,6 @@ export default function ClientInstallments() {
         >
             <PlatformAdaptiveHeader
                 title="Installment Payment"
-                // onBackPress={onHeaderBackPress}
                 headerRight={({ tintColor }) => (
                     <Pressable
                         onPress={handleSave}
@@ -812,7 +959,7 @@ export default function ClientInstallments() {
 
                     {/* Plan rows */}
                     {rows.map((row, idx) => {
-                        const persisted = !!row.paymentId; // recorded on server
+                        const isPaid = row.isPaid ?? !!row.paymentId;
                         const rowKey =
                             row.paymentId || row._localId || `temp-${idx}`;
                         return (
@@ -824,11 +971,34 @@ export default function ClientInstallments() {
                                     <Text className="font-kumbh text-[#6B7280]">
                                         Row {idx + 1}
                                     </Text>
-                                    {persisted && (
-                                        <Text className="text-[12px] px-2 py-1 rounded-full bg-[#E5F9EE] text-[#0E9F6E]">
-                                            Recorded
-                                        </Text>
-                                    )}
+                                    <View className="flex-row items-center gap-2">
+                                        <Pressable
+                                            onPress={() => togglePaid(idx)}
+                                            className={clsx(
+                                                "px-2 py-1 rounded-full",
+                                                isPaid
+                                                    ? "bg-[#E5F9EE] text-[#0E9F6E]"
+                                                    : "bg-[#FFF7ED] text-[#C2410C]",
+                                            )}
+                                        >
+                                            <Text className="text-[12px] font-kumbhBold">
+                                                {isPaid ? "Paid" : "Not Paid"}
+                                            </Text>
+                                        </Pressable>
+                                        {isPaid && (
+                                            <Pressable
+                                                onPress={() =>
+                                                    onPrintReceipt(row, idx)
+                                                }
+                                                className="w-9 h-9 rounded-xl bg-[#EEF1FF] items-center justify-center"
+                                            >
+                                                <Printer
+                                                    size={18}
+                                                    color="#4C5FAB"
+                                                />
+                                            </Pressable>
+                                        )}
+                                    </View>
                                 </View>
 
                                 <View
@@ -896,14 +1066,35 @@ export default function ClientInstallments() {
                         );
                     })}
 
-                    {/* Bottom actions: Send / Generate Invoice */}
+                    {/* Bottom actions: Generate Invoice / Receipts */}
                     <View className="mt-6 flex-row" style={{ gap: 12 }}>
                         <Pressable
-                            onPress={() => onBuildInvoice("Send Invoice")}
+                            onPress={() =>
+                                onBuildDocument(
+                                    "invoice",
+                                    unpaidRows,
+                                    "Generate Invoice",
+                                )
+                            }
                             className="flex-1 h-14 rounded-2xl bg-[#4C5FAB] items-center justify-center active:opacity-90"
                         >
-                            <Text className="text-white font-kumbhBold">
-                                Generate Invoice/Send Reminder
+                            <Text className="text-white font-kumbhBold text-center">
+                                Generate Invoice
+                            </Text>
+                        </Pressable>
+
+                        <Pressable
+                            onPress={() =>
+                                onBuildDocument(
+                                    "receipt",
+                                    paidRows,
+                                    "Generate Receipts",
+                                )
+                            }
+                            className="flex-1 h-14 rounded-2xl bg-[#111827] items-center justify-center active:opacity-90"
+                        >
+                            <Text className="text-white font-kumbhBold text-center">
+                                Generate Receipts
                             </Text>
                         </Pressable>
                     </View>

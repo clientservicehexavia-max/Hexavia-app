@@ -54,6 +54,7 @@ type SummaryPdfResponse = {
     pdfUrl?: string;
     summaryText?: string;
     message?: string;
+    filename?: string;
 };
 
 /* ───────── validation ───────── */
@@ -321,9 +322,7 @@ export default function CreateReportScreen() {
                 return;
             }
 
-            const channelName = idToName.get(channelId) ?? "channel";
-            const datePart = yyyymmdd(new Date());
-            const filename = `summary_${slugFileName(channelName)}_${datePart}.pdf`;
+            const filename = data?.filename ?? "summary.pdf";
             const dest = `${FileSystem.cacheDirectory}${filename}`;
             const pdfUri = await downloadPdfOrThrow(pdfUrl, dest);
             setLastPdfUri(pdfUri);

@@ -18,6 +18,8 @@ export default function Splash() {
     const { hydrated, phase, user } = useAppSelector((s: RootState) => s.auth);
 
     const pushRegisteredRef = useRef(false);
+    // Track if we handled a pending channel navigation
+    const handledPendingChannelRef = useRef(false);
 
     useEffect(() => {
         dispatch(bootstrapSession());
@@ -58,6 +60,7 @@ export default function Splash() {
                                   : "/(admin)/chats/[channelId]",
                         params: { channelId: pendingChannelId },
                     } as any);
+                    handledPendingChannelRef.current = true;
                     return;
                 }
             } catch (e) {
@@ -66,10 +69,11 @@ export default function Splash() {
         })();
     }, [phase, user?._id]);
 
-    // your existing role routing after 3s
+    // your existing role routing after 3s, but skip if handledPendingChannelRef
     useEffect(() => {
         const timer = setTimeout(() => {
             if (!hydrated) return;
+            if (handledPendingChannelRef.current) return;
 
             if (phase === "idle") {
                 router.replace("/(auth)/login");

@@ -15,6 +15,7 @@ import "../global.css";
 
 import { TOAST_TOP_OFFSET, toastConfig } from "@/components/ui/toast";
 import { setPushToken } from "@/redux/auth/auth.slice";
+import { getActiveChannelId } from "@/storage/auth";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getExpoPushToken } from "@/utils/pushToken";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -54,6 +55,14 @@ const chatPathForRole = (role?: string | null | undefined) =>
         : role === "staff"
           ? "/(staff)/(tabs)/chats/[channelId]"
           : "/(admin)/chats/[channelId]";
+
+/** Role-specific channel list route (for proper back navigation history) */
+const channelListPathForRole = (role?: string | null | undefined) =>
+    role === "client"
+        ? "/(client)/channels"
+        : role === "staff"
+          ? "/(staff)/channels"
+          : "/(admin)/channels";
 
 export default function RootLayout() {
     const [fontsLoaded] = useFonts({
@@ -96,6 +105,7 @@ function AppFrame() {
                 (s.auth.user as any)?._id ?? (s.user.user as any)?._id ?? "",
             ) || null,
     );
+
     const dispatch = useAppDispatch();
 
     useEffect(() => {
@@ -127,23 +137,36 @@ function AppFrame() {
             const data = response.notification.request.content.data ?? {};
             const channelId = data?.channelId as string | undefined;
             const kind = data?.kind as string | undefined;
+            const activeChannelId = await getActiveChannelId();
 
             if (kind === "finance") {
                 router.push("/(admin)/finance");
                 return;
             }
 
-            if (!channelId) return;
+            if (kind === "channel") {
+                if (!channelId) return;
 
-            if (phase !== "authenticated") {
-                await AsyncStorage.setItem(PENDING_CHANNEL_KEY, channelId);
-                return;
+                if (phase !== "authenticated") {
+                    await AsyncStorage.setItem(PENDING_CHANNEL_KEY, channelId);
+                    return;
+                }
+
+                if (activeChannelId === channelId) {
+                    return;
+                }
+
+                // Push channel list first, then channel detail,
+                // so back navigation returns to a valid list screen.
+                router.dismissAll();
+                router.replace("/(admin)/(tabs)/project");
+                setTimeout(() => {
+                    router.push({
+                        pathname: chatPathForRole(role),
+                        params: { channelId },
+                    } as any);
+                }, 0);
             }
-
-            router.push({
-                pathname: chatPathForRole(role),
-                params: { channelId },
-            } as any);
         };
 
         const sub = Notifications.addNotificationResponseReceivedListener(

@@ -782,15 +782,10 @@ export default function FinanceIndex() {
 
 /* ───────── UI bits ───────── */
 
-function TxnRow({
-    item,
-    onPress,
-}: {
-    item: Txn;
-    onPress: () => void; // <- new
-}) {
+function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
     const iconBg = "bg-blue-500";
     const isPending = item.status === "Pending";
+
     return (
         <Pressable
             onPress={onPress}

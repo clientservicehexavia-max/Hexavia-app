@@ -56,6 +56,7 @@ type SummaryPdfResponse = {
     pdfUrl?: string;
     summaryText?: string;
     message?: string;
+    filename?: string;
 };
 
 function initialsFrom(value?: string | null) {
@@ -1060,15 +1061,20 @@ export default function ChannelInfoScreen() {
 
             const pdfUrl = resolvePdfUrl(rawPdfUrl);
             if (Platform.OS === "web") {
-                if (typeof window !== "undefined") {
-                    window.open(pdfUrl, "_blank", "noopener,noreferrer");
+                if (
+                    typeof globalThis !== "undefined" &&
+                    (globalThis as any).open
+                ) {
+                    (globalThis as any).open(
+                        pdfUrl,
+                        "_blank",
+                        "noopener,noreferrer",
+                    );
                 }
                 return;
             }
 
-            const safeName = slugifyFilename(channel.name || "Project");
-            const stamp = new Date().toISOString().slice(0, 10);
-            const namedUri = `${FileSystem.cacheDirectory}summary_${safeName}_${stamp}.pdf`;
+            const namedUri = `${FileSystem.cacheDirectory}${endpointResponse.data?.filename ?? "summary.pdf"}`;
             await FileSystem.downloadAsync(pdfUrl, namedUri);
 
             const canShare = await Sharing.isAvailableAsync();

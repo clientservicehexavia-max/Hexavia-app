@@ -8,6 +8,7 @@ import MessageBubble from "@/components/staff/chat/MessageBubble";
 import { showError } from "@/components/ui/toast";
 import { PRIMARY } from "@/constants/Colors";
 import { useKeyboardSpacer } from "@/hooks/useKeyboardSpacer";
+import { getSocket } from "@/realtime/socket";
 import { selectChannelById } from "@/redux/channels/channels.slice";
 import {
     fetchChannelById,
@@ -18,6 +19,7 @@ import { ensureThread, setCurrentThread } from "@/redux/chat/chat.slice";
 import { fetchMessages } from "@/redux/chat/chat.thunks";
 import { uploadSingle } from "@/redux/upload/upload.thunks";
 import { selectUser } from "@/redux/user/user.slice";
+import { clearActiveChannelId, saveActiveChannelId } from "@/storage/auth";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { AttachmentKind, Message, ReplyMeta } from "@/types/chat";
 import type { ChatTaggedUser } from "@/types/chat-model";
@@ -50,11 +52,9 @@ import {
     FlatList,
     Keyboard,
     KeyboardAvoidingView,
-    LayoutAnimation,
     Platform,
     Pressable,
     Text,
-    UIManager,
     View,
 } from "react-native";
 import {
@@ -70,42 +70,7 @@ export default function ChatScreen() {
     const router = useRouter();
     const isIOS = Platform.OS === "ios";
 
-    // Enable layout animation on Android
-    useEffect(() => {
-        if (Platform.OS === "android") {
-            UIManager.setLayoutAnimationEnabledExperimental?.(true);
-        }
-    }, []);
-
-    // Setup smooth keyboard animations on iOS
-    useEffect(() => {
-        if (!isIOS) return;
-
-        const showListener = Keyboard.addListener("keyboardWillShow", () => {
-            LayoutAnimation.configureNext(
-                LayoutAnimation.create(
-                    250,
-                    LayoutAnimation.Types.easeInEaseOut,
-                    LayoutAnimation.Properties.opacity,
-                ),
-            );
-        });
-
-        const hideListener = Keyboard.addListener("keyboardWillHide", () => {
-            LayoutAnimation.configureNext(
-                LayoutAnimation.create(
-                    250,
-                    LayoutAnimation.Types.easeInEaseOut,
-                    LayoutAnimation.Properties.opacity,
-                ),
-            );
-        });
-
-        return () => {
-            showListener.remove();
-            hideListener.remove();
-        };
-    }, [isIOS]);
+    // ...existing code...
 
     const user = useAppSelector(selectUser);
     const meId = user?._id;
@@ -144,6 +109,7 @@ export default function ChatScreen() {
         if (!channelId || !meId) return;
         dispatch(ensureThread({ id: channelId, kind: "community" }));
         dispatch(setCurrentThread(channelId));
+        saveActiveChannelId(channelId);
         dispatch({ type: "chat/joinChannel", payload: { meId, channelId } });
     }, [dispatch, channelId, meId]);
 
@@ -158,8 +124,26 @@ export default function ChatScreen() {
 
     useFocusEffect(
         useCallback(() => {
+            // User is now viewing this channel screen
+            if (channelId && meId) {
+                const socket = getSocket();
+                socket?.emit("viewingChannel", { userId: meId, channelId });
+                console.log(`📱 User ${meId} viewing channel ${channelId}`);
+            }
+
             refreshMissedMessages();
-        }, [refreshMissedMessages]),
+
+            // Cleanup: user left the chat screen
+            return () => {
+                if (channelId && meId) {
+                    const socket = getSocket();
+                    socket?.emit("leftChatScreen", { userId: meId, channelId });
+                    console.log(
+                        `📱 User ${meId} left chat screen for channel ${channelId}`,
+                    );
+                }
+            };
+        }, [refreshMissedMessages, channelId, meId]),
     );
 
     useEffect(() => {
@@ -1007,6 +991,41 @@ export default function ChatScreen() {
         [channelId, dispatch, meId, scrollToBottom],
     );
 
+    // Helper to emit leaveChannel
+    const emitLeaveChannel = React.useCallback(() => {
+        if (meId && channelId) {
+            dispatch({
+                type: "chat/leaveChannel",
+                payload: { meId, channelId },
+            });
+        }
+    }, [dispatch, meId, channelId]);
+
+    // Leave channel when navigating away (unmount)
+    // useEffect(() => {
+    //     return () => {
+    //         emitLeaveChannel();
+    //     };
+    // }, [emitLeaveChannel]);
+
+    useFocusEffect(
+        useCallback(() => {
+            return () => {
+                clearActiveChannelId();
+            };
+        }, [clearActiveChannelId]),
+    );
+
+    // Leave channel when app is backgrounded (minimized)
+    // useEffect(() => {
+    //     const sub = AppState.addEventListener("change", (next) => {
+    //         if (next === "background" || next === "inactive") {
+    //             emitLeaveChannel();
+    //         }
+    //     });
+    //     return () => sub.remove();
+    // }, [emitLeaveChannel]);
+
     return (
         <SafeAreaView
             className="flex-1 bg-white"
@@ -1079,7 +1098,7 @@ export default function ChatScreen() {
                     inverted
                     maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
                     contentContainerStyle={{
-                        paddingTop: 16,
+                        paddingTop: 5,
                         paddingBottom: paddingBottom,
                     }}
                     data={listData}

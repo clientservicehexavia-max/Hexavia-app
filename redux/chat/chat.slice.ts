@@ -68,6 +68,7 @@ export const chatSlice = createSlice({
         setCurrentThread(state, action: PayloadAction<ThreadId | null>) {
             state.currentThreadId = action.payload;
         },
+
         upsertMessage(state, action: PayloadAction<ChatMessage>) {
             const msg = action.payload;
             state.messages[msg.id] = { ...state.messages[msg.id], ...msg };
@@ -231,7 +232,6 @@ export const chatSlice = createSlice({
                     }
                     if (!thr.messages.includes(id)) {
                         thr.messages.push(id);
-                        console.log("[reducer] added message to thread:", id);
                     }
                 }
 
@@ -254,7 +254,7 @@ export const chatSlice = createSlice({
                     thr.messages = [
                         ...pendingTempIds,
                         ...serverIds.filter(
-                            (id) => !pendingTempIds.includes(id),
+                            (id: string) => !pendingTempIds.includes(id),
                         ),
                     ];
                 }
@@ -300,6 +300,7 @@ const chatPersistConfig = {
         "nextSkipByThread",
         "joinedRooms", // optional: so we auto re-join after reload
         "currentThreadId", // optional: restore last open thread
+        "activeChannelId",
     ],
 };
 

@@ -10,10 +10,10 @@ import {
     markReadBulk,
     removeMessage,
     replaceTempId,
+    setCurrentThread,
     setError,
     setMe,
     setMessageStatus,
-    setCurrentThread,
     wsConnected,
     wsConnecting,
     wsDisconnected,
@@ -64,9 +64,7 @@ export const chatMiddleware: Middleware<{}, RootState> =
                 if (!(socket as any).__handlersBound) {
                     (socket as any).__handlersBound = true;
 
-                    socket.onAny((event, ...args) => {
-                        console.log("[chat] onAny:", event, args?.[0]);
-                    });
+                    socket.onAny((event, ...args) => {});
 
                     socket.on("connect", () => {
                         console.log("[chat] wsConnected", { sid: socket.id });
@@ -127,7 +125,9 @@ export const chatMiddleware: Middleware<{}, RootState> =
                             data.senderId ?? data.sender ?? "",
                         );
                         const threadId = String(data.channelId);
-                        const isFromMe = Boolean(meId && senderId && senderId === meId);
+                        const isFromMe = Boolean(
+                            meId && senderId && senderId === meId,
+                        );
 
                         // If it's my own message, we ALREADY handled it with ack (replaceTempId).
                         // Do NOT add again.
@@ -216,7 +216,8 @@ export const chatMiddleware: Middleware<{}, RootState> =
 
                         const state = store.getState();
                         const isOnThread =
-                            String(state.chat.currentThreadId ?? "") === threadId;
+                            String(state.chat.currentThreadId ?? "") ===
+                            threadId;
 
                         if (!isOnThread) {
                             await Notifications.scheduleNotificationAsync({
@@ -288,6 +289,18 @@ export const chatMiddleware: Middleware<{}, RootState> =
                 else socket?.once("connect", emitJoin);
 
                 store.dispatch(joinedChannel(channelId));
+                return result;
+            }
+
+            case "chat/leaveChannel": {
+                const { meId, channelId } = a.payload as {
+                    meId: string;
+                    channelId: string;
+                };
+                const socket = getSocket();
+                if (socket?.connected) {
+                    socket.emit("leaveChannel", { userId: meId, channelId });
+                }
                 return result;
             }
 
