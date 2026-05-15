@@ -10,9 +10,9 @@
         "jsEngine": "hermes",
         "newArchEnabled": true,
         "splash": {
-            "image": "./assets/images/logo2.png",
+            "image": "./assets/images/logo.png",
             "resizeMode": "contain",
-            "backgroundColor": "#FFFFFF"
+            "backgroundColor": "#4C5FAB"
         },
         "ios": {
             "supportsTablet": true,
@@ -58,8 +58,8 @@
             [
                 "expo-splash-screen",
                 {
-                    "image": "./assets/images/logo2.png",
-                    "backgroundColor": "#FFFFFF",
+                    "image": "./assets/images/logo.png",
+                    "backgroundColor": "#4C5FAB",
                     "resizeMode": "contain",
                     "imageWidth": 200
                 }

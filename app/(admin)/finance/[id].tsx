@@ -214,11 +214,11 @@ export default function FinanceDetail() {
 
 function KV({ label, value }: { label: string; value: string }) {
     return (
-        <View className="flex-row items-center justify-between py-2">
-            <Text className="text-[15px] text-gray-500 font-kumbh">
+        <View className="flex-row items-start justify-between py-2 gap-10">
+            <Text className="text-[15px] text-gray-500 font-kumbh shrink-0">
                 {label}
             </Text>
-            <Text className="text-[15px] font-kumbhBold text-[#111827]">
+            <Text className="flex-1 text-right text-[15px] font-kumbhBold text-[#111827]">
                 {value}
             </Text>
         </View>
