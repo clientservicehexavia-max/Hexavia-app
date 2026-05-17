@@ -25,8 +25,9 @@ import { showError, showSuccess } from "@/components/ui/toast";
 import {
     makeSelectClientById,
     selectClientDetailLoading,
+    selectClientFilters,
 } from "@/redux/client/client.selectors";
-import { fetchClientById } from "@/redux/client/client.thunks";
+import { fetchClientById, fetchClients } from "@/redux/client/client.thunks";
 import {
     selectAdding,
     selectAmountPaid,
@@ -385,6 +386,7 @@ export default function ClientInstallments() {
     );
     const client = useAppSelector(selectClient);
     const loadingClient = useAppSelector(selectClientDetailLoading);
+    const clientFilters = useAppSelector(selectClientFilters);
 
     const [name, setName] = React.useState("");
     const [project, setProject] = React.useState("");
@@ -679,6 +681,7 @@ export default function ClientInstallments() {
 
             hydratedClientRef.current = null;
             dispatch(fetchClientById(clientId));
+            dispatch(fetchClients(clientFilters));
         } catch (e: any) {
             showError(e?.message || "Failed to save installments");
         } finally {

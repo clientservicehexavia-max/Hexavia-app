@@ -1,4 +1,5 @@
 // app/(admin)/finance/index.tsx
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import clsx from "clsx";
 import { useRouter } from "expo-router";
 import { ArrowDown, ArrowUp, Eye, Plus } from "lucide-react-native";
@@ -16,6 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { STORAGE_KEYS } from "@/storage/keys";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 /* ───────── Expenses (existing) ───────── */
@@ -47,6 +49,8 @@ type Txn = {
     time: string;
     status: "Successful" | "Pending";
     description: string;
+    projectName?: string;
+    clientName?: string;
     dir: "up" | "down";
     dateKey: string;
     kind: "expense" | "receivable";
@@ -93,7 +97,17 @@ function getTotalPaid(client: any) {
 
 function buildFilteredReceivables(clients: any[]) {
     return (clients || [])
-        .filter((c: any) => getTotalPaid(c) > 0)
+        .filter((c: any) => {
+            // Only include clients who have recorded payments (total paid > 0)
+            // and whose status is active or current
+            const paid = getTotalPaid(c);
+            const hasPaid = Number.isFinite(paid) && paid > 0;
+            const isActive =
+                String(c?.status ?? "").toLowerCase() === "active" ||
+                String(c?.status ?? "").toLowerCase() === "current";
+
+            return hasPaid && isActive;
+        })
         .sort(
             (a: any, b: any) =>
                 new Date(b?.createdAt || 0).getTime() -
@@ -138,17 +152,54 @@ export default function FinanceIndex() {
     const dispatch = useAppDispatch();
 
     const [pinLocked, setPinLocked] = useState(true);
+    const [isPasswordCheckInitialized, setIsPasswordCheckInitialized] =
+        useState(false);
     const [pinInput, setPinInput] = useState("");
     const [pinError, setPinError] = useState("");
     const [receivablesPage, setReceivablesPage] = useState(1);
     const [filteredReceivables, setFilteredReceivables] = useState<any[]>([]);
     const RECEIVABLES_LIMIT = 20;
 
-    const handlePinSubmit = () => {
+    // Check if password was already verified in this session
+    useEffect(() => {
+        const checkFinancePasswordVerified = async () => {
+            try {
+                const verified = await AsyncStorage.getItem(
+                    STORAGE_KEYS.FINANCE_PASSWORD_VERIFIED,
+                );
+                setPinLocked(verified !== "true");
+            } catch (error) {
+                console.error(
+                    "Error checking finance password verification:",
+                    error,
+                );
+                // Default to locked on error
+                setPinLocked(true);
+            } finally {
+                setIsPasswordCheckInitialized(true);
+            }
+        };
+
+        checkFinancePasswordVerified();
+    }, []);
+
+    const handlePinSubmit = async () => {
         if (pinInput.trim() === ADMIN_FINANCE_PIN) {
             setPinLocked(false);
             setPinError("");
             setPinInput("");
+            // Store that password was verified in this session
+            try {
+                await AsyncStorage.setItem(
+                    STORAGE_KEYS.FINANCE_PASSWORD_VERIFIED,
+                    "true",
+                );
+            } catch (error) {
+                console.error(
+                    "Error saving finance password verification:",
+                    error,
+                );
+            }
             return;
         }
 
@@ -200,7 +251,9 @@ export default function FinanceIndex() {
                 title: "Receive",
                 amount: getTotalPaid(c),
                 time: formatTime(c?.createdAt || ""),
-                description: String(c?.name || "Unnamed client"),
+                description: `${c?.projectName || "Unnamed project"}\n${c?.name || "Unnamed client"}`,
+                projectName: c?.projectName || "Unnamed project",
+                clientName: c?.name || "Unnamed client",
                 status: "Pending",
                 dir: "down",
                 dateKey: dateBucket(c?.createdAt || ""),
@@ -431,73 +484,75 @@ export default function FinanceIndex() {
             }
             className="flex-1 bg-white"
         >
-            <Modal
-                visible={pinLocked}
-                transparent
-                animationType="fade"
-                statusBarTranslucent
-                onRequestClose={() => {}}
-            >
-                <View className="flex-1 bg-black/70 px-5 justify-center">
-                    <View className="bg-white rounded-3xl p-6 shadow-lg shadow-black/30">
-                        <Text className="text-xl font-kumbhBold text-[#111827] mb-1">
-                            Finance Access
-                        </Text>
-                        <Text className="text-sm text-gray-500 font-kumbh mb-4">
-                            Enter the secret admin pin to continue.
-                        </Text>
-
-                        <View className="rounded-2xl border border-gray-200 ios:px-4 android:px-2 ios:py-3 mb-2">
-                            <TextInput
-                                value={pinInput}
-                                onChangeText={(text) =>
-                                    setPinInput(text.replace(/\s+/g, ""))
-                                }
-                                placeholder="Enter Pin"
-                                placeholderTextColor="#9CA3AF"
-                                keyboardType="number-pad"
-                                maxLength={7}
-                                secureTextEntry
-                                className="font-kumbh text-base text-[#111827]"
-                                autoFocus
-                            />
-                        </View>
-                        {pinError ? (
-                            <Text className="text-sm text-red-500 font-kumbh mb-3">
-                                {pinError}
+            {isPasswordCheckInitialized && (
+                <Modal
+                    visible={pinLocked}
+                    transparent
+                    animationType="fade"
+                    statusBarTranslucent
+                    onRequestClose={() => {}}
+                >
+                    <View className="flex-1 bg-black/70 px-5 justify-center">
+                        <View className="bg-white rounded-3xl p-6 shadow-lg shadow-black/30">
+                            <Text className="text-xl font-kumbhBold text-[#111827] mb-1">
+                                Finance Access
                             </Text>
-                        ) : (
-                            <Text className="text-xs text-gray-400 font-kumbh mb-3">
-                                Pin is 7 digits long.
+                            <Text className="text-sm text-gray-500 font-kumbh mb-4">
+                                Enter the secret admin pin to continue.
                             </Text>
-                        )}
 
-                        <Pressable
-                            onPress={handlePinSubmit}
-                            disabled={!pinInput}
-                            className={clsx(
-                                "h-12 rounded-2xl items-center justify-center",
-                                pinInput
-                                    ? "bg-[#4C5FAB] active:opacity-90"
-                                    : "bg-gray-300",
+                            <View className="rounded-2xl border border-gray-200 ios:px-4 android:px-2 ios:py-3 mb-2">
+                                <TextInput
+                                    value={pinInput}
+                                    onChangeText={(text) =>
+                                        setPinInput(text.replace(/\s+/g, ""))
+                                    }
+                                    placeholder="Enter Pin"
+                                    placeholderTextColor="#9CA3AF"
+                                    keyboardType="number-pad"
+                                    maxLength={7}
+                                    secureTextEntry
+                                    className="font-kumbh text-base text-[#111827]"
+                                    autoFocus
+                                />
+                            </View>
+                            {pinError ? (
+                                <Text className="text-sm text-red-500 font-kumbh mb-3">
+                                    {pinError}
+                                </Text>
+                            ) : (
+                                <Text className="text-xs text-gray-400 font-kumbh mb-3">
+                                    Pin is 7 digits long.
+                                </Text>
                             )}
-                        >
-                            <Text className="text-white font-kumbhBold">
-                                Unlock Finance
-                            </Text>
-                        </Pressable>
 
-                        <Pressable
-                            onPress={() => router.back()}
-                            className="h-12 rounded-2xl items-center justify-center mt-3 border border-gray-200 active:opacity-90"
-                        >
-                            <Text className="text-[#111827] font-kumbh">
-                                Go Back
-                            </Text>
-                        </Pressable>
+                            <Pressable
+                                onPress={handlePinSubmit}
+                                disabled={!pinInput}
+                                className={clsx(
+                                    "h-12 rounded-2xl items-center justify-center",
+                                    pinInput
+                                        ? "bg-[#4C5FAB] active:opacity-90"
+                                        : "bg-gray-300",
+                                )}
+                            >
+                                <Text className="text-white font-kumbhBold">
+                                    Unlock Finance
+                                </Text>
+                            </Pressable>
+
+                            <Pressable
+                                onPress={() => router.back()}
+                                className="h-12 rounded-2xl items-center justify-center mt-3 border border-gray-200 active:opacity-90"
+                            >
+                                <Text className="text-[#111827] font-kumbh">
+                                    Go Back
+                                </Text>
+                            </Pressable>
+                        </View>
                     </View>
-                </View>
-            </Modal>
+                </Modal>
+            )}
 
             {/* Header */}
             <PlatformAdaptiveHeader title="Finance" />
@@ -553,9 +608,11 @@ export default function FinanceIndex() {
                             onEndReachedThreshold={0.2}
                             onEndReached={loadMore}
                             renderSectionHeader={({ section: { title } }) => (
-                                <Text className="px-5 py-3 text-gray-500 font-kumbh">
-                                    {title}
-                                </Text>
+                                <View className="bg-white">
+                                    <Text className="px-5 py-1.5 text-gray-500 font-kumbh">
+                                        {title}
+                                    </Text>
+                                </View>
                             )}
                             ItemSeparatorComponent={() => (
                                 <View className="h-[1px] bg-gray-200 ml-[76px]" />
@@ -808,15 +865,37 @@ function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
                 <Text className="text-base font-kumbhBold text-text">
                     {item.title}
                 </Text>
-                <Text
-                    className={clsx(
-                        "mt-1 text-sm font-kumbh",
-                        isPending ? "text-yellow-600" : "text-green-600",
-                    )}
-                    numberOfLines={1}
-                >
-                    {item.description}
-                </Text>
+                {item.projectName && item.clientName ? (
+                    <View>
+                        <Text
+                            className="text-sm font-kumbh text-gray-600"
+                            numberOfLines={1}
+                        >
+                            {item.projectName}
+                        </Text>
+                        <Text
+                            className={clsx(
+                                "text-sm font-kumbh",
+                                isPending
+                                    ? "text-yellow-600"
+                                    : "text-green-600",
+                            )}
+                            numberOfLines={1}
+                        >
+                            {item.clientName}
+                        </Text>
+                    </View>
+                ) : (
+                    <Text
+                        className={clsx(
+                            "text-sm font-kumbh",
+                            isPending ? "text-yellow-600" : "text-green-600",
+                        )}
+                        numberOfLines={1}
+                    >
+                        {item.description}
+                    </Text>
+                )}
             </View>
 
             <View className="items-end">
