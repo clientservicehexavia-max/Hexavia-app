@@ -646,8 +646,8 @@ function Row({
                         {actions.map((action, index) => (
                             <Pressable
                                 key={`${label}-${index}`}
-                                onPress={(event) => {
-                                    event.stopPropagation();
+                                onPress={(event: any) => {
+                                    event?.stopPropagation?.();
                                     action.onPress();
                                 }}
                                 className="w-9 h-9 rounded-full border border-gray-200 bg-white items-center justify-center ml-2"

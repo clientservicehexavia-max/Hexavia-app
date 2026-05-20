@@ -5,9 +5,8 @@ import { selectAllChannels } from "@/redux/channels/channels.slice";
 import { fetchChannels } from "@/redux/channels/channels.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { yupResolver } from "@hookform/resolvers/yup";
-import * as FileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
-import { Check, ChevronDown, Share2 } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { Check, ChevronDown } from "lucide-react-native";
 import { default as React, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -20,7 +19,6 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -118,47 +116,11 @@ function yyyymmdd(d: Date) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
-function resolvePdfUrl(pathOrUrl: string) {
-    if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
-    const base = (api.defaults.baseURL ?? "").replace(/\/+$/, "");
-    const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
-    return `${base}${path}`;
-}
-
-async function downloadPdfOrThrow(url: string, dest: string) {
-    const result = await FileSystem.downloadAsync(url, dest);
-    if (result.status < 200 || result.status >= 300) {
-        await FileSystem.deleteAsync(dest, { idempotent: true });
-        throw new Error(`PDF download failed (${result.status}).`);
-    }
-
-    const info = await FileSystem.getInfoAsync(dest);
-    if (!info.exists || (typeof info.size === "number" && info.size < 1024)) {
-        let body = "";
-        try {
-            body = await FileSystem.readAsStringAsync(dest, {
-                encoding: FileSystem.EncodingType.UTF8,
-            });
-        } catch {
-            body = "";
-        }
-        await FileSystem.deleteAsync(dest, { idempotent: true });
-        throw new Error(
-            body.includes("Cannot GET")
-                ? body
-                      .replace(/<[^>]+>/g, " ")
-                      .replace(/\s+/g, " ")
-                      .trim()
-                : "Downloaded report was not a valid PDF.",
-        );
-    }
-
-    return result.uri;
-}
-
 /* ───────── component ───────── */
 export default function CreateReportScreen() {
     const dispatch = useAppDispatch();
+
+    const router = useRouter();
     const channels = useAppSelector(selectAllChannels) as Channel[];
     const isIOS = Platform.OS === "ios";
 
@@ -191,10 +153,6 @@ export default function CreateReportScreen() {
     const [showDate, setShowDate] = useState(false);
     const [channelOpen, setChannelOpen] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [isClearing, setIsClearing] = useState(false);
-    const [lastPdfUri, setLastPdfUri] = useState<string | null>(null);
-    const [lastPdfUrl, setLastPdfUrl] = useState<string | null>(null);
-    const [summaryText, setSummaryText] = useState<string | null>(null);
 
     const openDatePicker = (which: "start" | "end", current?: Date | null) => {
         setActiveDateField(which);
@@ -275,8 +233,6 @@ export default function CreateReportScreen() {
 
     const onGenerate = handleSubmit(async (values) => {
         setIsGenerating(true);
-        setLastPdfUri(null);
-        setLastPdfUrl(null);
 
         try {
             const channelId = values.channelIds?.[0];
@@ -285,7 +241,7 @@ export default function CreateReportScreen() {
                 return;
             }
 
-            const { data } = await api.post<SummaryPdfResponse>(
+            await api.post<SummaryPdfResponse>(
                 `/channel/${channelId}/summary-pdf`,
                 {
                     startDate: values.startDate
@@ -295,47 +251,19 @@ export default function CreateReportScreen() {
                         ? yyyymmdd(values.endDate)
                         : undefined,
                 },
+                { timeout: 120_000 },
             );
 
-            const rawPdfUrl = data?.pdfUrl;
-            if (!rawPdfUrl) {
-                throw new Error(
-                    data?.message || "Summary PDF URL was not returned.",
-                );
-            }
-
-            const pdfUrl = resolvePdfUrl(rawPdfUrl);
-            setLastPdfUrl(pdfUrl);
-            setSummaryText(data?.summaryText ?? null);
-
-            if (Platform.OS === "web") {
-                if (
-                    typeof globalThis !== "undefined" &&
-                    (globalThis as any).open
-                ) {
-                    (globalThis as any).open(
-                        pdfUrl,
-                        "_blank",
-                        "noopener,noreferrer",
-                    );
-                }
-                return;
-            }
-
-            const filename = data?.filename ?? "summary.pdf";
-            const dest = `${FileSystem.cacheDirectory}${filename}`;
-            const pdfUri = await downloadPdfOrThrow(pdfUrl, dest);
-            setLastPdfUri(pdfUri);
-
-            if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(pdfUri, {
-                    UTI: "com.adobe.pdf",
-                    mimeType: "application/pdf",
-                    dialogTitle: "Export PDF",
-                });
-            } else {
-                Alert.alert("Summary generated", "PDF saved to device cache.");
-            }
+            router.push({
+                pathname: "/(admin)/report/[channelId]",
+                params: {
+                    channelId,
+                    title:
+                        values.projectName?.trim() ||
+                        selectedNames[0] ||
+                        "Generated Report",
+                },
+            });
         } catch (err: any) {
             console.error(err);
             Alert.alert(
@@ -346,58 +274,6 @@ export default function CreateReportScreen() {
             setIsGenerating(false);
         }
     });
-
-    const onShareAgain = async () => {
-        if (Platform.OS === "web") {
-            if (
-                lastPdfUrl &&
-                typeof globalThis !== "undefined" &&
-                (globalThis as any).open
-            ) {
-                (globalThis as any).open(
-                    lastPdfUrl,
-                    "_blank",
-                    "noopener,noreferrer",
-                );
-            }
-            return;
-        }
-        if (!lastPdfUri) return;
-        try {
-            await Sharing.shareAsync(lastPdfUri, {
-                UTI: "com.adobe.pdf",
-                mimeType: "application/pdf",
-                dialogTitle: "Export PDF",
-            });
-        } catch (e) {
-            console.warn(e);
-        }
-    };
-
-    const onDeleteSummary = async () => {
-        if (!selectedChannelId) {
-            Alert.alert("Delete Summary", "Please select a project first.");
-            return;
-        }
-
-        try {
-            setIsClearing(true);
-            await api.delete(`/channel/${selectedChannelId}/summary-pdf`);
-            setLastPdfUri(null);
-            setLastPdfUrl(null);
-            setSummaryText(null);
-            Alert.alert("Deleted", "Summary deleted successfully.");
-        } catch (err: any) {
-            Alert.alert(
-                "Delete Summary",
-                err?.message ?? "Failed to delete summary.",
-            );
-        } finally {
-            setIsClearing(false);
-        }
-    };
-    const canShare =
-        Platform.OS === "web" ? Boolean(lastPdfUrl) : Boolean(lastPdfUri);
 
     /* ───────── UI ───────── */
     return (
@@ -428,7 +304,7 @@ export default function CreateReportScreen() {
                     </Text>
 
                     {/* Project Name */}
-                    <Text className="mt-6 text-lg font-kumbh text-black">
+                    {/* <Text className="mt-6 text-lg font-kumbh text-black">
                         Project Name
                     </Text>
                     <Controller
@@ -449,7 +325,7 @@ export default function CreateReportScreen() {
                         <Text className="mt-1 font-kumbh text-sm text-red-500">
                             {errors.projectName.message}
                         </Text>
-                    )}
+                    )} */}
 
                     {/* Channel (single) */}
                     <Text className="mt-5 text-lg font-kumbh text-black">
@@ -588,9 +464,7 @@ export default function CreateReportScreen() {
                     {/* Footer buttons */}
                     <View className="mt-10 flex-row items-center justify-between">
                         <Pressable
-                            disabled={
-                                isSubmitting || isGenerating || isClearing
-                            }
+                            disabled={isSubmitting || isGenerating}
                             onPress={onGenerate}
                             className="flex-1 rounded-2xl bg-primary py-4 disabled:opacity-60"
                         >
@@ -598,40 +472,18 @@ export default function CreateReportScreen() {
                                 {isGenerating ? "Generating..." : "AI Generate"}
                             </Text>
                         </Pressable>
-
-                        <Pressable
-                            onPress={onShareAgain}
-                            disabled={!canShare || isGenerating || isClearing}
-                            className="ml-4 h-14 w-14 items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-50"
-                        >
-                            <Share2 size={22} color="#111827" />
-                        </Pressable>
                     </View>
 
                     <Pressable
-                        onPress={onDeleteSummary}
-                        disabled={
-                            isGenerating || isClearing || !selectedChannelId
+                        onPress={() =>
+                            router.push("/(admin)/report/saved-reports")
                         }
-                        className="mt-4 rounded-2xl border border-red-200 bg-red-50 py-3 disabled:opacity-50"
+                        className="mt-4 rounded-2xl border border-gray-200 bg-white py-3"
                     >
-                        <Text className="text-center font-kumbh text-red-600">
-                            {isClearing
-                                ? "Deleting summary..."
-                                : "Delete AI Summary"}
+                        <Text className="text-center font-kumbhBold text-gray-800">
+                            View Saved Reports
                         </Text>
                     </Pressable>
-
-                    {summaryText ? (
-                        <View className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                            <Text className="text-sm font-kumbhBold text-gray-800">
-                                Latest AI Summary
-                            </Text>
-                            <Text className="mt-2 text-sm leading-6 font-kumbh text-gray-700">
-                                {summaryText}
-                            </Text>
-                        </View>
-                    ) : null}
                 </ScrollView>
             </KeyboardAvoidingView>
 
@@ -710,7 +562,7 @@ export default function CreateReportScreen() {
             {/* Generating overlay */}
             <Modal visible={isGenerating} transparent animationType="fade">
                 <View className="flex-1 items-center justify-center bg-black/40">
-                    <View className="w-40 rounded-2xl bg-white px-5 py-6 items-center">
+                    <View className="rounded-2xl bg-white px-5 py-6 items-center">
                         <ActivityIndicator size="large" />
                         <Text className="mt-3 font-kumbh">
                             Generating summary...

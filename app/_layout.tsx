@@ -1,7 +1,7 @@
 // app/_layout.tsx
 import { persistor, store, type RootState } from "@/store";
 import { useFonts } from "expo-font";
-import { Stack, router } from "expo-router";
+import { Stack, router, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { Platform, View } from "react-native";
@@ -99,6 +99,8 @@ export default function RootLayout() {
 function AppFrame() {
     const role = useAppSelector((s: RootState) => s.auth.user?.role);
     const phase = useAppSelector((s: RootState) => s.auth.phase);
+    const rootNavigationState = useRootNavigationState();
+    const isNavigationReady = Boolean(rootNavigationState?.key);
     const meId = useAppSelector(
         (s: RootState) =>
             String(
@@ -134,6 +136,8 @@ function AppFrame() {
         const handleNotificationResponse = async (
             response: Notifications.NotificationResponse,
         ) => {
+            if (!isNavigationReady) return;
+
             const data = response.notification.request.content.data ?? {};
             const channelId = data?.channelId as string | undefined;
             const kind = data?.kind as string | undefined;
@@ -174,13 +178,13 @@ function AppFrame() {
         );
 
         Notifications.getLastNotificationResponseAsync().then((response) => {
-            if (response) {
+            if (response && isNavigationReady) {
                 void handleNotificationResponse(response);
             }
         });
 
         return () => sub.remove();
-    }, [role, phase]);
+    }, [role, phase, isNavigationReady]);
 
     return (
         <View style={{ flex: 1 }}>

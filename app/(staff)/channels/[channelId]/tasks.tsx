@@ -19,6 +19,10 @@ import TaskDetailModal from "@/components/staff/tasks/modals/TaskDetailModal";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 import {
+    ChannelStatusKey,
+    ChannelTask,
+    makeSelectChannelTasksByChannelId,
+    makeSelectChannelTasksByStatus,
     makeSelectDefaultChannelId,
     selectChannelById,
     selectStatus as selectChannelsStatus,
@@ -29,14 +33,6 @@ import {
 } from "@/redux/channels/channels.thunks";
 import { selectUser } from "@/redux/user/user.slice";
 import { fetchProfile } from "@/redux/user/user.thunks";
-
-// NEW: our task selectors
-import {
-    ChannelStatusKey,
-    ChannelTask,
-    makeSelectChannelTasksByChannelId,
-    makeSelectChannelTasksByStatus,
-} from "@/redux/channels/channels.selectors";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { SwipeableTabView } from "@/components/ui/SwipeableTabView";
@@ -193,7 +189,7 @@ export default function StatusScreen() {
             setRefreshing(true);
             await dispatch(fetchChannelById(String(channelId))).unwrap();
             await dispatch(fetchChannelTasks(String(channelId))).unwrap();
-        } catch (e) {
+        } catch {
         } finally {
             setRefreshing(false);
         }
@@ -204,7 +200,7 @@ export default function StatusScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F7F8FB]"
         >
             <StatusBar style="dark" />
 
@@ -226,12 +222,11 @@ export default function StatusScreen() {
                     activeColor: PRIMARY,
                     inactiveColor: "#6B7280",
                     style: {
-                        marginTop: 12,
                         paddingHorizontal: 16,
                     },
                     tabStyle: {
                         paddingHorizontal: 12,
-                        paddingVertical: 8,
+                        paddingVertical: 10,
                     },
                 }}
                 renderScene={({ route }) => {
@@ -247,13 +242,13 @@ export default function StatusScreen() {
                     return (
                         <View className="flex-1">
                             {isLoading && isActive ? (
-                                <View className="flex-1 items-center justify-center">
+                                <View className="flex-1 items-center justify-center px-5">
                                     <ActivityIndicator
                                         size="small"
                                         color={PRIMARY}
                                     />
-                                    <Text className="mt-2 text-[#6B7280] font-kumbh">
-                                        Loading tasks…
+                                    <Text className="mt-3 text-[#6B7280] font-kumbh">
+                                        Loading tasks...
                                     </Text>
                                 </View>
                             ) : (
@@ -267,9 +262,9 @@ export default function StatusScreen() {
                                     renderItem={({ item }) => {
                                         if (item.type === "date") {
                                             return (
-                                                <View className="px-4 mt-3 mb-1 items-center">
-                                                    <View className="px-3 py-1 rounded-full bg-gray-100">
-                                                        <Text className="text-[11px] text-gray-500 font-kumbh">
+                                                <View className="px-5 items-center">
+                                                    <View className="px-3 py-1.5 rounded-full bg-white border border-gray-100">
+                                                        <Text className="text-[11px] text-gray-600 font-kumbhBold">
                                                             {formatDateLabel(
                                                                 item.ts,
                                                             )}
@@ -331,8 +326,8 @@ export default function StatusScreen() {
                                         );
                                     }}
                                     ListEmptyComponent={
-                                        <View className="px-4 mt-4">
-                                            <Text className="font-kumbh text-[#9CA3AF] text-center">
+                                        <View className="px-5 mt-8">
+                                            <Text className="font-kumbhBold text-[#6B7280] text-center">
                                                 No tasks in this category yet.
                                             </Text>
                                         </View>

@@ -4,6 +4,7 @@ import {
     Bell,
     ChevronRight,
     FolderKanban,
+    Handshake,
     UserPlus,
     Users,
 } from "lucide-react-native";
@@ -97,6 +98,12 @@ export default function AdminDashboard() {
                             title="Prospects"
                             icon={<FolderKanban size={22} color="white" />}
                             onPress={() => router.push("/(admin)/prospects")}
+                        />
+
+                        <Tile
+                            title="Partnerships"
+                            icon={<Handshake size={22} color="white" />}
+                            onPress={() => router.push("/(admin)/partnerships")}
                         />
                     </View>
                 </View>

@@ -423,7 +423,9 @@ export default function ClientsIndex() {
                         >
                             <FilterIcon
                                 size={22}
-                                color={hasAppliedFilters ? "#2563EB" : tintColor}
+                                color={
+                                    hasAppliedFilters ? "#2563EB" : tintColor
+                                }
                             />
                             {hasAppliedFilters ? (
                                 <View className="absolute right-1.5 top-1.5 min-w-4 h-4 rounded-full bg-blue-600 px-1 items-center justify-center">
@@ -771,8 +773,8 @@ function Row({
                         {actions.map((action, index) => (
                             <Pressable
                                 key={`${label}-${index}`}
-                                onPress={(event) => {
-                                    event.stopPropagation();
+                                onPress={(event: any) => {
+                                    event?.stopPropagation?.();
                                     action.onPress();
                                 }}
                                 className="w-9 h-9 rounded-full border border-gray-200 bg-white items-center justify-center ml-2"

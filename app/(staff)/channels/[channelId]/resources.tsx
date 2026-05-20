@@ -51,14 +51,17 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import * as Sharing from "expo-sharing";
 import * as WebBrowser from "expo-web-browser";
 import {
     ArrowUpDown,
     CloudUpload,
+    Files,
+    Link2,
     Maximize2,
     Plus,
+    StickyNote,
     X,
 } from "lucide-react-native";
 import React, {
@@ -113,19 +116,38 @@ const TABS = [
 ] as const;
 
 type ChannelTab = (typeof TABS)[number]["id"];
-const SWIPE_THRESHOLD = 60;
+
+function SummaryPill({
+    icon,
+    label,
+    value,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    value: number;
+}) {
+    return (
+        <View className="flex-1 min-w-[92px] rounded-2xl bg-white border border-gray-100 px-3 py-3">
+            <View className="flex-row items-center">
+                <View className="h-8 w-8 rounded-full bg-[#EEF2FF] items-center justify-center mr-2">
+                    {icon}
+                </View>
+                <Text
+                    className="text-[11px] text-gray-500 font-kumbh flex-1"
+                    numberOfLines={1}
+                >
+                    {label}
+                </Text>
+            </View>
+            <Text className="mt-3 text-xl text-gray-950 font-kumbhBold">
+                {value}
+            </Text>
+        </View>
+    );
+}
 
 async function normalizeImageForUpload(asset: any) {
     const origUri = asset.uri as string;
-
-    const lower = (asset.fileName || origUri).toLowerCase();
-    const mt = String(asset.mimeType || "").toLowerCase();
-
-    const isHeicOrHeif =
-        lower.endsWith(".heic") ||
-        lower.endsWith(".heif") ||
-        mt.includes("heic") ||
-        mt.includes("heif");
 
     // shrink rules
     const MAX_W = 1600; // adjust 1200–2000
@@ -158,7 +180,6 @@ async function normalizeImageForUpload(asset: any) {
 }
 
 export default function ChannelResourcesScreen() {
-    const router = useRouter();
     const insets = useSafeAreaInsets();
     const isIOS = Platform.OS === "ios";
 
@@ -446,13 +467,13 @@ export default function ChannelResourcesScreen() {
             const files = Array.isArray((res as any).assets)
                 ? (res as any).assets
                 : [res];
-            const directPdfUploads: Array<{ uri: string; name: string }> = [];
-            const directUploads: Array<{
+            const directPdfUploads: { uri: string; name: string }[] = [];
+            const directUploads: {
                 uri: string;
                 name: string;
                 mime: string;
                 description: string;
-            }> = [];
+            }[] = [];
 
             for (const f of files as any[]) {
                 const origName = f.name || "file";
@@ -836,7 +857,6 @@ export default function ChannelResourcesScreen() {
         }
         const normalized = ensureHttpUrl(rawUrl);
         try {
-            // eslint-disable-next-line no-new
             new URL(normalized);
         } catch {
             showError("That doesn’t look like a valid link.");
@@ -986,6 +1006,10 @@ export default function ChannelResourcesScreen() {
     const isNotesLoading = notesStatus === "loading" && notes.length === 0;
     const isLinksRefreshing = linksStatus === "loading" && links.length > 0;
     const isNotesRefreshing = notesStatus === "loading" && notes.length > 0;
+    const resourceCount = Array.isArray((channel as any)?.resources)
+        ? (channel as any).resources.length
+        : 0;
+    const channelName = channel?.name || "Project library";
 
     const refreshLinks = useCallback(async () => {
         if (!channelId) return;
@@ -1009,18 +1033,21 @@ export default function ChannelResourcesScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F7F8FB]"
         >
             <PlatformAdaptiveHeader
                 title="Resources"
                 headerRight={({ tintColor }) => (
-                    <View className="flex-row items-center gap-2 ios:mr-3">
+                    <View className="flex-row items-center gap-2">
                         <Pressable
                             onPress={() => toggleSortOrder(activeTab)}
                             className="w-10 h-10 rounded-full items-center justify-center"
                             hitSlop={8}
                             style={{
-                                backgroundColor: PRIMARY,
+                                backgroundColor:
+                                    tintColor === "#ffffff"
+                                        ? "rgba(255,255,255,0.18)"
+                                        : "#EEF2FF",
                             }}
                             accessibilityLabel={`Sort ${activeTab} ${
                                 sortOrder[activeTab] === "asc"
@@ -1028,19 +1055,22 @@ export default function ChannelResourcesScreen() {
                                     : "ascending"
                             }`}
                         >
-                            <ArrowUpDown size={20} color="white" />
+                            <ArrowUpDown
+                                size={20}
+                                color={
+                                    tintColor === "#ffffff" ? "#fff" : PRIMARY
+                                }
+                            />
                         </Pressable>
                         {activeTab === "resources" ? (
                             <Pressable
                                 onPress={() => setChooser(true)}
                                 accessibilityLabel="Upload files"
-                                className="w-10 h-10 items-center justify-center"
+                                className="w-10 h-10 rounded-full items-center justify-center"
                                 hitSlop={8}
+                                style={{ backgroundColor: PRIMARY }}
                             >
-                                <CloudUpload
-                                    size={20}
-                                    color={tintColor ?? "#111827"}
-                                />
+                                <CloudUpload size={20} color="#ffffff" />
                             </Pressable>
                         ) : (
                             <Pressable
@@ -1049,18 +1079,63 @@ export default function ChannelResourcesScreen() {
                                         ? openLinkModal()
                                         : openNoteModal()
                                 }
-                                className="w-10 h-10 items-center justify-center"
+                                className="w-10 h-10 rounded-full items-center justify-center"
                                 hitSlop={8}
+                                style={{ backgroundColor: PRIMARY }}
                             >
-                                <Plus
-                                    size={22}
-                                    color={tintColor ?? "#111827"}
-                                />
+                                <Plus size={22} color="#ffffff" />
                             </Pressable>
                         )}
                     </View>
                 )}
             />
+
+            <View className="px-5 pt-4 pb-3">
+                <View
+                    className="rounded-[28px] bg-primary p-5 overflow-hidden"
+                    style={{
+                        shadowColor: "#111827",
+                        shadowOpacity: 0.12,
+                        shadowRadius: 18,
+                        shadowOffset: { width: 0, height: 10 },
+                        elevation: 4,
+                    }}
+                >
+                    <Text className="text-white/75 text-xs uppercase tracking-wider font-kumbhBold">
+                        Shared Workspace
+                    </Text>
+                    <Text
+                        className="mt-2 text-2xl text-white font-kumbhBold"
+                        numberOfLines={2}
+                    >
+                        {channelName}
+                    </Text>
+                    <Text
+                        className="mt-3 text-white/85 leading-5 font-kumbh"
+                        numberOfLines={2}
+                    >
+                        Files, links, and notes collected for this channel.
+                    </Text>
+                </View>
+
+                <View className="flex-row gap-3 mt-4">
+                    <SummaryPill
+                        icon={<Files size={16} color={PRIMARY} />}
+                        label="Files"
+                        value={resourceCount}
+                    />
+                    <SummaryPill
+                        icon={<Link2 size={16} color={PRIMARY} />}
+                        label="Links"
+                        value={links.length}
+                    />
+                    <SummaryPill
+                        icon={<StickyNote size={16} color={PRIMARY} />}
+                        label="Notes"
+                        value={notes.length}
+                    />
+                </View>
+            </View>
 
             {/* Swipeable content */}
             <SwipeableTabView
@@ -1075,79 +1150,101 @@ export default function ChannelResourcesScreen() {
                         return (
                             <View className="flex-1">
                                 {loadingInitial ? (
-                                    <View className="px-4 pt-4 flex-row flex-wrap">
+                                    <View className="px-5 pt-4 flex-row flex-wrap justify-between">
                                         <SkeletonCard width={170} />
                                         <SkeletonCard width={170} />
                                         <SkeletonCard width={170} />
                                         <SkeletonCard width={170} />
                                     </View>
                                 ) : sections.length === 0 ? (
-                                    <View className="flex-1 items-center justify-center p-6">
-                                        <Text className="text-gray-500 font-kumbh">
-                                            No resources yet.
-                                        </Text>
+                                    <View className="flex-1 px-5 pt-8">
+                                        <View className="rounded-[28px] bg-white border border-gray-100 px-5 py-10 items-center">
+                                            <View className="h-14 w-14 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-4">
+                                                <CloudUpload
+                                                    size={24}
+                                                    color={PRIMARY}
+                                                />
+                                            </View>
+                                            <Text className="text-gray-950 text-lg font-kumbhBold">
+                                                No resources yet
+                                            </Text>
+                                            <Text className="text-gray-500 text-center mt-2 leading-5 font-kumbh">
+                                                Upload files or save useful
+                                                links for everyone in this
+                                                channel.
+                                            </Text>
 
-                                        {!emptyChooserOpen ? (
-                                            <View className="flex-row gap-3 mt-3">
+                                            {!emptyChooserOpen ? (
                                                 <Pressable
                                                     onPress={() =>
                                                         setEmptyChooserOpen(
                                                             true,
                                                         )
                                                     }
-                                                    className="px-4 py-2 rounded-xl bg-[#4C5FAB]"
+                                                    className="mt-5 px-5 py-3 rounded-2xl bg-[#4C5FAB] flex-row items-center"
                                                 >
-                                                    <Text className="text-white font-kumbhBold">
+                                                    <Plus
+                                                        size={18}
+                                                        color="#ffffff"
+                                                    />
+                                                    <Text className="text-white font-kumbhBold ml-2">
                                                         Add resources
                                                     </Text>
                                                 </Pressable>
-                                            </View>
-                                        ) : (
-                                            <View className="mt-3 w-full max-w-[320px] rounded-2xl border border-gray-200 p-3">
-                                                <Text className="font-kumbhBold mb-2 text-gray-900">
-                                                    Choose action
-                                                </Text>
-                                                <Pressable
-                                                    onPress={() => {
-                                                        setEmptyChooserOpen(
-                                                            false,
-                                                        );
-                                                        setChooser(true);
-                                                    }}
-                                                    className="py-2"
-                                                >
-                                                    <Text className="font-kumbh text-gray-800">
-                                                        Upload files
-                                                        (images/docs)
+                                            ) : (
+                                                <View className="mt-5 w-full rounded-2xl border border-gray-100 bg-[#F7F8FB] p-3">
+                                                    <Text className="font-kumbhBold mb-2 text-gray-900">
+                                                        Choose action
                                                     </Text>
-                                                </Pressable>
-                                                <Pressable
-                                                    onPress={() => {
-                                                        setEmptyChooserOpen(
-                                                            false,
-                                                        );
-                                                        openLinkModal();
-                                                    }}
-                                                    className="py-2"
-                                                >
-                                                    <Text className="font-kumbh text-gray-800">
-                                                        Add a link
-                                                    </Text>
-                                                </Pressable>
-                                                <Pressable
-                                                    onPress={() =>
-                                                        setEmptyChooserOpen(
-                                                            false,
-                                                        )
-                                                    }
-                                                    className="py-2"
-                                                >
-                                                    <Text className="font-kumbh text-gray-500">
-                                                        Cancel
-                                                    </Text>
-                                                </Pressable>
-                                            </View>
-                                        )}
+                                                    <Pressable
+                                                        onPress={() => {
+                                                            setEmptyChooserOpen(
+                                                                false,
+                                                            );
+                                                            setChooser(true);
+                                                        }}
+                                                        className="py-3 px-2 rounded-xl bg-white mb-2 flex-row items-center"
+                                                    >
+                                                        <CloudUpload
+                                                            size={17}
+                                                            color={PRIMARY}
+                                                        />
+                                                        <Text className="font-kumbh text-gray-800 ml-2">
+                                                            Upload files
+                                                        </Text>
+                                                    </Pressable>
+                                                    <Pressable
+                                                        onPress={() => {
+                                                            setEmptyChooserOpen(
+                                                                false,
+                                                            );
+                                                            openLinkModal();
+                                                        }}
+                                                        className="py-3 px-2 rounded-xl bg-white mb-2 flex-row items-center"
+                                                    >
+                                                        <Link2
+                                                            size={17}
+                                                            color={PRIMARY}
+                                                        />
+                                                        <Text className="font-kumbh text-gray-800 ml-2">
+                                                            Add a link
+                                                        </Text>
+                                                    </Pressable>
+                                                    <Pressable
+                                                        onPress={() =>
+                                                            setEmptyChooserOpen(
+                                                                false,
+                                                            )
+                                                        }
+                                                        className="py-2 px-2"
+                                                    >
+                                                        <Text className="font-kumbh text-gray-500 text-center">
+                                                            Cancel
+                                                        </Text>
+                                                    </Pressable>
+                                                </View>
+                                            )}
+                                        </View>
                                     </View>
                                 ) : (
                                     <SectionList
@@ -1157,16 +1254,21 @@ export default function ChannelResourcesScreen() {
                                             ":" +
                                             idx
                                         }
-                                        renderSectionHeader={({
-                                            section: { title },
-                                        }) => (
-                                            <Text className="px-4 py-4 font-kumbhBold text-gray-900">
-                                                {title}
-                                            </Text>
+                                        renderSectionHeader={({ section }) => (
+                                            <View className="px-5 pt-5 pb-3 flex-row items-center justify-between">
+                                                <Text className="font-kumbhBold text-gray-950 text-base">
+                                                    {section.title}
+                                                </Text>
+                                                <View className="rounded-full bg-white border border-gray-100 px-3 py-1">
+                                                    <Text className="text-xs text-gray-600 font-kumbhBold">
+                                                        {section.data.length}
+                                                    </Text>
+                                                </View>
+                                            </View>
                                         )}
                                         renderItem={() => null}
                                         renderSectionFooter={({ section }) => (
-                                            <View className="px-4">
+                                            <View className="px-5">
                                                 <FlatList
                                                     data={section.data}
                                                     numColumns={2}
@@ -1259,12 +1361,13 @@ export default function ChannelResourcesScreen() {
             {activeTab === "resources" && (
                 <Pressable
                     onPress={() => setChooser(true)}
-                    className="absolute right-4 bottom-6 h-14 w-14 rounded-full bg-[#4C5FAB] items-center justify-center"
+                    className="absolute right-5 bottom-6 h-14 w-14 rounded-2xl bg-[#4C5FAB] items-center justify-center"
                     style={{
-                        shadowColor: "#000",
-                        shadowOpacity: 0.25,
-                        shadowRadius: 8,
-                        shadowOffset: { width: 0, height: 4 },
+                        shadowColor: "#111827",
+                        shadowOpacity: 0.2,
+                        shadowRadius: 12,
+                        shadowOffset: { width: 0, height: 6 },
+                        elevation: 5,
                     }}
                     accessibilityLabel="Upload files"
                 >

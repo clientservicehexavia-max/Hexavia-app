@@ -19,10 +19,10 @@ export default function Tile({
             <View className="flex-1 p-4 justify-between">
                 <View className="opacity-90">{icon}</View>
                 <View className="flex-row items-center justify-between">
-                    <Text className="text-white text-3xl font-kumbhBold">
+                    <Text className="text-white text-2xl font-kumbhBold">
                         {title}
                     </Text>
-                    <Text className="text-white text-2xl">↗︎</Text>
+                    <Text className="text-white text-xl">↗︎</Text>
                 </View>
             </View>
         </Pressable>

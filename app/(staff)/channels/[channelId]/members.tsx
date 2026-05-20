@@ -1,9 +1,15 @@
 // app/(staff)/channels/[channelId]/members.tsx
-import * as FileSystem from "expo-file-system/legacy";
-import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Sharing from "expo-sharing";
-import { ChevronLeft, Plus, Share2 } from "lucide-react-native";
+import {
+    CalendarDays,
+    FileText,
+    FolderOpen,
+    Plus,
+    Share2,
+    ShieldCheck,
+    UserMinus,
+    UsersRound,
+} from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -24,14 +30,13 @@ import {
 import { api } from "@/api/axios";
 import OptionSheet from "@/components/common/OptionSheet";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { PRIMARY } from "@/constants/Colors";
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
 import {
     adminAddChannelMember,
     fetchAdminUsers,
 } from "@/redux/admin/admin.thunks";
-import { fetchChannelLinks } from "@/redux/channelLinks/channelLinks.thunks";
 import type { ChannelLink } from "@/redux/channelLinks/channelLinks.types";
-import { fetchChannelNotes } from "@/redux/channelNotes/channelNotes.thunks";
 import type { ChannelNote } from "@/redux/channelNotes/channelNotes.types";
 import { selectChannelById } from "@/redux/channels/channels.selectors";
 import {
@@ -41,7 +46,6 @@ import {
 import type { ChannelResource } from "@/redux/channels/resources.types";
 import { selectUser } from "@/redux/user/user.slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { slugifyFilename } from "@/utils/slugAndCloudinary";
 
 type MemberItem = {
     id: string;
@@ -68,9 +72,94 @@ function initialsFrom(value?: string | null) {
 
 function Chip({ children }: { children: React.ReactNode }) {
     return (
-        <View className="bg-gray-100 rounded-full px-3 py-1 mr-2 mb-2">
-            <Text className="text-xs text-gray-700 font-kumbh">{children}</Text>
+        <View className="bg-white/20 rounded-full px-3 py-1.5 mr-2 mb-2 border border-white/20">
+            <Text className="text-xs text-white font-kumbh">{children}</Text>
         </View>
+    );
+}
+
+function formatRole(role?: string | null) {
+    const value = String(role || "member").trim();
+    if (!value) return "Member";
+    return value
+        .split(/[-_\s]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
+
+function StatTile({
+    icon,
+    label,
+    value,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    value: string;
+}) {
+    return (
+        <View className="flex-1 min-w-[96px] rounded-2xl bg-white border border-gray-100 px-4 py-3">
+            <View className="flex-row items-center">
+                <View className="h-8 w-8 rounded-full bg-[#EEF2FF] items-center justify-center mr-2">
+                    {icon}
+                </View>
+                <Text
+                    className="text-xs text-gray-500 font-kumbh flex-1"
+                    numberOfLines={1}
+                >
+                    {label}
+                </Text>
+            </View>
+            <Text
+                className="mt-3 text-lg text-gray-950 font-kumbhBold"
+                numberOfLines={1}
+            >
+                {value}
+            </Text>
+        </View>
+    );
+}
+
+function ActionButton({
+    label,
+    icon,
+    onPress,
+    variant = "light",
+    disabled,
+}: {
+    label: string;
+    icon: React.ReactNode;
+    onPress: () => void;
+    variant?: "primary" | "light";
+    disabled?: boolean;
+}) {
+    const isPrimary = variant === "primary";
+    return (
+        <Pressable
+            onPress={onPress}
+            disabled={disabled}
+            className={`flex-1 min-h-[48px] rounded-2xl px-4 flex-row items-center justify-center ${
+                isPrimary ? "bg-primary" : "bg-white border border-gray-100"
+            }`}
+            style={{
+                opacity: disabled ? 0.72 : 1,
+                shadowColor: "#111827",
+                shadowOpacity: isPrimary ? 0.12 : 0.05,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 6 },
+                elevation: isPrimary ? 3 : 1,
+            }}
+        >
+            {icon}
+            <Text
+                className={`ml-2 text-sm font-kumbhBold ${
+                    isPrimary ? "text-white" : "text-gray-900"
+                }`}
+                numberOfLines={1}
+            >
+                {label}
+            </Text>
+        </Pressable>
     );
 }
 
@@ -743,8 +832,13 @@ function RowMember({
     canRemove?: boolean;
     isRemoving?: boolean;
 }) {
+    const displayRole = formatRole(item.role);
+    const isAdminLike = ["admin", "super-admin", "owner"].includes(
+        String(item.role || "").toLowerCase(),
+    );
+
     return (
-        <View className="flex-row items-center px-5 py-3 border-b border-gray-100">
+        <View className="mx-5 mb-3 rounded-3xl bg-white border border-gray-100 px-4 py-3 flex-row items-center">
             <Pressable
                 onPress={onPress}
                 className="flex-row items-center flex-1 active:bg-gray-50"
@@ -753,24 +847,34 @@ function RowMember({
                 {item.avatar ? (
                     <Image
                         source={{ uri: item.avatar }}
-                        className="w-10 h-10 rounded-full"
+                        className="w-12 h-12 rounded-2xl"
                     />
                 ) : (
-                    <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center">
-                        <Text className="text-gray-700 font-semibold font-kumbh">
+                    <View className="w-12 h-12 rounded-2xl bg-[#EEF2FF] items-center justify-center">
+                        <Text className="text-[#4C5FAB] font-kumbhBold">
                             {initialsFrom(item.username)}
                         </Text>
                     </View>
                 )}
                 <View className="ml-3 flex-1">
-                    <Text className="text-base font-medium text-gray-900 font-kumbh">
+                    <Text
+                        className="text-base text-gray-950 font-kumbhBold"
+                        numberOfLines={1}
+                    >
                         {item.username || "Member"}
                     </Text>
-                    {!!item.role && (
+                    <View className="mt-1 flex-row items-center">
+                        {isAdminLike && (
+                            <ShieldCheck
+                                size={13}
+                                color={PRIMARY}
+                                style={{ marginRight: 4 }}
+                            />
+                        )}
                         <Text className="text-xs text-gray-500 font-kumbh">
-                            {item.role}
+                            {displayRole}
                         </Text>
-                    )}
+                    </View>
                 </View>
             </Pressable>
 
@@ -778,14 +882,14 @@ function RowMember({
                 <Pressable
                     onPress={onRemove}
                     disabled={isRemoving}
-                    className="bg-red-50 px-3 py-2 rounded-full active:bg-red-100"
+                    className="h-10 w-10 bg-red-50 rounded-full items-center justify-center active:bg-red-100"
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${item.username || "member"}`}
                 >
                     {isRemoving ? (
                         <ActivityIndicator size="small" color="#dc2626" />
                     ) : (
-                        <Text className="text-xs font-semibold text-red-600 font-kumbh">
-                            Remove
-                        </Text>
+                        <UserMinus size={17} color="#dc2626" />
                     )}
                 </Pressable>
             )}
@@ -802,12 +906,6 @@ export default function ChannelInfoScreen() {
     const router = useRouter();
 
     const me = useAppSelector(selectUser);
-    const path =
-        me?.role === "client"
-            ? "/(client)/(tabs)/chats/[channelId]"
-            : me?.role === "staff"
-              ? "/(staff)/(tabs)/chats/[channelId]"
-              : "/(admin)/chats/[channelId]";
 
     const channelSel = useMemo(
         () => selectChannelById(channelId ?? ""),
@@ -980,7 +1078,7 @@ export default function ChannelInfoScreen() {
         }
 
         return Array.from(byId.values());
-    }, [channel, me?._id]);
+    }, [channel, me]);
 
     const availableAddUsers = useMemo(() => {
         const memberIds = new Set(members.map((m) => m.id));
@@ -1042,6 +1140,15 @@ export default function ChannelInfoScreen() {
     );
 
     const isLoading = !channel && !!channelId;
+    const ownerName =
+        typeof (channel as any)?.createdBy === "string"
+            ? (channel as any).createdBy
+            : (channel as any)?.createdBy?.username ||
+              (channel as any)?.createdBy?.name ||
+              "Unknown";
+    const createdDate = (channel as any)?.createdAt
+        ? new Date((channel as any).createdAt).toLocaleDateString()
+        : "—";
 
     const handleGenerateReport = useCallback(async () => {
         if (!channelId || !channel) return;
@@ -1050,48 +1157,27 @@ export default function ChannelInfoScreen() {
         try {
             const endpointResponse = await api.post<SummaryPdfResponse>(
                 `/channel/${channelId}/summary-pdf`,
+                {},
+                { timeout: 120_000 }, // 2 minutes for report generation (includes AI summary + PDF)
             );
-            const rawPdfUrl = endpointResponse.data?.pdfUrl;
-            if (!rawPdfUrl) {
+            if (!endpointResponse.data?.success) {
                 throw new Error(
                     endpointResponse.data?.message ||
-                        "Summary PDF URL was not returned.",
+                        "Summary generation failed.",
                 );
             }
 
-            const pdfUrl = resolvePdfUrl(rawPdfUrl);
-            if (Platform.OS === "web") {
-                if (
-                    typeof globalThis !== "undefined" &&
-                    (globalThis as any).open
-                ) {
-                    (globalThis as any).open(
-                        pdfUrl,
-                        "_blank",
-                        "noopener,noreferrer",
-                    );
-                }
-                return;
-            }
-
-            const namedUri = `${FileSystem.cacheDirectory}${endpointResponse.data?.filename ?? "summary.pdf"}`;
-            await FileSystem.downloadAsync(pdfUrl, namedUri);
-
-            const canShare = await Sharing.isAvailableAsync();
-            if (!canShare) {
-                Alert.alert(
-                    "Share unavailable",
-                    "Sharing is not available on this device.",
-                );
-                return;
-            }
-            await Sharing.shareAsync(namedUri, {
-                UTI: "com.adobe.pdf",
-                mimeType: "application/pdf",
-                dialogTitle: `Export Report - ${channel.name || "Channel"}`,
+            router.push({
+                pathname: "/(admin)/report/[channelId]" as any,
+                params: {
+                    channelId,
+                    title: `Export Report - ${channel.name || "Channel"}`,
+                },
             });
+            return;
         } catch (endpointErr: any) {
-            // fallback: keep existing local generation if summary endpoint fails
+            // Local HTML fallback commented out — navigate failure is reported.
+            /*
             try {
                 const latestChannel = await dispatch(
                     fetchChannelById(channelId),
@@ -1133,131 +1219,126 @@ export default function ChannelInfoScreen() {
 
                 if (Platform.OS === "web") {
                     await Print.printAsync({ html });
-                    return;
-                }
-
-                const file = await Print.printToFileAsync({ html });
-                const safeName = slugifyFilename(
-                    latestChannel.name || "Project",
-                );
-                const stamp = new Date().toISOString().slice(0, 10);
-                const namedUri = `${FileSystem.cacheDirectory}${safeName}_${stamp}.pdf`;
-                try {
-                    await FileSystem.moveAsync({
-                        from: file.uri,
-                        to: namedUri,
-                    });
-                } catch {
-                    // keep original uri if rename fails
-                }
-                const canShare = await Sharing.isAvailableAsync();
-                if (!canShare) {
-                    Alert.alert(
-                        "Share unavailable",
-                        "Sharing is not available on this device.",
+                } else {
+                    const file = await Print.printToFileAsync({ html });
+                    const safeName = slugifyFilename(
+                        latestChannel.name || "Project",
                     );
-                    return;
+                    const stamp = new Date().toISOString().slice(0, 10);
+                    const namedUri = `${FileSystem.cacheDirectory}${safeName}_${stamp}.pdf`;
+                    try {
+                        await FileSystem.moveAsync({ from: file.uri, to: namedUri });
+                    } catch {
+                        // keep original uri if rename fails
+                    }
+                    const canShare = await Sharing.isAvailableAsync();
+                    if (canShare) {
+                        await Sharing.shareAsync(
+                            (await FileSystem.getInfoAsync(namedUri)).exists
+                                ? namedUri
+                                : file.uri,
+                            {
+                                UTI: "com.adobe.pdf",
+                                mimeType: "application/pdf",
+                                dialogTitle: `Export Report - ${latestChannel.name || "Channel"}`,
+                            },
+                        );
+                    }
                 }
-                await Sharing.shareAsync(
-                    (await FileSystem.getInfoAsync(namedUri)).exists
-                        ? namedUri
-                        : file.uri,
-                    {
-                        UTI: "com.adobe.pdf",
-                        mimeType: "application/pdf",
-                        dialogTitle: `Export Report - ${latestChannel.name || "Channel"}`,
-                    },
-                );
             } catch (fallbackErr: any) {
-                Alert.alert(
-                    "Generate report failed",
-                    endpointErr?.message ||
-                        fallbackErr?.message ||
-                        "Please try again.",
-                );
+                // fallback suppressed during refactor
             }
+            */
+
+            Alert.alert(
+                "Generate report failed",
+                endpointErr?.message ||
+                    endpointErr?.response?.data?.message ||
+                    String(endpointErr) ||
+                    "Please try again.",
+            );
         } finally {
             setIsGeneratingReport(false);
         }
-    }, [channelId, channel, dispatch, members]);
-
-    const HeaderBar = (
-        <View
-            style={{ paddingTop: insets.top }}
-            className="bg-white border-b border-gray-100"
-        >
-            <View className="px-4 pb-3 pt-2">
-                <View className="flex-row items-center justify-between">
-                    <Pressable
-                        onPress={() =>
-                            router.push({
-                                pathname: path as any,
-                                params: { channelId },
-                            })
-                        }
-                        accessibilityRole="button"
-                        accessibilityLabel="Go back"
-                        hitSlop={12}
-                        className="h-10 w-10 rounded-full items-center justify-center bg-gray-100 mr-2"
-                    >
-                        <ChevronLeft size={22} color="#111827" />
-                    </Pressable>
-                    <Text className="text-2xl font-semibold font-kumbh text-center">
-                        Channel Info
-                    </Text>
-                    <View className="w-10" />
-                </View>
-            </View>
-        </View>
-    );
+    }, [channelId, channel, router]);
 
     const header = (
-        <View className="px-5 pt-4 pb-3">
-            <Text className="text-2xl font-semibold text-gray-900 font-kumbh">
-                {channel?.name ?? "Channel"}
-            </Text>
+        <View className="px-5 pt-4 pb-5">
+            <View
+                className="rounded-[28px] bg-primary p-5 overflow-hidden"
+                style={{
+                    shadowColor: "#111827",
+                    shadowOpacity: 0.14,
+                    shadowRadius: 18,
+                    shadowOffset: { width: 0, height: 10 },
+                    elevation: 4,
+                }}
+            >
+                <View className="flex-row items-start justify-between">
+                    <View className="flex-1 pr-4">
+                        <Text className="text-white/75 text-xs uppercase tracking-wider font-kumbhBold">
+                            Project Channel
+                        </Text>
+                        <Text
+                            className="mt-2 text-2xl text-white font-kumbhBold"
+                            numberOfLines={2}
+                        >
+                            {channel?.name ?? "Channel"}
+                        </Text>
+                    </View>
 
-            {!!(channel as any)?.code && (
-                <Text className="text-gray-600 mt-1 font-kumbh">
-                    Code: {(channel as any).code}
-                </Text>
-            )}
+                    {!!(channel as any)?.code && (
+                        <View className="rounded-2xl bg-white/15 px-3 py-2 border border-white/15">
+                            <Text className="text-white/70 text-[10px] uppercase font-kumbhBold">
+                                Code
+                            </Text>
+                            <Text className="text-white text-sm font-kumbhBold">
+                                {(channel as any).code}
+                            </Text>
+                        </View>
+                    )}
+                </View>
 
-            {!!channel?.description && (
-                <Text className="text-gray-700 mt-2 font-kumbh">
-                    {channel.description}
-                </Text>
-            )}
-
-            <View className="flex-row flex-wrap mt-3">
-                <Chip>
-                    {members.length} member{members.length === 1 ? "" : "s"}
-                </Chip>
-
-                {!!(channel as any)?.createdAt && (
-                    <Chip>
-                        Created{" "}
-                        {new Date(
-                            (channel as any).createdAt,
-                        ).toLocaleDateString()}
-                    </Chip>
+                {!!channel?.description && (
+                    <Text
+                        className="mt-4 text-white/85 leading-5 font-kumbh"
+                        numberOfLines={3}
+                    >
+                        {channel.description}
+                    </Text>
                 )}
 
-                {!!(channel as any)?.createdBy && (
+                <View className="flex-row flex-wrap mt-5">
                     <Chip>
-                        Owner:{" "}
-                        {typeof (channel as any).createdBy === "string"
-                            ? (channel as any).createdBy
-                            : (channel as any).createdBy?.username ||
-                              (channel as any).createdBy?.name ||
-                              "Unknown"}
+                        {members.length} member{members.length === 1 ? "" : "s"}
                     </Chip>
-                )}
+                    {(channel as any)?.createdAt ? (
+                        <Chip>Created {createdDate}</Chip>
+                    ) : null}
+                    {(channel as any)?.createdBy ? (
+                        <Chip>Owner: {ownerName}</Chip>
+                    ) : null}
+                </View>
             </View>
 
-            <View className="flex-row mt-4">
-                <Pressable
-                    className="bg-primary px-4 py-3 rounded-2xl mr-3"
+            <View className="flex-row gap-3 mt-4">
+                <StatTile
+                    icon={<UsersRound size={16} color={PRIMARY} />}
+                    label="Members"
+                    value={String(members.length)}
+                />
+                <StatTile
+                    icon={<CalendarDays size={16} color={PRIMARY} />}
+                    label="Created"
+                    value={createdDate}
+                />
+            </View>
+
+            <View className="flex-row gap-3 mt-4">
+                <ActionButton
+                    label="Resources"
+                    icon={<FolderOpen size={18} color="#ffffff" />}
+                    variant="primary"
                     onPress={() =>
                         router.push({
                             pathname:
@@ -1265,14 +1346,11 @@ export default function ChannelInfoScreen() {
                             params: { channelId },
                         })
                     }
-                >
-                    <Text className="text-white font-medium font-kumbh">
-                        Resources
-                    </Text>
-                </Pressable>
+                />
 
-                <Pressable
-                    className="bg-gray-200 px-4 py-3 rounded-2xl"
+                <ActionButton
+                    label="Tasks"
+                    icon={<FileText size={18} color={PRIMARY} />}
                     onPress={() =>
                         router.push({
                             pathname:
@@ -1280,33 +1358,29 @@ export default function ChannelInfoScreen() {
                             params: { channelId },
                         })
                     }
-                >
-                    <Text className="text-gray-900 font-medium font-kumbh">
-                        Tasks
-                    </Text>
-                </Pressable>
+                />
             </View>
-            <View className="mt-3">
-                <Pressable
-                    className="bg-primary px-4 py-3 rounded-2xl flex-row items-center justify-center"
+            <View className="mt-3 flex-row">
+                <ActionButton
+                    label={
+                        isGeneratingReport
+                            ? "Generating report..."
+                            : "Generate Report"
+                    }
+                    icon={
+                        isGeneratingReport ? (
+                            <ActivityIndicator size="small" color="#ffffff" />
+                        ) : (
+                            <Share2 size={18} color="#ffffff" />
+                        )
+                    }
+                    variant="primary"
                     disabled={isGeneratingReport}
                     onPress={handleGenerateReport}
-                    style={{ opacity: isGeneratingReport ? 0.7 : 1 }}
-                >
-                    {isGeneratingReport ? (
-                        <ActivityIndicator size="small" color="#ffffff" />
-                    ) : (
-                        <Share2 size={18} color="#ffffff" />
-                    )}
-                    <Text className="text-white font-medium font-kumbh ml-2">
-                        {isGeneratingReport
-                            ? "Generating report..."
-                            : "Generate Report"}
-                    </Text>
-                </Pressable>
+                />
             </View>
 
-            <Text className="mt-6 mb-2 text-sm font-semibold text-gray-800 font-kumbh">
+            <Text className="text-lg text-gray-950 font-kumbhBold mt-5">
                 Members
             </Text>
         </View>
@@ -1316,7 +1390,7 @@ export default function ChannelInfoScreen() {
         return (
             <View
                 style={{ paddingTop: insets.top }}
-                className="flex-1 bg-white items-center justify-center"
+                className="flex-1 bg-[#F7F8FB] items-center justify-center"
             >
                 <ActivityIndicator />
                 <Text className="text-gray-600 mt-3 font-kumbh">
@@ -1332,10 +1406,8 @@ export default function ChannelInfoScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F7F8FB]"
         >
-            {/* <StatusBar style="dark" /> */}
-            {/* {HeaderBar} */}
             <PlatformAdaptiveHeader title="Channel Info" />
 
             <FlatList
@@ -1371,9 +1443,15 @@ export default function ChannelInfoScreen() {
                 }
                 contentContainerStyle={{ paddingBottom: 24 }}
                 ListEmptyComponent={
-                    <View className="px-5 py-10">
-                        <Text className="text-gray-500 font-kumbh">
+                    <View className="mx-5 mt-2 rounded-3xl bg-white border border-gray-100 px-5 py-12 items-center">
+                        <View className="h-12 w-12 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-3">
+                            <UsersRound size={22} color={PRIMARY} />
+                        </View>
+                        <Text className="text-gray-950 font-kumbhBold">
                             No members found.
+                        </Text>
+                        <Text className="text-gray-500 mt-1 text-center font-kumbh">
+                            Added members will appear here.
                         </Text>
                     </View>
                 }

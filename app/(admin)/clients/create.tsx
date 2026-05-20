@@ -263,9 +263,6 @@ export default function CreateClient() {
                     <Pressable
                         onPress={handleSubmit(onSubmit)}
                         disabled={!isValid || loading}
-                        // style={{
-                        //     marginLeft: !isValid || loading ? 8 : 4,
-                        // }}
                         className="w-10 h-10 rounded-full items-center justify-center"
                     >
                         {loading ? (
