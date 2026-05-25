@@ -33,12 +33,6 @@ type ManualReceivableSource =
 type AttendanceType = "physical" | "virtual";
 type TableType = "individual" | "corporate";
 
-function toISO(dmy: string) {
-    const m = dmy.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!m) return dmy;
-    const [_, dd, mm, yyyy] = m;
-    return `${yyyy}-${mm}-${dd}`;
-}
 function fmtDMY(d: Date) {
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -70,21 +64,22 @@ export default function ReceivableForm() {
     const [pickerDate, setPickerDate] = useState<Date>(new Date());
 
     useEffect(() => {
-        if (isEditing && currentClient) {
-            setAmount(String(currentClient.payableAmount ?? 0));
-            setDesc(currentClient.description || "");
-            setClientName(String(currentClient.name || ""));
-            setCompanyName(String(currentClient.projectName || ""));
-            setSource(
-                (currentClient.engagement as ManualReceivableSource) || "",
-            );
-            setTableType("");
-            setAttendance("");
+        if (!isEditing || !clientId || !currentClient) return;
 
-            const recordDate = new Date(currentClient.createdAt || Date.now());
-            setDate(fmtDMY(recordDate));
-        }
-    }, [isEditing, currentClient]);
+        const currentClientId = String(currentClient._id || "");
+        if (currentClientId !== String(clientId)) return;
+
+        setAmount(String(currentClient.payableAmount ?? 0));
+        setDesc(currentClient.description || "");
+        setClientName(String(currentClient.name || ""));
+        setCompanyName(String(currentClient.projectName || ""));
+        setSource((currentClient.engagement as ManualReceivableSource) || "");
+        setTableType("");
+        setAttendance("");
+
+        const recordDate = new Date(currentClient.createdAt || Date.now());
+        setDate(fmtDMY(recordDate));
+    }, [isEditing, clientId, currentClient]);
 
     useEffect(() => {
         if (!clientId) return;
@@ -97,9 +92,6 @@ export default function ReceivableForm() {
         else setPickerDate(new Date());
         setShowPicker(true);
     };
-
-    const normalizedAttendance =
-        source === "Inner Circle" ? "virtual" : attendance;
 
     const onSave = async () => {
         const amt = Number(String(amount).replace(/[^\d.]/g, ""));
@@ -191,10 +183,12 @@ export default function ReceivableForm() {
                     keyboardShouldPersistTaps="handled"
                 >
                     <Text className="android:text-xl ios:text-2xl font-kumbhBold text-[#111827]">
-                        Record Receivable
+                        {isEditing ? "Edit Receivable" : "Record Receivable"}
                     </Text>
                     <Text className="text-[14px] text-gray-500 font-kumbh mb-6">
-                        Add a manual receivable for an external client
+                        {isEditing
+                            ? "Update this external receivable"
+                            : "Add a manual receivable for an external client"}
                     </Text>
 
                     {/* Amount + Date */}
@@ -430,7 +424,9 @@ export default function ReceivableForm() {
                         )}
                     >
                         <Text className="text-white font-kumbhBold">
-                            {"Save Receivable"}
+                            {isEditing
+                                ? "Update Receivable"
+                                : "Save Receivable"}
                         </Text>
                     </Pressable>
                 </ScrollView>

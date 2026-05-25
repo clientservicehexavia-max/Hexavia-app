@@ -85,6 +85,10 @@ function normalizeClientStatus(status?: string) {
 
 export default function ClientsIndex() {
     const clients = useAppSelector(selectAllClients);
+    const displayClients = useMemo(
+        () => clients.filter((client) => !client?.isExternal),
+        [clients],
+    );
     // ...existing code...
     // Normalize engagement values: trim, lowercase, remove punctuation, collapse spaces, etc.
     function normalizeEngagement(val: string): string {
@@ -99,7 +103,7 @@ export default function ClientsIndex() {
 
     const dynamicEngagementOpts = useMemo(() => {
         const map = new Map<string, string>();
-        clients.forEach((c) => {
+        displayClients.forEach((c) => {
             if (c.engagement) {
                 const norm = normalizeEngagement(c.engagement);
                 if (norm && !map.has(norm)) {
@@ -109,7 +113,7 @@ export default function ClientsIndex() {
         });
         // Prefer the first original value for each normalized key
         return Array.from(map.values()).sort();
-    }, [clients]);
+    }, [displayClients]);
     const router = useRouter();
     const dispatch = useAppDispatch();
     const isIOS = Platform.OS === "ios";
@@ -201,7 +205,7 @@ export default function ClientsIndex() {
     const list = useMemo(() => {
         const since = getSinceDate(range);
 
-        let base = clients.filter((c: any) => {
+        let base = displayClients.filter((c: any) => {
             const dt = getClientDate(c);
             if (!dt) return true;
             return dt >= since;
@@ -298,7 +302,7 @@ export default function ClientsIndex() {
                 .includes(q),
         );
     }, [
-        clients,
+        displayClients,
         debouncedQuery,
         filters.engagement,
         filters.industry,

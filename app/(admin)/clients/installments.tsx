@@ -3,7 +3,7 @@ import clsx from "clsx";
 import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { Check, Plus, Printer, Trash2 } from "lucide-react-native";
+import { Check, Edit2, Plus, Printer, Trash2 } from "lucide-react-native";
 import React from "react";
 import {
     ActivityIndicator,
@@ -27,7 +27,11 @@ import {
     selectClientDetailLoading,
     selectClientFilters,
 } from "@/redux/client/client.selectors";
-import { fetchClientById, fetchClients } from "@/redux/client/client.thunks";
+import {
+    deleteClient,
+    fetchClientById,
+    fetchClients,
+} from "@/redux/client/client.thunks";
 import {
     selectAdding,
     selectAmountPaid,
@@ -891,6 +895,7 @@ export default function ClientInstallments() {
 
     const headerSaveDisabled =
         adding || isSaving || loadingClient || !hasChangesToSave;
+    const isExternalReceivable = Boolean((client as any)?.isExternal);
     const isIOS = Platform.OS === "ios";
 
     const onHeaderBackPress = React.useCallback(() => {
@@ -900,6 +905,50 @@ export default function ClientInstallments() {
         }
         router.replace("/(admin)/finance");
     }, [router]);
+
+    const openReceivableEditor = React.useCallback(() => {
+        if (!clientId) {
+            showError("Client not ready yet.");
+            return;
+        }
+
+        router.push({
+            pathname: "/(admin)/finance/receivable",
+            params: { clientId },
+        });
+    }, [clientId, router]);
+
+    const handleDeleteExternalReceivable = React.useCallback(() => {
+        if (!clientId) {
+            showError("Client not ready yet.");
+            return;
+        }
+
+        Alert.alert(
+            "Delete receivable",
+            "This will delete this external receivable and its payment history.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await dispatch(deleteClient(clientId)).unwrap();
+                            await dispatch(fetchClients(clientFilters));
+                            showSuccess("External receivable deleted.");
+                            router.replace("/(admin)/finance");
+                        } catch (e: any) {
+                            showError(
+                                e?.message ||
+                                    "Failed to delete external receivable",
+                            );
+                        }
+                    },
+                },
+            ],
+        );
+    }, [clientId, clientFilters, dispatch, router]);
 
     return (
         <SafeAreaView
@@ -1157,6 +1206,37 @@ export default function ClientInstallments() {
                         </Pressable>
                     </View>
                 </ScrollView>
+                {isExternalReceivable ? (
+                    <View className="mt-4 flex-row px-5" style={{ gap: 12 }}>
+                        <Pressable
+                            onPress={openReceivableEditor}
+                            disabled={loadingClient}
+                            className={clsx(
+                                "flex-1 h-12 rounded-2xl border border-[#4C5FAB] items-center justify-center flex-row active:opacity-90",
+                                loadingClient && "opacity-60",
+                            )}
+                        >
+                            <Edit2 size={18} color="#4C5FAB" />
+                            <Text className="ml-2 text-[#4C5FAB] font-kumbhBold text-center">
+                                Edit Receivable
+                            </Text>
+                        </Pressable>
+
+                        <Pressable
+                            onPress={handleDeleteExternalReceivable}
+                            disabled={loadingClient || isSaving}
+                            className={clsx(
+                                "flex-1 h-12 rounded-2xl bg-red-50 items-center justify-center flex-row active:opacity-90",
+                                (loadingClient || isSaving) && "opacity-60",
+                            )}
+                        >
+                            <Trash2 size={18} color="#DC2626" />
+                            <Text className="ml-2 text-red-600 font-kumbhBold text-center">
+                                Delete
+                            </Text>
+                        </Pressable>
+                    </View>
+                ) : null}
             </KeyboardAvoidingView>
 
             {/* Date picker */}
