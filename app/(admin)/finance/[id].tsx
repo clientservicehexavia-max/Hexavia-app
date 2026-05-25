@@ -60,10 +60,7 @@ export default function FinanceDetail() {
     const deletingId = useAppSelector(selectFinanceDeletingId);
 
     // Find the finance record by id
-    const row = useMemo(
-        () => records.find((r) => r._id === id),
-        [records, id],
-    );
+    const row = useMemo(() => records.find((r) => r._id === id), [records, id]);
 
     // If record not present, fetch the list with current filters
     useEffect(() => {

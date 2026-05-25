@@ -17,7 +17,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { showError, showSuccess } from "@/components/ui/toast";
 import { selectCurrentClient } from "@/redux/client/client.selectors";
-import { createClient, fetchClientById, updateClient } from "@/redux/client/client.thunks";
+import {
+    createClient,
+    fetchClientById,
+    updateClient,
+} from "@/redux/client/client.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 type ManualReceivableSource =
@@ -71,7 +75,9 @@ export default function ReceivableForm() {
             setDesc(currentClient.description || "");
             setClientName(String(currentClient.name || ""));
             setCompanyName(String(currentClient.projectName || ""));
-            setSource((currentClient.engagement as ManualReceivableSource) || "");
+            setSource(
+                (currentClient.engagement as ManualReceivableSource) || "",
+            );
             setTableType("");
             setAttendance("");
 
@@ -92,7 +98,8 @@ export default function ReceivableForm() {
         setShowPicker(true);
     };
 
-    const normalizedAttendance = source === "Inner Circle" ? "virtual" : attendance;
+    const normalizedAttendance =
+        source === "Inner Circle" ? "virtual" : attendance;
 
     const onSave = async () => {
         const amt = Number(String(amount).replace(/[^\d.]/g, ""));
@@ -103,8 +110,10 @@ export default function ReceivableForm() {
         if (!clientName.trim()) return showError("Enter the client name.");
         if (!companyName.trim()) return showError("Enter the company name.");
         if (!source) return showError("Select a receivable source.");
-        if (source === "BWE" && !tableType) return showError("Select a BWE table type.");
-        if (source === "BWE" && !attendance) return showError("Select a BWE attendance type.");
+        if (source === "BWE" && !tableType)
+            return showError("Select a BWE table type.");
+        if (source === "BWE" && !attendance)
+            return showError("Select a BWE attendance type.");
 
         try {
             if (isEditing && clientId) {
@@ -165,24 +174,35 @@ export default function ReceivableForm() {
             className="flex-1 bg-white"
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
         >
-            <PlatformAdaptiveHeader title={isEditing ? "Edit Receivable" : "Record Receivable"} />
+            <PlatformAdaptiveHeader
+                title={isEditing ? "Edit Receivable" : "Record Receivable"}
+            />
 
             <KeyboardAvoidingView
                 className="flex-1"
-                behavior={Platform.select({ ios: "padding", android: "height" })}
+                behavior={Platform.select({
+                    ios: "padding",
+                    android: "height",
+                })}
             >
                 <ScrollView
                     className="flex-1"
                     contentContainerClassName="px-5 pb-10 pt-2"
                     keyboardShouldPersistTaps="handled"
                 >
-                    <Text className="android:text-xl ios:text-2xl font-kumbhBold text-[#111827]">Record Receivable</Text>
-                    <Text className="text-[14px] text-gray-500 font-kumbh mb-6">Add a manual receivable for an external client</Text>
+                    <Text className="android:text-xl ios:text-2xl font-kumbhBold text-[#111827]">
+                        Record Receivable
+                    </Text>
+                    <Text className="text-[14px] text-gray-500 font-kumbh mb-6">
+                        Add a manual receivable for an external client
+                    </Text>
 
                     {/* Amount + Date */}
                     <View className="flex-row gap-3">
                         <View className="flex-1">
-                            <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">Amount</Text>
+                            <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                                Amount
+                            </Text>
                             <View className="rounded-xl bg-gray-100 px-4 ios:py-4">
                                 <TextInput
                                     value={amount}
@@ -196,19 +216,25 @@ export default function ReceivableForm() {
                         </View>
 
                         <View className="flex-1">
-                            <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">Date</Text>
+                            <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                                Date
+                            </Text>
                             <Pressable
                                 onPress={openPicker}
                                 className="rounded-xl bg-gray-100 px-4 ios:py-3.5 android:py-[10px] flex-row items-center justify-between"
                             >
-                                <Text className="font-kumbh text-[16px] text-[#111827]">{date || "DD/MM/YYYY"}</Text>
+                                <Text className="font-kumbh text-[16px] text-[#111827]">
+                                    {date || "DD/MM/YYYY"}
+                                </Text>
                                 <Calendar size={18} color="#111827" />
                             </Pressable>
                         </View>
                     </View>
 
                     <View className="mt-5">
-                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">Client Name</Text>
+                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                            Client Name
+                        </Text>
                         <View className="rounded-xl bg-gray-100 px-4 py-3">
                             <TextInput
                                 value={clientName}
@@ -221,7 +247,9 @@ export default function ReceivableForm() {
                     </View>
 
                     <View className="mt-5">
-                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">Company Name</Text>
+                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                            Company Name
+                        </Text>
                         <View className="rounded-xl bg-gray-100 px-4 py-3">
                             <TextInput
                                 value={companyName}
@@ -234,23 +262,45 @@ export default function ReceivableForm() {
                     </View>
 
                     <View className="mt-5">
-                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">Source</Text>
+                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                            Source
+                        </Text>
                         <View className="flex-row flex-wrap gap-2">
-                            {["BWE", "Inner Circle", "Consulting", "Partnerships", "Retreat"].map((item) => {
+                            {[
+                                "BWE",
+                                "Inner Circle",
+                                "Consulting",
+                                "Partnerships",
+                                "Retreat",
+                            ].map((item) => {
                                 const active = source === item;
                                 return (
                                     <Pressable
                                         key={item}
                                         onPress={() => {
-                                            setSource(item as ManualReceivableSource);
-                                            if (item === "Inner Circle") setAttendance("virtual");
+                                            setSource(
+                                                item as ManualReceivableSource,
+                                            );
+                                            if (item === "Inner Circle")
+                                                setAttendance("virtual");
                                         }}
                                         className={clsx(
                                             "px-4 py-2 rounded-full border",
-                                            active ? "bg-[#4C5FAB] border-[#4C5FAB]" : "bg-gray-100 border-gray-200",
+                                            active
+                                                ? "bg-[#4C5FAB] border-[#4C5FAB]"
+                                                : "bg-gray-100 border-gray-200",
                                         )}
                                     >
-                                        <Text className={clsx("font-kumbhBold text-[13px]", active ? "text-white" : "text-[#111827]")}>{item}</Text>
+                                        <Text
+                                            className={clsx(
+                                                "font-kumbhBold text-[13px]",
+                                                active
+                                                    ? "text-white"
+                                                    : "text-[#111827]",
+                                            )}
+                                        >
+                                            {item}
+                                        </Text>
                                     </Pressable>
                                 );
                             })}
@@ -260,20 +310,40 @@ export default function ReceivableForm() {
                     {source === "BWE" ? (
                         <View className="flex-row gap-3 mt-5">
                             <View className="flex-1">
-                                <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">Table Type</Text>
+                                <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                                    Table Type
+                                </Text>
                                 <View className="flex-row gap-2">
-                                    {(["individual", "corporate"] as TableType[]).map((item) => {
+                                    {(
+                                        [
+                                            "individual",
+                                            "corporate",
+                                        ] as TableType[]
+                                    ).map((item) => {
                                         const active = tableType === item;
                                         return (
                                             <Pressable
                                                 key={item}
-                                                onPress={() => setTableType(item)}
+                                                onPress={() =>
+                                                    setTableType(item)
+                                                }
                                                 className={clsx(
                                                     "flex-1 h-11 rounded-xl items-center justify-center",
-                                                    active ? "bg-[#4C5FAB]" : "bg-gray-100",
+                                                    active
+                                                        ? "bg-[#4C5FAB]"
+                                                        : "bg-gray-100",
                                                 )}
                                             >
-                                                <Text className={clsx("font-kumbhBold", active ? "text-white" : "text-[#111827]")}>{item}</Text>
+                                                <Text
+                                                    className={clsx(
+                                                        "font-kumbhBold",
+                                                        active
+                                                            ? "text-white"
+                                                            : "text-[#111827]",
+                                                    )}
+                                                >
+                                                    {item}
+                                                </Text>
                                             </Pressable>
                                         );
                                     })}
@@ -281,20 +351,40 @@ export default function ReceivableForm() {
                             </View>
 
                             <View className="flex-1">
-                                <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">Attendance</Text>
+                                <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                                    Attendance
+                                </Text>
                                 <View className="flex-row gap-2">
-                                    {(["physical", "virtual"] as AttendanceType[]).map((item) => {
+                                    {(
+                                        [
+                                            "physical",
+                                            "virtual",
+                                        ] as AttendanceType[]
+                                    ).map((item) => {
                                         const active = attendance === item;
                                         return (
                                             <Pressable
                                                 key={item}
-                                                onPress={() => setAttendance(item)}
+                                                onPress={() =>
+                                                    setAttendance(item)
+                                                }
                                                 className={clsx(
                                                     "flex-1 h-11 rounded-xl items-center justify-center",
-                                                    active ? "bg-[#4C5FAB]" : "bg-gray-100",
+                                                    active
+                                                        ? "bg-[#4C5FAB]"
+                                                        : "bg-gray-100",
                                                 )}
                                             >
-                                                <Text className={clsx("font-kumbhBold", active ? "text-white" : "text-[#111827]")}>{item}</Text>
+                                                <Text
+                                                    className={clsx(
+                                                        "font-kumbhBold",
+                                                        active
+                                                            ? "text-white"
+                                                            : "text-[#111827]",
+                                                    )}
+                                                >
+                                                    {item}
+                                                </Text>
                                             </Pressable>
                                         );
                                     })}
@@ -305,15 +395,21 @@ export default function ReceivableForm() {
 
                     {source === "Inner Circle" ? (
                         <View className="mt-5">
-                            <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">Attendance</Text>
+                            <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                                Attendance
+                            </Text>
                             <View className="rounded-xl bg-gray-100 px-4 py-3">
-                                <Text className="font-kumbh text-[14px] text-[#111827]">virtual</Text>
+                                <Text className="font-kumbh text-[14px] text-[#111827]">
+                                    virtual
+                                </Text>
                             </View>
                         </View>
                     ) : null}
 
                     <View className="mt-5">
-                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">Notes</Text>
+                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                            Notes
+                        </Text>
                         <View className="rounded-xl bg-gray-100 px-4 py-3">
                             <TextInput
                                 value={desc}
@@ -333,7 +429,9 @@ export default function ReceivableForm() {
                             "bg-[#4C5FAB]",
                         )}
                     >
-                        <Text className="text-white font-kumbhBold">{"Save Receivable"}</Text>
+                        <Text className="text-white font-kumbhBold">
+                            {"Save Receivable"}
+                        </Text>
                     </Pressable>
                 </ScrollView>
             </KeyboardAvoidingView>

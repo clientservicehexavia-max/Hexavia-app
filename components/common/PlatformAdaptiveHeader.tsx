@@ -32,7 +32,10 @@ export default function PlatformAdaptiveHeader({
     const headerLeftResolved = React.useMemo(() => {
         if (headerLeft) return headerLeft;
         return ({ tintColor }: { tintColor?: string }) => (
-            <HeaderBackButton tintColor={tintColor} onPress={() => router.back()} />
+            <HeaderBackButton
+                tintColor={tintColor}
+                onPress={() => router.back()}
+            />
         );
     }, [headerLeft, router]);
 
@@ -101,7 +104,15 @@ export default function PlatformAdaptiveHeader({
             headerLeft: headerLeftResolved,
             headerRight: headerRightResolved,
         } as const;
-    }, [isIOS, backgroundColor, multilineTitle, title, headerTitleComponent, headerLeftResolved, headerRightResolved]);
+    }, [
+        isIOS,
+        backgroundColor,
+        multilineTitle,
+        title,
+        headerTitleComponent,
+        headerLeftResolved,
+        headerRightResolved,
+    ]);
 
     return (
         <>
@@ -114,7 +125,11 @@ export default function PlatformAdaptiveHeader({
                     multilineTitle={multilineTitle}
                     onTitlePress={onTitlePress}
                     backgroundColor={backgroundColor}
-                    right={headerRight ? headerRight({ tintColor: "#111827" }) : null}
+                    right={
+                        headerRight
+                            ? headerRight({ tintColor: "#111827" })
+                            : null
+                    }
                 />
             ) : null}
 

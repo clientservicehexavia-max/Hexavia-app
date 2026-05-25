@@ -240,7 +240,7 @@ export default function FinanceForm() {
                                 ? "Saving…"
                                 : isEditing
                                   ? "Update Record"
-                                                                    : "Save Expense"}
+                                  : "Save Expense"}
                         </Text>
                     </Pressable>
                 </ScrollView>

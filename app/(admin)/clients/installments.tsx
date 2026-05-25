@@ -722,7 +722,9 @@ export default function ClientInstallments() {
 
             if (rowsToPrint.length === 0) {
                 if (mode === "receipt") {
-                    showError("There are no paid installments to generate receipts for.");
+                    showError(
+                        "There are no paid installments to generate receipts for.",
+                    );
                     return;
                 }
 
@@ -739,7 +741,9 @@ export default function ClientInstallments() {
                         }),
                     ];
                 } else {
-                    showError("There are no unpaid installments to generate an invoice for.");
+                    showError(
+                        "There are no unpaid installments to generate an invoice for.",
+                    );
                     return;
                 }
             }
@@ -951,7 +955,12 @@ export default function ClientInstallments() {
                                 <Text className="font-kumbhBold text-[#111827] text-[16px]">
                                     {loadingClient ? "Loading…" : name || "—"}
                                 </Text>
-                                <View className={clsx("px-3 py-1 rounded-full", getEngagementBadge(engagement))}>
+                                <View
+                                    className={clsx(
+                                        "px-3 py-1 rounded-full",
+                                        getEngagementBadge(engagement),
+                                    )}
+                                >
                                     <Text className="text-xs font-kumbhBold text-white">
                                         {engagement || "—"}
                                     </Text>
