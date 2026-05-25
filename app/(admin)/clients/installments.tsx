@@ -61,6 +61,18 @@ import * as FileSystem from "expo-file-system/legacy";
 const PRIMARY = "#4C5FAB";
 const BG_INPUT = "#F7F9FC";
 
+const ENGAGEMENT_BADGES: Record<string, string> = {
+    BWE: "bg-amber-500",
+    "Inner Circle": "bg-violet-500",
+    Consulting: "bg-emerald-500",
+    Partnerships: "bg-rose-500",
+    Retreat: "bg-cyan-500",
+};
+
+function getEngagementBadge(e?: string) {
+    return ENGAGEMENT_BADGES[e || ""] || "bg-[#4C5FAB]";
+}
+
 /* ====== Customize these for your brand ====== */
 const COMPANY_NAME = "Hexavia"; // header: "Hexavia Invoice"
 const ACCOUNT_DETAILS = {
@@ -365,7 +377,9 @@ function sumRows(rows: PlanRow[]) {
 export default function ClientInstallments() {
     const router = useRouter();
     const dispatch = useAppDispatch();
-    const params = useLocalSearchParams<{ clientId?: string }>();
+    const params = useLocalSearchParams<{
+        clientId?: string;
+    }>();
     const incomingClientId = params?.clientId ? String(params.clientId) : "";
     const [logoDataUrl, setLogoDataUrl] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
@@ -437,7 +451,7 @@ export default function ClientInstallments() {
         hydratedClientRef.current = null;
         dispatch(setClientId(incomingClientId));
         dispatch(fetchClientById(incomingClientId));
-    }, [incomingClientId]);
+    }, [incomingClientId, dispatch]);
 
     React.useEffect(() => {
         if (!client) return;
@@ -583,7 +597,10 @@ export default function ClientInstallments() {
             dispatch(removeRowAction(idx));
             return;
         }
-        if (!clientId) return;
+        if (!clientId) {
+            showError("Client not ready yet.");
+            return;
+        }
 
         Alert.alert("Delete payment", "Remove this recorded payment?", [
             { text: "Cancel", style: "cancel" },
@@ -701,13 +718,30 @@ export default function ClientInstallments() {
         dialogTitle: string,
     ) => {
         try {
+            let rowsToUse = rowsToPrint;
+
             if (rowsToPrint.length === 0) {
-                showError(
-                    mode === "receipt"
-                        ? "There are no paid installments to generate receipts for."
-                        : "There are no unpaid installments to generate an invoice for.",
-                );
-                return;
+                if (mode === "receipt") {
+                    showError("There are no paid installments to generate receipts for.");
+                    return;
+                }
+
+                // For invoice mode: if there are no unpaid installment rows selected,
+                // but the outstanding remaining is greater than zero, generate an
+                // invoice for the outstanding amount instead of aborting.
+                const outstanding = Number(remaining || 0);
+                if (Number.isFinite(outstanding) && outstanding > 0) {
+                    rowsToUse = [
+                        withLocalRowId({
+                            amount: String(Math.round(outstanding)),
+                            due: fmtDMY(new Date()),
+                            isPaid: false,
+                        }),
+                    ];
+                } else {
+                    showError("There are no unpaid installments to generate an invoice for.");
+                    return;
+                }
             }
 
             const html = htmlForDocument({
@@ -717,8 +751,8 @@ export default function ClientInstallments() {
                 clientName: name,
                 projectName: project,
                 engagement: engagement,
-                rows: rowsToPrint,
-                total: sumRows(rowsToPrint),
+                rows: rowsToUse,
+                total: sumRows(rowsToUse),
                 account: {
                     accountName: ACCOUNT_DETAILS.accountName,
                     accountNumber: ACCOUNT_DETAILS.accountNumber,
@@ -917,9 +951,11 @@ export default function ClientInstallments() {
                                 <Text className="font-kumbhBold text-[#111827] text-[16px]">
                                     {loadingClient ? "Loading…" : name || "—"}
                                 </Text>
-                                <Text className="font-kumbh text-[#6B7280]">
-                                    {engagement || "—"}
-                                </Text>
+                                <View className={clsx("px-3 py-1 rounded-full", getEngagementBadge(engagement))}>
+                                    <Text className="text-xs font-kumbhBold text-white">
+                                        {engagement || "—"}
+                                    </Text>
+                                </View>
                             </View>
                             <Text className="font-kumbh text-[#111827] mt-1">
                                 {project || "—"}
@@ -929,12 +965,22 @@ export default function ClientInstallments() {
                         <View className="flex-row mt-3" style={{ gap: 12 }}>
                             {/* Total (keep visible) */}
                             <View className="flex-1 flex-row items-center justify-between rounded-lg bg-white/80 px-3 py-1">
-                                <Text className="text-base text-[#6B7280] font-kumbh">
-                                    Total
-                                </Text>
-                                <Text className="font-kumbhBold text-[#111827] text-base">
-                                    {N(totalAmount)}
-                                </Text>
+                                <View>
+                                    <Text className="text-base text-[#6B7280] font-kumbh">
+                                        Total
+                                    </Text>
+                                    <Text className="font-kumbhBold text-[#111827] text-base">
+                                        {N(totalAmount)}
+                                    </Text>
+                                </View>
+                                <View>
+                                    <Text className="text-base text-[#6B7280] font-kumbh">
+                                        Outstanding
+                                    </Text>
+                                    <Text className="font-kumbhBold text-[#111827] text-base">
+                                        {N(remaining)}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
                     </View>
@@ -1109,7 +1155,14 @@ export default function ClientInstallments() {
                 visible={dateIdx !== null}
                 value={pickerDate}
                 onCancel={() => setDateIdx(null)}
-                onDone={() => setDateIdx(null)}
+                onDone={() => {
+                    const now = new Date();
+                    if (dateIdx !== null) {
+                        setPickerDate(now);
+                        updateRow(dateIdx, { due: fmtDMY(now) });
+                    }
+                    setDateIdx(null);
+                }}
                 onDateChange={(d) => {
                     if (dateIdx === null) return;
                     setPickerDate(d);

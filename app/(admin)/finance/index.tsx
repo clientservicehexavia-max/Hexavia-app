@@ -1,5 +1,6 @@
 // app/(admin)/finance/index.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 import clsx from "clsx";
 import { useRouter } from "expo-router";
 import { ArrowDown, ArrowUp, Eye, Plus } from "lucide-react-native";
@@ -44,16 +45,21 @@ type Flow = "Receivables" | "Expenses";
 
 type Txn = {
     id: string;
-    title: "Expense" | "Receive";
+    title: string;
     amount: number;
     time: string;
     status: "Successful" | "Pending";
     description: string;
     projectName?: string;
     clientName?: string;
+    companyName?: string;
+    source?: string;
+    engagement?: string;
+    isExternal?: boolean;
+    isFullyPaid?: boolean;
     dir: "up" | "down";
     dateKey: string;
-    kind: "expense" | "receivable";
+    kind: "expense" | "clientReceivable";
 };
 
 const NGN = (n: number) =>
@@ -98,15 +104,26 @@ function getTotalPaid(client: any) {
 function buildFilteredReceivables(clients: any[]) {
     return (clients || [])
         .filter((c: any) => {
-            // Only include clients who have recorded payments (total paid > 0)
-            // and whose status is active or current
+            // Include clients with payment activity, plus all external receivables
+            // that have been paid (including fully paid ones).
             const paid = getTotalPaid(c);
             const hasPaid = Number.isFinite(paid) && paid > 0;
+            const isExternal = Boolean(c?.isExternal);
+            const outstanding = getOutstandingReceivable(c);
+            const hasOutstanding = outstanding > 0;
+            const isFullyPaid = hasPaid && outstanding === 0;
+
+            // External receivables with any payment history are always included
+            // Regular clients must be active/current with payment history
+            if (isExternal) {
+                return true;
+            }
+
             const isActive =
                 String(c?.status ?? "").toLowerCase() === "active" ||
                 String(c?.status ?? "").toLowerCase() === "current";
 
-            return hasPaid && isActive;
+            return isActive && hasPaid;
         })
         .sort(
             (a: any, b: any) =>
@@ -143,6 +160,30 @@ function dateBucket(iso?: string) {
         day: "numeric",
         year: "numeric",
     });
+}
+
+const ENGAGEMENT_BADGES: Record<string, string> = {
+    BWE: "bg-amber-500",
+    "Inner Circle": "bg-violet-500",
+    Consulting: "bg-emerald-500",
+    Partnerships: "bg-rose-500",
+    Retreat: "bg-cyan-500",
+};
+
+function getEngagementBadge(engagement?: string) {
+    return ENGAGEMENT_BADGES[engagement || ""] || "bg-[#4C5FAB]";
+}
+
+const ENGAGEMENT_TEXT_COLORS: Record<string, string> = {
+    BWE: "text-amber-500",
+    "Inner Circle": "text-violet-500",
+    Consulting: "text-emerald-500",
+    Partnerships: "text-rose-500",
+    Retreat: "text-cyan-500",
+};
+
+function getEngagementTextColor(engagement?: string) {
+    return ENGAGEMENT_TEXT_COLORS[engagement || ""] || "text-[#4C5FAB]";
 }
 
 const ADMIN_FINANCE_PIN = "1473695";
@@ -233,32 +274,37 @@ export default function FinanceIndex() {
     /* Totals */
     const total = useMemo(() => {
         if (tab === "Receivables") {
-            const sum = (filteredReceivables || []).reduce(
+            const clientSum = (filteredReceivables || []).reduce(
                 (acc, c: any) => acc + getTotalPaid(c),
                 0,
             );
-            return sum;
+            return clientSum;
         }
         // Expenses: keep your existing summary behavior
         return summary?.totalExpenses || 0;
-    }, [summary, tab, filteredReceivables]);
+    }, [summary, tab, filteredReceivables, records]);
 
     /* Section builder */
     const sections = useMemo(() => {
         if (tab === "Receivables") {
-            const txns: Txn[] = (clients || []).map((c: any) => ({
+            const clientTxns: Txn[] = (clients || []).map((c: any) => ({
                 id: c._id,
-                title: "Receive",
+                title: c?.isExternal ? c?.engagement || "External" : "Receive",
                 amount: getTotalPaid(c),
                 time: formatTime(c?.createdAt || ""),
                 description: `${c?.projectName || "Unnamed project"}\n${c?.name || "Unnamed client"}`,
                 projectName: c?.projectName || "Unnamed project",
                 clientName: c?.name || "Unnamed client",
+                engagement: c?.engagement,
+                isExternal: Boolean(c?.isExternal),
+                isFullyPaid: getOutstandingReceivable(c) === 0,
                 status: "Pending",
                 dir: "down",
                 dateKey: dateBucket(c?.createdAt || ""),
-                kind: "receivable", // <- new
+                kind: "clientReceivable",
             }));
+
+            const txns: Txn[] = [...clientTxns];
 
             const map = new Map<string, Txn[]>();
             txns.forEach((t) => {
@@ -383,6 +429,32 @@ export default function FinanceIndex() {
         }
     }, [showClientPicker, clients?.length, fetchAndPaginateReceivables]);
 
+    // Keep both tabs fresh when returning from child screens.
+    useFocusEffect(
+        useCallback(() => {
+            if (pinLocked) return;
+
+            if (tab === "Receivables") {
+                fetchAndPaginateReceivables(false);
+            } else {
+                dispatch(setFinancePage(1));
+                dispatch(
+                    fetchFinance({
+                        ...financeFilters,
+                        type: "expense",
+                        page: 1,
+                    }) as any,
+                );
+            }
+        }, [
+            pinLocked,
+            tab,
+            fetchAndPaginateReceivables,
+            dispatch,
+            financeFilters,
+        ]),
+    );
+
     /* Refresh */
     const onRefresh = useCallback(() => {
         if (pinLocked) return;
@@ -390,6 +462,7 @@ export default function FinanceIndex() {
         if (tab === "Receivables") {
             if (clientsLoading) return;
             fetchAndPaginateReceivables(true);
+            dispatch(setFinancePage(1));
         } else {
             if (financeLoading) return;
             dispatch(setFinancePage(1));
@@ -418,8 +491,9 @@ export default function FinanceIndex() {
         if (tab === "Receivables") {
             // Reveal next local page (21-40, 41-60...) from cached filtered list
             if (clientsLoading) return;
-            if ((clients?.length ?? 0) >= (filteredReceivables?.length ?? 0))
+            if ((clients?.length ?? 0) >= (filteredReceivables?.length ?? 0)) {
                 return;
+            }
 
             const nextPage = receivablesPage + 1;
             const nextVisible = (filteredReceivables || []).slice(
@@ -656,13 +730,7 @@ export default function FinanceIndex() {
             <Pressable
                 onPress={() => {
                     if (tab === "Receivables") {
-                        // ensure we have clients ready when opening the modal
-                        if (!clients || clients.length === 0) {
-                            fetchAndPaginateReceivables(false);
-                        }
-                        setClientSearch("");
-                        setSelectedClientId(null);
-                        setShowClientPicker(true);
+                        router.push("/(admin)/finance/receivable");
                     } else {
                         router.push("/(admin)/finance/form");
                     }
@@ -698,8 +766,20 @@ export default function FinanceIndex() {
                         </Text>
                         <Text className="text-gray-500 font-kumbh mb-4">
                             Select the client to create/install an installment
-                            plan for.
+                            plan for, or add a manual receivable.
                         </Text>
+
+                        <Pressable
+                            onPress={() => {
+                                setShowClientPicker(false);
+                                router.push("/(admin)/finance/receivable");
+                            }}
+                            className="h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center mb-4"
+                        >
+                            <Text className="text-white font-kumbhBold">
+                                Add Manual Receivable
+                            </Text>
+                        </Pressable>
 
                         {/* Search */}
                         <View className="rounded-2xl border border-gray-200 px-4 py-3 mb-3">
@@ -840,7 +920,12 @@ export default function FinanceIndex() {
 /* ───────── UI bits ───────── */
 
 function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
-    const iconBg = "bg-blue-500";
+    const iconBg =
+        item.kind === "expense"
+            ? "bg-emerald-500"
+            : item.isExternal && item.engagement
+              ? getEngagementBadge(item.engagement)
+              : "bg-blue-500";
     const isPending = item.status === "Pending";
 
     return (
@@ -862,10 +947,38 @@ function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
             </View>
 
             <View className="flex-1">
-                <Text className="text-base font-kumbhBold text-text">
+                <Text
+                    className={clsx(
+                        "text-base font-kumbhBold",
+                        item.isExternal
+                            ? getEngagementTextColor(item.engagement)
+                            : "text-text",
+                    )}
+                    numberOfLines={1}
+                >
                     {item.title}
                 </Text>
-                {item.projectName && item.clientName ? (
+                {item.isExternal && item.engagement ? (
+                    <View>
+                        <Text
+                            className="text-sm font-kumbh text-gray-600"
+                            numberOfLines={1}
+                        >
+                            {item.projectName}
+                        </Text>
+                        <Text
+                            className={clsx(
+                                "text-sm font-kumbh",
+                                isPending
+                                    ? "text-yellow-600"
+                                    : "text-green-600",
+                            )}
+                            numberOfLines={1}
+                        >
+                            {item.clientName}
+                        </Text>
+                    </View>
+                ) : item.projectName && item.clientName ? (
                     <View>
                         <Text
                             className="text-sm font-kumbh text-gray-600"
@@ -899,7 +1012,12 @@ function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
             </View>
 
             <View className="items-end">
-                <Text className="text-base font-kumbhBold text-text">
+                <Text
+                    className={clsx(
+                        "text-base font-kumbhBold",
+                        item.isFullyPaid ? "text-green-600" : "text-text",
+                    )}
+                >
                     {NGN(item.amount)}
                 </Text>
                 <Text className="text-sm text-gray-500 font-kumbh mt-1">

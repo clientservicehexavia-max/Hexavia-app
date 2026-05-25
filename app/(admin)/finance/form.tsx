@@ -29,8 +29,6 @@ import {
 } from "@/redux/finance/finance.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
-type FinanceType = "receivable" | "expense";
-
 function toISO(dmy: string) {
     const m = dmy.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     if (!m) return dmy;
@@ -60,7 +58,6 @@ export default function FinanceForm() {
     const isEditing = !!recordId;
     const currentRecord = records?.find((r) => r._id === recordId);
 
-    const [type, setType] = useState<FinanceType>("expense");
     const [amount, setAmount] = useState("");
     const [date, setDate] = useState("");
     const [desc, setDesc] = useState("");
@@ -71,7 +68,6 @@ export default function FinanceForm() {
     // Initialize form with record data if editing
     useEffect(() => {
         if (isEditing && currentRecord) {
-            setType(currentRecord.type);
             setAmount(String(currentRecord.amount));
             setDesc(currentRecord.description || "");
 
@@ -95,7 +91,6 @@ export default function FinanceForm() {
 
     const onSave = async () => {
         const amt = Number(String(amount).replace(/[^\d.]/g, ""));
-        if (!type) return showError("Select a type.");
         if (!Number.isFinite(amt) || amt <= 0)
             return showError("Enter a valid amount.");
         if (!date) return showError("Pick a date.");
@@ -115,7 +110,7 @@ export default function FinanceForm() {
                     updateFinanceRecord({
                         recordId,
                         body: {
-                            type,
+                            type: "expense",
                             amount: amt,
                             description: desc.trim() || undefined,
                             date: dateWithTime,
@@ -128,7 +123,7 @@ export default function FinanceForm() {
                 // Create new record
                 await dispatch(
                     createFinanceRecord({
-                        type,
+                        type: "expense",
                         amount: amt,
                         description: desc.trim() || undefined,
                         date: dateWithTime,
@@ -148,28 +143,6 @@ export default function FinanceForm() {
         } catch (e: any) {
             showError(e?.message || "Failed to save record");
         }
-    };
-
-    const TypePill = ({ v, label }: { v: FinanceType; label: string }) => {
-        const active = type === v;
-        return (
-            <Pressable
-                onPress={() => setType(v)}
-                className={clsx(
-                    "flex-1 h-11 rounded-2xl items-center justify-center",
-                    active ? "bg-[#4C5FAB]" : "bg-gray-100",
-                )}
-            >
-                <Text
-                    className={clsx(
-                        "font-kumbhBold",
-                        active ? "text-white" : "text-[#111827]",
-                    )}
-                >
-                    {label}
-                </Text>
-            </Pressable>
-        );
     };
 
     return (
@@ -198,7 +171,7 @@ export default function FinanceForm() {
                         Record
                     </Text>
                     <Text className="text-[14px] text-gray-500 font-kumbh mb-6">
-                        Add a receivable or expense
+                        Add an expense
                     </Text>
 
                     {/* Amount + Date */}
@@ -267,9 +240,7 @@ export default function FinanceForm() {
                                 ? "Saving…"
                                 : isEditing
                                   ? "Update Record"
-                                  : type === "expense"
-                                    ? "Save Expense"
-                                    : "Save Receivable"}
+                                                                    : "Save Expense"}
                         </Text>
                     </Pressable>
                 </ScrollView>

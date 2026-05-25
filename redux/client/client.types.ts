@@ -25,6 +25,7 @@ export interface Client {
     threats?: string;
     deliverables?: string;
     payableAmount?: number;
+    isExternal?: boolean;
     document?: string | null;
     documentUrl?: string | null;
     status?: ClientStatus;
@@ -81,6 +82,7 @@ export interface ClientCreateInput {
     threats?: string;
     deliverables?: string;
     payableAmount?: number;
+    isExternal?: boolean;
     document?: string | null;
     documentUrl?: string;
     documentFile?: { uri: string; name: string; type?: string };

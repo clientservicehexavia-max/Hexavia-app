@@ -1,7 +1,7 @@
 // app/(admin)/finance/[id].tsx
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Edit2, Plus, Trash2 } from "lucide-react-native";
+import { Edit2, Trash2 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -13,6 +13,7 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+// Removed unused print/share/file helpers (printing handled in installments)
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { showError, showSuccess } from "@/components/ui/toast";
@@ -43,6 +44,9 @@ const dmy = (iso?: string) =>
           })
         : "—";
 
+// Printing/invoice helpers removed — invoices are generated from the
+// installments flow (`app/(admin)/clients/installments.tsx`).
+
 export default function FinanceDetail() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -55,18 +59,17 @@ export default function FinanceDetail() {
     const records = useAppSelector(selectFinanceRecords);
     const deletingId = useAppSelector(selectFinanceDeletingId);
 
-    // Find the expense by id
+    // Find the finance record by id
     const row = useMemo(
-        () => records.find((r) => r._id === id && r.type === "expense"),
+        () => records.find((r) => r._id === id),
         [records, id],
     );
 
-    // If record not present, fetch the list with current filters (scoped to expenses if possible)
+    // If record not present, fetch the list with current filters
     useEffect(() => {
         if (!row && !loading) {
             const params = {
                 ...filters,
-                type: "expense",
                 page: filters.page ?? 1,
                 limit: filters.limit ?? 50,
             };
@@ -77,6 +80,8 @@ export default function FinanceDetail() {
     const amountStr = NGN(row?.amount ?? 0);
     const dateStr = dmy(row?.date);
     const descStr = String(row?.description ?? "");
+
+    // Print functionality removed — kept UI focused on expense actions.
 
     const handleDelete = () => {
         Alert.alert(
@@ -92,7 +97,6 @@ export default function FinanceDetail() {
                             await dispatch(deleteFinanceRecord(id!)).unwrap();
                             showSuccess("Expense deleted successfully.");
 
-                            // Refetch to get updated data
                             await dispatch(
                                 fetchFinance({
                                     ...filters,
@@ -158,7 +162,7 @@ export default function FinanceDetail() {
             ) : !row ? (
                 <View className="flex-1 items-center justify-center px-6">
                     <Text className="text-center text-gray-500 font-kumbh">
-                        Expense not found.
+                        Record not found.
                     </Text>
                 </View>
             ) : (
@@ -186,22 +190,27 @@ export default function FinanceDetail() {
             )}
 
             {/* Bottom buttons */}
-            <View className="px-5 pb-6 flex-row items-center justify-between gap-3">
+            <View className="px-5 pb-6 flex-row flex-wrap items-center justify-between gap-3">
                 <Pressable
-                    onPress={() => router.push("/(admin)/finance/form")}
-                    className="flex-1 h-12 rounded-2xl border border-[#4C5FAB] items-center justify-center flex-row"
+                    onPress={() =>
+                        router.push({
+                            pathname: "/(admin)/finance/form",
+                            params: { recordId: id },
+                        })
+                    }
+                    className="min-w-[48%] flex-1 h-12 rounded-2xl border border-[#4C5FAB] items-center justify-center flex-row"
                 >
                     <View className="w-6 h-6 rounded-full bg-[#4C5FAB]/10 items-center justify-center mr-2">
-                        <Plus size={16} color="#4C5FAB" />
+                        <Edit2 size={16} color="#4C5FAB" />
                     </View>
                     <Text className="text-[#4C5FAB] font-kumbhBold">
-                        Record Expenses
+                        Edit Expense
                     </Text>
                 </Pressable>
 
                 <Pressable
                     onPress={() => router.replace("/(admin)")}
-                    className="flex-1 h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center"
+                    className="min-w-[48%] flex-1 h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center"
                 >
                     <Text className="text-white font-kumbhBold">
                         Back to Home
