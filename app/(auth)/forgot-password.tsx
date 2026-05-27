@@ -135,7 +135,6 @@ export default function ForgotPasswordScreen() {
                     />
                 </View>
             </KeyboardAwareScrollView>
-
         </SafeAreaView>
     );
 }

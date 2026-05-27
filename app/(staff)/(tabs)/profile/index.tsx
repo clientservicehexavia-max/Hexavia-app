@@ -67,7 +67,9 @@ export default function Profile() {
 
     const logoutHandler = useCallback(async () => {
         try {
-            await dispatch(updateProfile({ expoPushToken: null, silent: true }));
+            await dispatch(
+                updateProfile({ expoPushToken: null, silent: true }),
+            );
         } catch {}
         dispatch(logout());
         clearToken();

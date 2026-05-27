@@ -13,8 +13,8 @@ import type {
     PromoteBody,
     RemoveMemberBody,
     SuspendBody,
-    UpdateUserBody,
     UpdateMemberRoleBody,
+    UpdateUserBody,
 } from "./admin.types";
 
 /** Helpful extractor for API error messages */
@@ -109,25 +109,25 @@ export const downgradeAdmin = createAsyncThunk<{ user: any }, DowngradeBody>(
 );
 
 /** DELETE /account  { userId } */
-export const deleteAdminUser = createAsyncThunk<{ success?: boolean; message?: string }, DeleteUserBody>(
-    "admin/deleteUser",
-    async (body, { rejectWithValue }) => {
-        try {
-            const { data } = await showPromise(
-                api.delete<{ success?: boolean; message?: string }>("/account", {
-                    data: body,
-                }),
-                "Deleting user...",
-                "User deleted",
-            );
-            return data;
-        } catch (err) {
-            const msg = pickAxiosMessage(err);
-            showError(msg);
-            return rejectWithValue(msg);
-        }
-    },
-);
+export const deleteAdminUser = createAsyncThunk<
+    { success?: boolean; message?: string },
+    DeleteUserBody
+>("admin/deleteUser", async (body, { rejectWithValue }) => {
+    try {
+        const { data } = await showPromise(
+            api.delete<{ success?: boolean; message?: string }>("/account", {
+                data: body,
+            }),
+            "Deleting user...",
+            "User deleted",
+        );
+        return data;
+    } catch (err) {
+        const msg = pickAxiosMessage(err);
+        showError(msg);
+        return rejectWithValue(msg);
+    }
+});
 
 /** PATCH /admin/users/:userId */
 export const updateAdminUser = createAsyncThunk<

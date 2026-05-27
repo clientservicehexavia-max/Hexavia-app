@@ -70,7 +70,9 @@ export default function CreateSanction() {
     const recipientLabel = useMemo(() => {
         if (recipientIds.length === 0) return "Select team members";
         if (recipientIds.length === 1) {
-            return selectedRecipientOptions[0]?.label ?? "1 team member selected";
+            return (
+                selectedRecipientOptions[0]?.label ?? "1 team member selected"
+            );
         }
         return `${recipientIds.length} team members selected`;
     }, [recipientIds.length, selectedRecipientOptions]);
