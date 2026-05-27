@@ -35,6 +35,17 @@ export interface DowngradeBody {
   userId: string;
 }
 
+export interface DeleteUserBody {
+  userId: string;
+}
+
+export interface UpdateUserBody {
+  userId: string;
+  fullname?: string;
+  username?: string;
+  email?: string;
+}
+
 /** Channel member ops */
 export type ChannelMemberType = "pm" | "member" | "admin";
 

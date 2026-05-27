@@ -22,6 +22,7 @@ import {
 import { fetchSanctions } from "@/redux/sanctions/sanctions.thunks";
 import type { ApiSanction } from "@/redux/sanctions/sanctions.type";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { Plus } from "lucide-react-native";
 
 type RangeKey = "24H" | "7D" | "30D" | "1Y";
 
@@ -85,6 +86,7 @@ function getRowDate(row: SanctionRow): Date | null {
 
 export default function SanctionsView() {
     const dispatch = useAppDispatch();
+    const router = useRouter();
 
     const isIOS = Platform.OS === "ios";
     const [range, setRange] = useState<RangeKey>("7D");
@@ -165,7 +167,20 @@ export default function SanctionsView() {
             className="flex-1 bg-white"
         >
             {/* Header */}
-            <PlatformAdaptiveHeader title="Sanctions" />
+            <PlatformAdaptiveHeader
+                title="Sanctions"
+                headerRight={({ tintColor }) => (
+                    <Pressable
+                        onPress={() =>
+                            router.push("/(admin)/team/sanctions/create")
+                        }
+                        className="w-10 h-10 rounded-full items-center justify-center"
+                        hitSlop={8}
+                    >
+                        <Plus size={28} color={tintColor} />
+                    </Pressable>
+                )}
+            />
 
             <View className="pt-2 pb-1 px-4">
                 <RangeTabs value={range} onChange={setRange} />

@@ -32,15 +32,21 @@ export default function CreateSanction() {
     const [showRecipientSheet, setShowRecipientSheet] = useState(false);
     const [recipientIds, setRecipientIds] = useState<string[]>([]);
 
-    // load staff to select recipients
+    // load team members to select recipients
     const allUsers = useAppSelector(selectAdminUsers);
     const staff = useMemo(
-        () => allUsers.filter((u) => u.role === "staff"),
+        () =>
+            allUsers.filter(
+                (u) =>
+                    u.role === "staff" ||
+                    u.role === "admin" ||
+                    u.role === "super-admin",
+            ),
         [allUsers],
     );
 
     useEffect(() => {
-        if (staff.length === 0) dispatch(fetchAdminUsers({ role: "staff" }));
+        if (staff.length === 0) dispatch(fetchAdminUsers());
     }, [dispatch, staff.length]);
 
     const [reason, setReason] = useState("");
@@ -62,16 +68,16 @@ export default function CreateSanction() {
     );
 
     const recipientLabel = useMemo(() => {
-        if (recipientIds.length === 0) return "Select staff members";
+        if (recipientIds.length === 0) return "Select team members";
         if (recipientIds.length === 1) {
-            return selectedRecipientOptions[0]?.label ?? "1 staff selected";
+            return selectedRecipientOptions[0]?.label ?? "1 team member selected";
         }
-        return `${recipientIds.length} staff selected`;
+        return `${recipientIds.length} team members selected`;
     }, [recipientIds.length, selectedRecipientOptions]);
 
     const handleSave = async () => {
         if (recipientIds.length === 0) {
-            return showError("Select at least one staff member to sanction");
+            return showError("Select at least one team member to sanction");
         }
         if (!reason.trim()) return showError("Enter a reason");
 
@@ -102,7 +108,7 @@ export default function CreateSanction() {
             showSuccess(
                 successCount === 1
                     ? "Sanction created"
-                    : `Sanctions created for ${successCount} staff members`,
+                    : `Sanctions created for ${successCount} team members`,
             );
             router.replace("/(admin)/team/sanctions");
             return;
@@ -193,11 +199,11 @@ export default function CreateSanction() {
             <OptionSheet
                 visible={showRecipientSheet}
                 onClose={() => setShowRecipientSheet(false)}
-                title="Select staff members"
+                title="Select team members"
                 options={recipientOptions}
                 multiSelect
                 searchable
-                searchPlaceholder="Search staff by name or email"
+                searchPlaceholder="Search team members by name or email"
                 selectedValues={recipientIds}
                 onSelectMultiple={(values) =>
                     setRecipientIds(values.map((value) => String(value)))

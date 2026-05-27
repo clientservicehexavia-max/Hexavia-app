@@ -2,12 +2,17 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { CalendarCheck2 } from "lucide-react-native";
-import React, { useEffect, useMemo } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { Alert, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
-import { promoteUser, toggleUserSuspension } from "@/redux/admin/admin.thunks";
+import {
+    deleteAdminUser,
+    downgradeAdmin,
+    promoteUser,
+    toggleUserSuspension,
+} from "@/redux/admin/admin.thunks";
 import {
     selectAllChannels,
     selectChannelsForUser,
@@ -52,13 +57,40 @@ export default function StaffDetails() {
     const name = user.fullname || user.username || user.email || "Unknown";
     const joined = formatDate(user.createdAt);
     const isIOS = Platform.OS === "ios";
+    const isAdmin = user.role === "admin" || user.role === "super-admin";
+    const [deletingUser, setDeletingUser] = useState(false);
+
+    const onDeleteUser = () => {
+        if (!user?._id || deletingUser) return;
+
+        Alert.alert(
+            "Delete user",
+            "This action is permanent. Are you sure you want to delete this user?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            setDeletingUser(true);
+                            await dispatch(
+                                deleteAdminUser({ userId: String(user._id) }),
+                            ).unwrap();
+                            router.replace("/(admin)/team");
+                        } finally {
+                            setDeletingUser(false);
+                        }
+                    },
+                },
+            ],
+        );
+    };
 
     return (
         <SafeAreaView
             edges={
-                isIOS
-                    ? ["top", "left", "right"]
-                    : ["top", "left", "right", "bottom"]
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
             className="flex-1 bg-white px-4"
         >
@@ -108,11 +140,11 @@ export default function StaffDetails() {
                 />
 
                 <Row label="Username" value={user.username ?? "—"} />
-                <Row label="Role" value={user.role} />
+                <Row label="Role" value={formatRole(user.role)} />
                 <Row label="Joined" value={joined} />
                 <Row
                     label="Status"
-                    value={user.suspended ? "Suspended" : "Active"}
+                    value={user.isSuspended ? "Suspended" : "Active"}
                 />
             </View>
 
@@ -125,20 +157,35 @@ export default function StaffDetails() {
                     className="flex-row items-center justify-center gap-3 bg-primary-50 border border-primary-200 rounded-2xl py-4"
                 >
                     <Text className="text-base font-kumbhBold text-text">
-                        {user.suspended ? "Unsuspend Staff" : "Suspend Staff"}
+                        {user.isSuspended ? "Unsuspend User" : "Suspend User"}
                     </Text>
                 </Pressable>
 
                 <Pressable
                     onPress={() =>
-                        dispatch(
-                            promoteUser({ userId: user._id, role: "admin" }),
-                        )
+                        isAdmin
+                            ? dispatch(downgradeAdmin({ userId: user._id }))
+                            : dispatch(
+                                  promoteUser({
+                                      userId: user._id,
+                                      role: "admin",
+                                  }),
+                              )
                     }
-                    className="flex-row items-center justify-center gap-3 bg-primary-50 border border-primary-200 rounded-2xl py-4"
+                    className={
+                        isAdmin
+                            ? "flex-row items-center justify-center gap-3 bg-red-50 border border-red-200 rounded-2xl py-4"
+                            : "flex-row items-center justify-center gap-3 bg-primary-50 border border-primary-200 rounded-2xl py-4"
+                    }
                 >
-                    <Text className="text-base font-kumbhBold text-text">
-                        Promote to Admin
+                    <Text
+                        className={
+                            isAdmin
+                                ? "text-base font-kumbhBold text-red-700"
+                                : "text-base font-kumbhBold text-text"
+                        }
+                    >
+                        {isAdmin ? "Demote to Staff" : "Promote to Admin"}
                     </Text>
                 </Pressable>
 
@@ -153,6 +200,16 @@ export default function StaffDetails() {
                 >
                     <Text className="text-base font-kumbhBold text-text">
                         Edit Staff
+                    </Text>
+                </Pressable>
+
+                <Pressable
+                    onPress={onDeleteUser}
+                    disabled={deletingUser}
+                    className="flex-row items-center justify-center gap-3 bg-red-50 border border-red-200 rounded-2xl py-4"
+                >
+                    <Text className="text-base font-kumbhBold text-red-700">
+                        {deletingUser ? "Deleting user..." : "Delete User"}
                     </Text>
                 </Pressable>
             </View>
@@ -241,6 +298,15 @@ function formatDate(d?: string) {
     } catch {
         return d;
     }
+}
+
+function formatRole(r?: string) {
+    if (!r) return "—";
+    const cleaned = r.replace(/[-_]+/g, " ");
+    return cleaned
+        .split(" ")
+        .map((w) => (w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w))
+        .join(" ");
 }
 function isUserInChannel(members: any[] | undefined | null, userId: string) {
     if (!Array.isArray(members)) return false;

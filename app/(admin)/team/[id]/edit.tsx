@@ -12,18 +12,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Field from "@/components/admin/Field";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import HexButton from "@/components/ui/HexButton";
-import { showError, showSuccess } from "@/components/ui/toast";
+import { showError } from "@/components/ui/toast";
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
-import { useAppSelector } from "@/store/hooks";
+import { updateAdminUser } from "@/redux/admin/admin.thunks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 export default function EditStaff() {
     const router = useRouter();
+    const dispatch = useAppDispatch();
     const isIOS = Platform.OS === "ios";
 
     const { id } = useLocalSearchParams<{ id: string }>();
+    const userId = String(id ?? "");
     const users = useAppSelector(selectAdminUsers);
 
-    const existing = users.find((u) => u._id === id);
+    const existing = users.find((u) => u._id === userId);
     const [fullname, setFullname] = useState(existing?.fullname ?? "");
     const [username, setUsername] = useState(existing?.username ?? "");
     const [email, setEmail] = useState(existing?.email ?? "");
@@ -38,10 +41,23 @@ export default function EditStaff() {
 
     const onSave = async () => {
         if (!fullname.trim()) return showError("Full name is required");
+        if (!username.trim()) return showError("Username is required");
         if (!email.trim()) return showError("Email is required");
-        // TODO: dispatch(updateUser({ userId: id as string, fullname, username, email }))
-        showSuccess("Saved (mock)");
-        router.back();
+
+        try {
+            await dispatch(
+                updateAdminUser({
+                    userId,
+                    fullname: fullname.trim(),
+                    username: username.trim(),
+                    email: email.trim().toLowerCase(),
+                }),
+            ).unwrap();
+
+            router.back();
+        } catch {
+            // Toasts are handled by the thunk.
+        }
     };
 
     return (

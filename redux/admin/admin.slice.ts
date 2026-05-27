@@ -5,6 +5,7 @@ import {
   downgradeAdmin,
   fetchAdminUsers,
   promoteUser,
+  updateAdminUser,
   toggleUserSuspension,
   adminAddChannelMember,
   adminRemoveChannelMember,
@@ -120,6 +121,23 @@ const adminSlice = createSlice({
           (action.payload as string) ||
           action.error.message ||
           "Failed to promote user";
+      });
+
+    // UPDATE USER
+    builder
+      .addCase(updateAdminUser.pending, (state) => {
+        state.lastError = null;
+      })
+      .addCase(updateAdminUser.fulfilled, (state, action) => {
+        const updated = (action.payload as any)?.user as AdminUser | undefined;
+        if (updated?._id) upsertUser(state.users, updated);
+        state.lastActionMessage = action.payload?.message ?? "User updated";
+      })
+      .addCase(updateAdminUser.rejected, (state, action) => {
+        state.lastError =
+          (action.payload as string) ||
+          action.error.message ||
+          "Failed to update user";
       });
 
     // DOWNGRADE
