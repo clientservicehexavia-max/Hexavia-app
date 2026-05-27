@@ -19,9 +19,11 @@ import channelsReducer from "@/redux/channels/channels.slice";
 import { chatMiddleware } from "@/redux/chat/chat.middleware";
 import chatReducer from "@/redux/chat/chat.slice";
 import clientReducer from "@/redux/client/client.slice";
+import dealReducer from "@/redux/deal/deal.slice";
 import financeReducer from "@/redux/finance/finance.slice";
 import installmentsReducer from "@/redux/installments/installments.slice";
 import notificationsReducer from "@/redux/notifications/notifications.slice";
+import partnerReducer from "@/redux/partner/partner.slice";
 import partnershipReducer from "@/redux/partnership/partnership.slice";
 import personalTasksReducer from "@/redux/personalTasks/personalTasks.slice";
 import sanctionsReducer from "@/redux/sanctions/sanctions.slice";
@@ -44,6 +46,8 @@ export const rootReducer = combineReducers({
     finance: financeReducer,
     personalTasks: personalTasksReducer,
     notifications: notificationsReducer,
+    partner: partnerReducer,
+    deal: dealReducer,
     partnership: partnershipReducer,
 });
 

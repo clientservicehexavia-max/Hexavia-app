@@ -103,7 +103,7 @@ export default function AdminDashboard() {
                         <Tile
                             title="Partnerships"
                             icon={<Handshake size={22} color="white" />}
-                            onPress={() => router.push("/(admin)/partnerships")}
+                            onPress={() => router.push("/(admin)/partnerships/dashboard")}
                         />
                     </View>
                 </View>
