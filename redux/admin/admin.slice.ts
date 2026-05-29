@@ -5,13 +5,13 @@ import {
     adminAddChannelMember,
     adminRemoveChannelMember,
     adminUpdateChannelMemberRole,
+    deleteAdminUser,
     downgradeAdmin,
     fetchAdminUsers,
     promoteUser,
     toggleUserSuspension,
     updateAdminUser,
 } from "./admin.thunks";
-import { deleteAdminUser } from "./admin.thunks";
 import type { AdminRole, AdminState, AdminUser } from "./admin.types";
 
 const initialState: AdminState = {
@@ -160,7 +160,8 @@ const adminSlice = createSlice({
                 if (userId) {
                     state.users = state.users.filter((u) => u?._id !== userId);
                 }
-                state.lastActionMessage = action.payload?.message ?? "User deleted";
+                state.lastActionMessage =
+                    action.payload?.message ?? "User deleted";
                 state.count = state.users.length;
             })
             .addCase(deleteAdminUser.rejected, (state, action) => {
