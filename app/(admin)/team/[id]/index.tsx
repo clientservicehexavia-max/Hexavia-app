@@ -77,7 +77,7 @@ export default function StaffDetails() {
                             await dispatch(
                                 deleteAdminUser({ userId: String(user._id) }),
                             ).unwrap();
-                            router.replace("/(admin)/team");
+                            router.back();
                         } finally {
                             setDeletingUser(false);
                         }

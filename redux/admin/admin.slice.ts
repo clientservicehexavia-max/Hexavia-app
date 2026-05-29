@@ -11,6 +11,7 @@ import {
     toggleUserSuspension,
     updateAdminUser,
 } from "./admin.thunks";
+import { deleteAdminUser } from "./admin.thunks";
 import type { AdminRole, AdminState, AdminUser } from "./admin.types";
 
 const initialState: AdminState = {
@@ -61,16 +62,18 @@ const adminSlice = createSlice({
             .addCase(fetchAdminUsers.fulfilled, (state, action) => {
                 state.fetchingUsers = false;
                 const incoming = action.payload.data ?? [];
+
+                // If server returned no users, update count and clear list
                 if (incoming.length === 0) {
-                    state.count = action.payload.count ?? state.users.length;
+                    state.users = [];
+                    state.count = action.payload.count ?? 0;
                     return;
                 }
+
+                // Replace the current user list with the fresh server response.
                 const byId: Record<string, AdminUser> = {};
-                for (const u of state.users) {
-                    if (u?._id) byId[u._id] = { ...byId[u._id], ...u };
-                }
                 for (const u of incoming) {
-                    if (u?._id) byId[u._id] = { ...byId[u._id], ...u };
+                    if (u?._id) byId[u._id] = { ...u };
                 }
                 state.users = Object.values(byId);
                 state.count = action.payload.count ?? state.users.length;
@@ -145,6 +148,26 @@ const adminSlice = createSlice({
                     (action.payload as string) ||
                     action.error.message ||
                     "Failed to update user";
+            });
+
+        // DELETE USER
+        builder
+            .addCase(deleteAdminUser.pending, (state) => {
+                state.lastError = null;
+            })
+            .addCase(deleteAdminUser.fulfilled, (state, action) => {
+                const userId = (action.meta.arg as any)?.userId;
+                if (userId) {
+                    state.users = state.users.filter((u) => u?._id !== userId);
+                }
+                state.lastActionMessage = action.payload?.message ?? "User deleted";
+                state.count = state.users.length;
+            })
+            .addCase(deleteAdminUser.rejected, (state, action) => {
+                state.lastError =
+                    (action.payload as string) ||
+                    action.error.message ||
+                    "Failed to delete user";
             });
 
         // DOWNGRADE
