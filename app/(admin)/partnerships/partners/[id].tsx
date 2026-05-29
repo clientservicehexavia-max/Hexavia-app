@@ -1,4 +1,6 @@
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { selectAllDeals } from "@/redux/deal/deal.selectors";
+import { fetchDeals } from "@/redux/deal/deal.thunks";
 import {
     selectPartnerById,
     selectPartnerLoading,
@@ -9,6 +11,7 @@ import {
 } from "@/redux/partner/partner.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { dialPhone, openEmail } from "@/utils/contact";
+import { generatePartnerReportPdf } from "@/utils/partnershipReports";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     BriefcaseBusiness,
@@ -17,6 +20,7 @@ import {
     Mail,
     MapPin,
     Phone,
+    Share2,
     Trash2,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -112,15 +116,23 @@ export default function PartnerDetailScreen() {
     const partner = useAppSelector((state) =>
         selectPartnerById(partnerId)(state),
     );
+    const deals = useAppSelector(selectAllDeals);
     const loading = useAppSelector(selectPartnerLoading);
 
     const [deleting, setDeleting] = useState(false);
+    const [generatingReport, setGeneratingReport] = useState(false);
 
     useEffect(() => {
         if (partnerId && !partner) {
             dispatch(fetchPartnerById(partnerId));
         }
     }, [partnerId, partner, dispatch]);
+
+    useEffect(() => {
+        if (partnerId) {
+            dispatch(fetchDeals({ partnerId, page: 1, limit: 100 }));
+        }
+    }, [partnerId, dispatch]);
 
     const handleDelete = () => {
         Alert.alert(
@@ -146,6 +158,24 @@ export default function PartnerDetailScreen() {
                 },
             ],
         );
+    };
+
+    const handleGeneratePartnerReport = async () => {
+        if (!partner) return;
+        setGeneratingReport(true);
+        try {
+            await generatePartnerReportPdf(
+                partner,
+                deals.filter((deal) => deal.partnerId === partnerId),
+            );
+        } catch (err: any) {
+            Alert.alert(
+                "Report failed",
+                err?.message || "Unable to generate partner report.",
+            );
+        } finally {
+            setGeneratingReport(false);
+        }
     };
 
     if (loading && !partner) {
@@ -185,7 +215,7 @@ export default function PartnerDetailScreen() {
                                 onPress={() =>
                                     router.push({
                                         pathname:
-                                            "/(admin)/partnerships/partners-create",
+                                            "/(admin)/partnerships/partners/create",
                                         params: { partnerId },
                                     })
                                 }
@@ -268,6 +298,26 @@ export default function PartnerDetailScreen() {
                                 </View>
                             ) : null}
                         </View>
+
+                        <Pressable
+                            onPress={handleGeneratePartnerReport}
+                            disabled={generatingReport}
+                            className="mt-4 h-12 flex-row items-center justify-center rounded-xl bg-white"
+                        >
+                            {generatingReport ? (
+                                <ActivityIndicator
+                                    size="small"
+                                    color="#4C5FAB"
+                                />
+                            ) : (
+                                <Share2 size={18} color="#4C5FAB" />
+                            )}
+                            <Text className="ml-2 text-sm font-kumbhBold text-[#4C5FAB]">
+                                {generatingReport
+                                    ? "Generating..."
+                                    : "Generate Partner Report"}
+                            </Text>
+                        </Pressable>
                     </View>
 
                     <View className="mb-6 flex-row gap-3">

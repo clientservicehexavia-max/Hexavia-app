@@ -1,791 +1,817 @@
-import BottomSheetModal from "@/components/ui/BottomSheetModal";
-import { useFocusEffect, useRouter } from "expo-router";
+import Tile from "@/components/admin/Tile";
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import {
-    Filter as FilterIcon,
-    Mail,
-    MessageCircle,
-    Phone,
+    selectAllDeals,
+    selectDealError,
+    selectDealLoading,
+} from "@/redux/deal/deal.selectors";
+import { fetchDeals } from "@/redux/deal/deal.thunks";
+import type { Deal } from "@/redux/deal/deal.types";
+import {
+    selectAllPartners,
+    selectPartnerError,
+    selectPartnerLoading,
+} from "@/redux/partner/partner.selectors";
+import { fetchPartners } from "@/redux/partner/partner.thunks";
+import type { Partner } from "@/redux/partner/partner.types";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+    generateDealReportPdf,
+    generatePartnerReportPdf,
+} from "@/utils/partnershipReports";
+import { useRouter } from "expo-router";
+import {
+    BarChart3,
+    FileText,
+    FolderKanban,
     Plus,
-    Search,
+    Users,
     X,
 } from "lucide-react-native";
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
+    Modal,
     Platform,
     Pressable,
     RefreshControl,
+    ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
-import {
-    selectAllPartnerships,
-    selectPartnershipLoading,
-} from "@/redux/partnership/partnership.selectors";
-import {
-    deletePartnership,
-    fetchPartnerships,
-} from "@/redux/partnership/partnership.thunks";
-import type { Partnership } from "@/redux/partnership/partnership.types";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { dialPhone, openEmail, openWhatsApp } from "@/utils/contact";
-import clsx from "clsx";
+const STAGES: Deal["stage"][] = [
+    "Introduced",
+    "Meeting Booked",
+    "Proposal Sent",
+    "Negotiation",
+    "Closed Won",
+    "Closed Lost",
+    "On Hold",
+];
 
-const STATUS_OPTS = ["active", "inactive", "pending", "closed"] as const;
-const SORT_OPTIONS = ["createdAt", "updatedAt", "name", "clientName"] as const;
-const SORT_ORDER_OPTIONS = ["desc", "asc"] as const;
-const LIMIT_OPTIONS = [5, 10, 20, 50, 100] as const;
-type TabKey = "all" | "finance" | "non-finance";
+const formatAmount = (value?: number) => {
+    if (value === undefined || value === null || Number.isNaN(value)) {
+        return "—";
+    }
 
-function useDebounced<T>(value: T, ms: number) {
-    const [deb, setDeb] = useState(value);
-    useEffect(() => {
-        const t = setTimeout(() => setDeb(value), ms);
-        return () => clearTimeout(t);
-    }, [value, ms]);
-    return deb;
-}
+    return new Intl.NumberFormat("en-US", {
+        maximumFractionDigits: 0,
+    }).format(value);
+};
 
-export default function PartnershipsIndex() {
-    const router = useRouter();
-    const dispatch = useAppDispatch();
-    const isIOS = Platform.OS === "ios";
+const formatDate = (value?: string) => {
+    if (!value) return "—";
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? "—" : parsed.toLocaleDateString();
+};
 
-    const partnerships = useAppSelector(selectAllPartnerships);
-    const loading = useAppSelector(selectPartnershipLoading);
+const getCommissionSnapshot = (deal: Deal) => {
+    const financial = deal.financialReconciliation;
+    const due =
+        financial?.agreedAmount ??
+        deal.expectedPartnerReturn ??
+        deal.agreedFixedAmount ??
+        (deal.expectedDealValue && deal.agreedPercentage
+            ? (deal.expectedDealValue * deal.agreedPercentage) / 100
+            : 0);
+    const paid = Number(financial?.amountPaid || 0);
+    const outstanding =
+        financial?.balanceOutstanding !== undefined
+            ? Number(financial.balanceOutstanding || 0)
+            : Math.max(Number(due || 0) - paid, 0);
 
-    const [tab, setTab] = useState<TabKey>("all");
-    const [query, setQuery] = useState("");
-    const debouncedQuery = useDebounced(query, 300);
-    const [showFilters, setShowFilters] = useState(false);
-    const [status, setStatus] = useState<string | undefined>(undefined);
-    const [sortBy, setSortBy] = useState<string>("createdAt");
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-    const [limit, setLimit] = useState<number>(10);
-    const [page, setPage] = useState(1);
-    const [refreshing, setRefreshing] = useState(false);
-    const didBootstrapRef = useRef(false);
-
-    // Load all partnerships without filters (for client-side filtering)
-    const onRefresh = useCallback(
-        async (isInitialLoad = false) => {
-            if (!isInitialLoad) setRefreshing(true);
-            try {
-                // Load all partnerships without filters - filtering happens locally
-                await dispatch(
-                    fetchPartnerships({
-                        limit: 100,
-                        page: 1,
-                    }),
-                ).unwrap();
-            } catch (err) {
-                console.error("Error fetching partnerships:", err);
-            } finally {
-                if (!isInitialLoad) setRefreshing(false);
-            }
-        },
-        [dispatch],
-    );
-
-    useEffect(() => {
-        if (didBootstrapRef.current) return;
-        didBootstrapRef.current = true;
-        onRefresh(true); // Initial load
-    }, [onRefresh]);
-
-    // Refetch when screen comes into focus (after creating/editing partnership)
-    useFocusEffect(
-        useCallback(() => {
-            onRefresh(true);
-        }, [onRefresh]),
-    );
-
-    const switchTab = useCallback((t: TabKey) => setTab(t), []);
-
-    const list = useMemo(() => {
-        let base = partnerships.filter((p: Partnership) => {
-            if (tab === "finance") return p.isFinance === true;
-            if (tab === "non-finance") return p.isFinance !== true;
-            return true;
-        });
-
-        if (status) {
-            base = base.filter((p: Partnership) => p.status === status);
-        }
-
-        const direction = sortOrder === "asc" ? 1 : -1;
-        base = [...base].sort((a: Partnership, b: Partnership) => {
-            if (sortBy === "createdAt" || sortBy === "updatedAt") {
-                const ad = new Date((a as any)?.[sortBy] ?? 0).getTime() || 0;
-                const bd = new Date((b as any)?.[sortBy] ?? 0).getTime() || 0;
-                return (ad - bd) * direction;
-            }
-
-            const av = String((a as any)?.[sortBy] ?? "").toLowerCase();
-            const bv = String((b as any)?.[sortBy] ?? "").toLowerCase();
-            if (av < bv) return -1 * direction;
-            if (av > bv) return 1 * direction;
-            return 0;
-        });
-
-        if (!debouncedQuery.trim()) return base;
-
-        const q = debouncedQuery.trim().toLowerCase();
-        return base.filter((p: Partnership) =>
-            [p.name, p.clientName, p.email, p.partnershipAgreement, p.status]
-                .join(" ")
-                .toLowerCase()
-                .includes(q),
-        );
-    }, [partnerships, tab, status, sortBy, sortOrder, debouncedQuery]);
-
-    const totalPartnerships = list.length;
-    const totalPages = Math.max(1, Math.ceil(totalPartnerships / limit));
-    const currentPage = Math.min(Math.max(page, 1), totalPages);
-
-    const pagedList = useMemo(() => {
-        const start = (currentPage - 1) * limit;
-        return list.slice(start, start + limit);
-    }, [list, currentPage, limit]);
-
-    useEffect(() => {
-        if (page !== currentPage) {
-            setPage(currentPage);
-        }
-    }, [currentPage, page]);
-
-    const canPrev = currentPage > 1;
-    const canNext = currentPage < totalPages;
-
-    const gotoPage = (nextPage: number) => {
-        if (nextPage !== currentPage) setPage(nextPage);
+    return {
+        due: Number(due || 0),
+        paid,
+        outstanding,
     };
-
-    const appliedFilterCount = useMemo(
-        () =>
-            [
-                status,
-                sortBy && sortBy !== "createdAt" ? sortBy : undefined,
-                sortOrder && sortOrder !== "desc" ? sortOrder : undefined,
-                limit && limit !== 10 ? limit : undefined,
-            ].filter(Boolean).length,
-        [status, sortBy, sortOrder, limit],
-    );
-
-    useEffect(() => {
-        setPage(1);
-    }, [tab, status, sortBy, sortOrder, limit, debouncedQuery]);
-
-    const hasAppliedFilters = appliedFilterCount > 0;
-
-    return (
-        <SafeAreaView
-            edges={
-                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
-            }
-            className="flex-1 bg-white"
-        >
-            {/* Header */}
-            <View className="pb-4 px-4">
-                <PlatformAdaptiveHeader
-                    title="Partnerships"
-                    headerRight={({ tintColor }) => (
-                        <Pressable
-                            onPress={() => setShowFilters(true)}
-                            className={clsx(
-                                "w-10 h-10 rounded-full items-center justify-center",
-                                hasAppliedFilters
-                                    ? "bg-blue-50"
-                                    : "bg-transparent",
-                            )}
-                        >
-                            <FilterIcon
-                                size={22}
-                                color={
-                                    hasAppliedFilters ? "#2563EB" : tintColor
-                                }
-                            />
-                            {hasAppliedFilters ? (
-                                <View className="absolute right-1.5 top-1.5 min-w-4 h-4 rounded-full bg-blue-600 px-1 items-center justify-center">
-                                    <Text className="text-[9px] leading-3 font-kumbhBold text-white">
-                                        {appliedFilterCount}
-                                    </Text>
-                                </View>
-                            ) : null}
-                        </Pressable>
-                    )}
-                />
-
-                {/* Search + Add */}
-                <View className="mt-3 flex-row items-center gap-3">
-                    <View className="flex-1 flex-row items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 h-12">
-                        <Search size={18} color="#6B7280" />
-                        <TextInput
-                            value={query}
-                            onChangeText={setQuery}
-                            placeholder="Search name, client, email, agreement"
-                            placeholderTextColor="#9CA3AF"
-                            className="flex-1 text-[15px] font-kumbh text-gray-800"
-                            returnKeyType="search"
-                        />
-                    </View>
-
-                    <Pressable
-                        onPress={() =>
-                            router.push("/(admin)/partnerships/create")
-                        }
-                        className="flex-row items-center justify-center gap-1 bg-primary-50 border border-primary-100 rounded-xl px-2 h-12"
-                    >
-                        <Plus size={18} color="#111827" />
-                        <Text className="text-sm font-kumbh text-text">
-                            Add
-                        </Text>
-                    </Pressable>
-                </View>
-
-                {/* Tabs */}
-                <View className="mt-6 flex-row items-center justify-around gap-8 px-1">
-                    {(["all", "finance", "non-finance"] as const).map((t) => (
-                        <Pressable
-                            key={t}
-                            onPress={() => switchTab(t)}
-                            className="items-center"
-                        >
-                            <Text
-                                className={`text-base font-kumbh ${
-                                    tab === t
-                                        ? "text-blue-600 font-kumbhBold"
-                                        : "text-gray-600"
-                                }`}
-                            >
-                                {labelForTab(t)}
-                            </Text>
-                            {tab === t ? (
-                                <View className="h-[3px] w-16 bg-blue-300 rounded-full mt-1" />
-                            ) : (
-                                <View className="h-[3px] w-16 mt-1" />
-                            )}
-                        </Pressable>
-                    ))}
-                </View>
-            </View>
-
-            {/* List */}
-            <FlatList
-                data={loading && pagedList.length === 0 ? [] : pagedList}
-                keyExtractor={(item) => item._id}
-                renderItem={({ item }) => (
-                    <PartnershipRow
-                        item={item}
-                        onPress={(id) =>
-                            router.push({
-                                pathname: "/(admin)/partnerships/create",
-                                params: { id },
-                            })
-                        }
-                        onDelete={(id) => {
-                            dispatch(deletePartnership(id))
-                                .unwrap()
-                                .catch((err) =>
-                                    console.error("Delete error:", err),
-                                );
-                        }}
-                    />
-                )}
-                ListEmptyComponent={
-                    <View className="flex-1 items-center justify-center px-4 py-10">
-                        {loading && !refreshing ? (
-                            <ActivityIndicator size="large" color="#4c5fab" />
-                        ) : (
-                            <>
-                                <Text className="font-kumbhBold text-lg text-gray-700">
-                                    No partnerships found
-                                </Text>
-                                <Text className="mt-2 text-center font-kumbh text-gray-500">
-                                    {hasAppliedFilters
-                                        ? "Try adjusting your filters"
-                                        : "Create a new partnership to get started"}
-                                </Text>
-                            </>
-                        )}
-                    </View>
-                }
-                contentContainerStyle={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                }}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                    />
-                }
-            />
-
-            <FilterModal
-                open={showFilters}
-                status={status}
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-                limit={limit}
-                onClose={() => setShowFilters(false)}
-                onChange={(s) => setStatus(s)}
-                onClear={() => {
-                    setStatus(undefined);
-                    setSortBy("createdAt");
-                    setSortOrder("desc");
-                    setLimit(10);
-                    setPage(1);
-                }}
-                onSortByChange={setSortBy}
-                onSortOrderChange={setSortOrder}
-                onLimitChange={setLimit}
-            />
-
-            {totalPages > 1 && (
-                <View className="border-t border-gray-200 px-5 py-3 bg-white">
-                    <View className="flex-row items-center justify-between">
-                        <Pressable
-                            disabled={!canPrev}
-                            onPress={() => gotoPage(currentPage - 1)}
-                            className={`px-4 py-2 rounded-xl border ${
-                                canPrev ? "bg-white" : "bg-gray-100"
-                            }`}
-                        >
-                            <Text
-                                className={`font-kumbh ${
-                                    canPrev ? "text-gray-800" : "text-gray-400"
-                                }`}
-                            >
-                                Prev
-                            </Text>
-                        </Pressable>
-
-                        <Text className="font-kumbh text-gray-700">
-                            Page {currentPage} / {totalPages} •{" "}
-                            {totalPartnerships} partnerships
-                        </Text>
-
-                        <Pressable
-                            disabled={!canNext}
-                            onPress={() => gotoPage(currentPage + 1)}
-                            className={`px-4 py-2 rounded-xl border ${
-                                canNext ? "bg-white" : "bg-gray-100"
-                            }`}
-                        >
-                            <Text
-                                className={`font-kumbh ${
-                                    canNext ? "text-gray-800" : "text-gray-400"
-                                }`}
-                            >
-                                Next
-                            </Text>
-                        </Pressable>
-                    </View>
-                </View>
-            )}
-        </SafeAreaView>
-    );
-}
-
-function PartnershipRow({
-    item,
-    onPress,
-    onDelete,
-}: {
-    item: Partnership;
-    onPress: (id: string) => void;
-    onDelete: (id: string) => void;
-}) {
-    const name = item.name || "Unknown";
-    const badgeText = item.status ? capitalize(item.status) : "—";
-    const badgeStyle =
-        item.status === "closed"
-            ? "bg-red-100 text-red-700"
-            : item.status === "pending"
-              ? "bg-yellow-100 text-yellow-700"
-              : item.status === "active"
-                ? "bg-green-100 text-green-700"
-                : item.status === "inactive"
-                  ? "bg-gray-100 text-gray-700"
-                  : "bg-gray-100 text-gray-700";
-
-    return (
-        <Pressable
-            onPress={() => onPress(item._id)}
-            className="py-1 border rounded-xl border-gray-200 px-3 my-1"
-        >
-            <Row label="Name" value={name} />
-            <Row label="Client" value={item.clientName ?? "—"} />
-
-            <Row
-                label="Email"
-                value={item.email ?? "—"}
-                actions={
-                    item.email
-                        ? [
-                              {
-                                  icon: Mail,
-                                  onPress: () => openEmail(item.email),
-                                  label: "Email partner",
-                              },
-                          ]
-                        : undefined
-                }
-            />
-
-            <Row
-                label="Phone"
-                value={item.phoneNumber ?? "—"}
-                actions={
-                    item.phoneNumber
-                        ? [
-                              {
-                                  icon: Phone,
-                                  onPress: () => dialPhone(item.phoneNumber),
-                                  label: "Call partner",
-                              },
-                              {
-                                  icon: MessageCircle,
-                                  onPress: () => openWhatsApp(item.phoneNumber),
-                                  label: "Message on WhatsApp",
-                              },
-                          ]
-                        : undefined
-                }
-            />
-
-            <Row label="Agreement" value={item.partnershipAgreement ?? "—"} />
-            <Row label="Created At" value={formatDateTime(item.createdAt)} />
-            <Row label="Updated At" value={formatDateTime(item.updatedAt)} />
-
-            <Row
-                label="Status"
-                right={
-                    <View className={`px-3 py-1 rounded-full ${badgeStyle}`}>
-                        <Text className="text-xs font-kumbhBold">
-                            {badgeText}
-                        </Text>
-                    </View>
-                }
-            />
-
-            <Row
-                label="Type"
-                value="Finance"
-                right={
-                    <View
-                        className={clsx(
-                            "px-3 py-1 rounded-full",
-                            item.isFinance
-                                ? "bg-purple-100 text-purple-700"
-                                : "bg-gray-100 text-gray-700",
-                        )}
-                    >
-                        <Text className="text-xs font-kumbhBold">
-                            {item.isFinance ? "Finance" : "Non-Finance"}
-                        </Text>
-                    </View>
-                }
-            />
-        </Pressable>
-    );
-}
-
-type RowAction = {
-    icon: React.ComponentType<{ size?: number; color?: string }>;
-    onPress: () => void;
-    label?: string;
 };
 
-function Row({
-    label,
-    value,
-    actions,
-    right,
-}: {
-    label: string;
-    value?: string;
-    actions?: RowAction[];
-    right?: React.ReactNode;
-}) {
-    return (
-        <View className="flex-row items-center py-2">
-            {/* Fixed label column */}
-            <Text
-                className="w-28 text-base text-gray-700 font-kumbh"
-                numberOfLines={1}
-            >
-                {label}
-            </Text>
-
-            {/* Right column (important: min-w-0 so ellipsis works in flex layouts) */}
-            <View className="flex-1 flex-row items-center justify-end min-w-0">
-                {right ? (
-                    right
-                ) : (
-                    <Text
-                        className="flex-1 min-w-0 text-base text-text font-kumbhBold text-right"
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                    >
-                        {value ?? "—"}
-                    </Text>
-                )}
-
-                {actions?.length ? (
-                    <View className="flex-row items-center ml-3">
-                        {actions.map((action, index) => (
-                            <Pressable
-                                key={`${label}-${index}`}
-                                onPress={(event: any) => {
-                                    event?.stopPropagation?.();
-                                    action.onPress();
-                                }}
-                                className="w-9 h-9 rounded-full border border-gray-200 bg-white items-center justify-center ml-2"
-                                accessibilityLabel={action.label}
-                            >
-                                <action.icon size={16} color="#111827" />
-                            </Pressable>
-                        ))}
-                    </View>
-                ) : null}
-            </View>
-        </View>
-    );
-}
-
-type FilterModalProps = {
-    open: boolean;
-    status: string | undefined;
-    sortBy: string;
-    sortOrder: "asc" | "desc";
-    limit: number;
-    onClose: () => void;
-    onChange: (status: string | undefined) => void;
-    onClear: () => void;
-    onSortByChange: (value: string) => void;
-    onSortOrderChange: (value: "asc" | "desc") => void;
-    onLimitChange: (value: number) => void;
+const stageTone: Record<Deal["stage"], string> = {
+    Introduced: "border-blue-100 bg-blue-50",
+    "Meeting Booked": "border-indigo-100 bg-indigo-50",
+    "Proposal Sent": "border-violet-100 bg-violet-50",
+    Negotiation: "border-amber-100 bg-amber-50",
+    "Closed Won": "border-emerald-100 bg-emerald-50",
+    "Closed Lost": "border-rose-100 bg-rose-50",
+    "On Hold": "border-slate-200 bg-slate-50",
 };
 
-function FilterModal({
-    open,
-    status,
-    sortBy,
-    sortOrder,
-    limit,
-    onClose,
-    onChange,
-    onClear,
-    onSortByChange,
-    onSortOrderChange,
-    onLimitChange,
-}: FilterModalProps) {
-    const activeCount = [
-        status,
-        sortBy && sortBy !== "createdAt" ? sortBy : undefined,
-        sortOrder && sortOrder !== "desc" ? sortOrder : undefined,
-        limit && limit !== 10 ? limit : undefined,
-    ].filter(Boolean).length;
-
-    return (
-        <BottomSheetModal
-            visible={open}
-            onRequestClose={onClose}
-            showActionRow={false}
-        >
-            <View className="mb-4 flex-row items-center justify-between">
-                <View>
-                    <Text className="text-xl font-kumbhBold text-gray-900">
-                        Filter Partnerships
-                    </Text>
-                    <Text className="mt-1 text-xs font-kumbh text-gray-500">
-                        {activeCount
-                            ? `${activeCount} active filter${activeCount > 1 ? "s" : ""}`
-                            : "No filters applied"}
-                    </Text>
-                </View>
-                <Pressable
-                    onPress={onClose}
-                    className="h-9 w-9 items-center justify-center rounded-full bg-gray-100"
-                    accessibilityLabel="Close filters"
-                >
-                    <X size={17} color="#374151" />
-                </Pressable>
-            </View>
-
-            <Field label="Status">
-                <PillGroup
-                    options={["All", ...STATUS_OPTS]}
-                    value={status ?? "All"}
-                    onChange={(v) =>
-                        onChange(v === "All" ? undefined : (v as any))
-                    }
-                />
-            </Field>
-
-            <Field label="Sort by">
-                <PillGroup
-                    options={["createdAt", "updatedAt", "name", "clientName"]}
-                    value={sortBy}
-                    onChange={onSortByChange}
-                />
-            </Field>
-
-            <Field label="Order">
-                <PillGroup
-                    options={["desc", "asc"]}
-                    value={sortOrder}
-                    onChange={(v) => onSortOrderChange(v as "asc" | "desc")}
-                />
-            </Field>
-
-            <Field label="Limit">
-                <PillGroup
-                    options={LIMIT_OPTIONS.map(String)}
-                    value={String(limit)}
-                    onChange={(v) => onLimitChange(Number(v))}
-                />
-            </Field>
-
-            <View className="mt-6 flex-row gap-3">
-                <Pressable
-                    onPress={onClear}
-                    className="flex-1 items-center justify-center rounded-lg border-2 border-gray-200 py-3"
-                >
-                    <Text className="font-kumbhBold text-gray-700">Clear</Text>
-                </Pressable>
-                <Pressable
-                    onPress={onClose}
-                    className="flex-1 items-center justify-center rounded-lg bg-primary py-3"
-                >
-                    <Text className="font-kumbhBold text-white">Apply</Text>
-                </Pressable>
-            </View>
-        </BottomSheetModal>
-    );
-}
-
-function Field({
-    label,
+function Section({
+    title,
+    action,
     children,
 }: {
-    label: string;
+    title: string;
+    action?: React.ReactNode;
     children: React.ReactNode;
 }) {
     return (
         <View className="mb-6">
-            <Text className="mb-3 text-sm font-kumbhBold text-gray-900">
-                {label}
-            </Text>
+            <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-lg font-kumbhBold text-gray-900">
+                    {title}
+                </Text>
+                {action}
+            </View>
             {children}
         </View>
     );
 }
 
-interface PillGroupProps {
-    options: string[];
+function SummaryCard({
+    label,
+    value,
+    sub,
+    tone = "blue",
+}: {
+    label: string;
     value: string;
-    onChange: (v: string) => void;
-    scrollable?: boolean;
-}
+    sub?: string;
+    tone?: "blue" | "emerald" | "amber" | "violet" | "rose" | "slate";
+}) {
+    const toneClass = {
+        blue: "border-blue-100 bg-blue-50",
+        emerald: "border-emerald-100 bg-emerald-50",
+        amber: "border-amber-100 bg-amber-50",
+        violet: "border-violet-100 bg-violet-50",
+        rose: "border-rose-100 bg-rose-50",
+        slate: "border-slate-200 bg-slate-50",
+    }[tone];
 
-function PillGroup({ options, value, onChange }: PillGroupProps) {
     return (
-        <FlatList
-            data={options}
-            scrollEnabled={false}
-            numColumns={3}
-            columnWrapperStyle={{ gap: 8, marginBottom: 8 }}
-            renderItem={({ item }) => {
-                const active = item === value;
-                return (
-                    <Pressable
-                        onPress={() => onChange(item)}
-                        className={`flex-1 px-3.5 py-2 rounded-full border ${
-                            active
-                                ? "bg-primary/10 border-primary/50"
-                                : "bg-white border-gray-200"
-                        }`}
-                    >
-                        <Text
-                            className={`text-xs font-kumbh text-center ${
-                                active
-                                    ? "text-primary font-kumbhBold"
-                                    : "text-gray-700"
-                            }`}
-                        >
-                            {filterLabel(item)}
-                        </Text>
-                    </Pressable>
-                );
-            }}
-            keyExtractor={(x) => x}
-        />
+        <View className={`w-[48%] rounded-xl border p-3 ${toneClass}`}>
+            <Text className="text-xs font-kumbh text-gray-500">{label}</Text>
+            <Text className="mt-2 text-xl font-kumbhBold text-gray-900">
+                {value}
+            </Text>
+            {sub ? (
+                <Text className="mt-1 text-xs font-kumbh text-gray-500">
+                    {sub}
+                </Text>
+            ) : null}
+        </View>
     );
 }
 
-function labelForTab(t: TabKey) {
-    if (t === "all") return "All";
-    if (t === "finance") return "Finance";
-    return "Non-Finance";
+function EmptyState({ label }: { label: string }) {
+    return (
+        <View className="rounded-xl border border-dashed border-gray-200 p-4">
+            <Text className="text-center text-sm font-kumbh text-gray-500">
+                {label}
+            </Text>
+        </View>
+    );
 }
 
-function filterLabel(value: string) {
-    const labels: Record<string, string> = {
-        All: "All",
-        active: "Active",
-        inactive: "Inactive",
-        pending: "Pending",
-        closed: "Closed",
-        createdAt: "Created At",
-        updatedAt: "Updated At",
-        name: "Name",
-        clientName: "Client Name",
-        asc: "Ascending",
-        desc: "Descending",
-        "10": "10",
-        "20": "20",
-        "50": "50",
-        "100": "100",
+function ActionButton({
+    label,
+    icon,
+    onPress,
+}: {
+    label: string;
+    icon: React.ReactNode;
+    onPress: () => void;
+}) {
+    return (
+        <Pressable
+            onPress={onPress}
+            className="w-[48%] h-12 rounded-xl bg-[#4C5FAB] items-center justify-center flex-row"
+        >
+            {icon}
+            <Text className="ml-2 text-sm font-kumbhBold text-white">
+                {label}
+            </Text>
+        </Pressable>
+    );
+}
+
+export default function PartnershipDashboard() {
+    const router = useRouter();
+    const dispatch = useAppDispatch();
+    const isIOS = Platform.OS === "ios";
+
+    const deals = useAppSelector(selectAllDeals);
+    const partners = useAppSelector(selectAllPartners);
+    const dealsLoading = useAppSelector(selectDealLoading);
+    const partnersLoading = useAppSelector(selectPartnerLoading);
+    const dealError = useAppSelector(selectDealError);
+    const partnerError = useAppSelector(selectPartnerError);
+
+    const [refreshing, setRefreshing] = useState(false);
+    const [reportPicker, setReportPicker] = useState<"deal" | "partner" | null>(
+        null,
+    );
+    const [generatingReport, setGeneratingReport] = useState(false);
+
+    const partnerById = useMemo(() => {
+        const map = new Map<string, Partner>();
+        partners.forEach((partner) => map.set(partner._id, partner));
+        return map;
+    }, [partners]);
+
+    const loadDashboard = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                dispatch(fetchDeals({ page: 1, limit: 100 })).unwrap(),
+                dispatch(fetchPartners({ page: 1, limit: 100 })).unwrap(),
+            ]);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [dispatch]);
+
+    useEffect(() => {
+        loadDashboard();
+    }, [loadDashboard]);
+
+    const dashboard = useMemo(() => {
+        const closedWon = deals.filter((deal) => deal.stage === "Closed Won");
+        const openDeals = deals.filter(
+            (deal) =>
+                deal.stage !== "Closed Won" && deal.stage !== "Closed Lost",
+        );
+
+        const totalDealValue = deals.reduce(
+            (sum, deal) => sum + Number(deal.expectedDealValue || 0),
+            0,
+        );
+
+        const totalCommissionsDue = deals.reduce(
+            (sum, deal) => sum + getCommissionSnapshot(deal).due,
+            0,
+        );
+
+        const totalCommissionsPaid = deals.reduce(
+            (sum, deal) => sum + getCommissionSnapshot(deal).paid,
+            0,
+        );
+
+        const outstandingBalance = deals.reduce(
+            (sum, deal) => sum + getCommissionSnapshot(deal).outstanding,
+            0,
+        );
+
+        const pipeline = STAGES.map((stage) => ({
+            stage,
+            count: deals.filter((deal) => deal.stage === stage).length,
+        }));
+
+        const recentDeals = [...deals]
+            .sort(
+                (a, b) =>
+                    new Date(b.updatedAt || b.createdAt).getTime() -
+                    new Date(a.updatedAt || a.createdAt).getTime(),
+            )
+            .slice(0, 5);
+
+        const topPartners = partners
+            .map((partner) => {
+                const partnerDeals = deals.filter(
+                    (deal) => deal.partnerId === partner._id,
+                );
+                const partnerClosedWon = partnerDeals.filter(
+                    (deal) => deal.stage === "Closed Won",
+                );
+                const partnerRevenue = partnerDeals.reduce(
+                    (sum, deal) => sum + Number(deal.expectedDealValue || 0),
+                    0,
+                );
+
+                return {
+                    partner,
+                    totalDeals: partnerDeals.length,
+                    closedWonDeals: partnerClosedWon.length,
+                    revenue: partnerRevenue,
+                };
+            })
+            .filter((item) => item.totalDeals > 0)
+            .sort(
+                (a, b) =>
+                    b.closedWonDeals - a.closedWonDeals ||
+                    b.revenue - a.revenue ||
+                    b.totalDeals - a.totalDeals,
+            )
+            .slice(0, 5);
+
+        const pendingReconciliations = deals
+            .filter((deal) => {
+                const financial = deal.financialReconciliation;
+                const outstanding = getCommissionSnapshot(deal).outstanding;
+                return (
+                    outstanding > 0 ||
+                    financial?.paymentStatus === "Pending" ||
+                    financial?.paymentStatus === "Part Paid" ||
+                    financial?.approvalStatus === "Pending"
+                );
+            })
+            .slice(0, 5);
+
+        return {
+            closedWon,
+            openDeals,
+            totalDealValue,
+            totalCommissionsDue,
+            totalCommissionsPaid,
+            outstandingBalance,
+            pipeline,
+            recentDeals,
+            topPartners,
+            pendingReconciliations,
+        };
+    }, [deals, partners]);
+
+    const loading = (dealsLoading || partnersLoading) && !refreshing;
+
+    const openReportPicker = (type: "deal" | "partner") => {
+        if (type === "deal" && deals.length === 0) {
+            Alert.alert(
+                "No deals",
+                "Create a deal before generating a report.",
+            );
+            return;
+        }
+        if (type === "partner" && partners.length === 0) {
+            Alert.alert(
+                "No partners",
+                "Create a partner before generating a report.",
+            );
+            return;
+        }
+        setReportPicker(type);
     };
-    return labels[value] ?? value;
-}
 
-function capitalize(s?: string) {
-    if (!s) return "";
-    return s.charAt(0).toUpperCase() + s.slice(1);
-}
+    const handleGenerateDealReport = async (deal: Deal) => {
+        setGeneratingReport(true);
+        try {
+            await generateDealReportPdf(deal, partnerById.get(deal.partnerId));
+            setReportPicker(null);
+        } catch (err: any) {
+            Alert.alert(
+                "Report failed",
+                err?.message || "Unable to generate deal report.",
+            );
+        } finally {
+            setGeneratingReport(false);
+        }
+    };
 
-function formatMoney(n?: number) {
-    const amount = typeof n === "number" ? n : 0;
-    try {
-        return new Intl.NumberFormat(undefined, {
-            style: "currency",
-            currency: "NGN",
-            maximumFractionDigits: 0,
-        }).format(amount);
-    } catch {
-        return String(amount);
-    }
-}
+    const handleGeneratePartnerReport = async (partner: Partner) => {
+        setGeneratingReport(true);
+        try {
+            await generatePartnerReportPdf(
+                partner,
+                deals.filter((deal) => deal.partnerId === partner._id),
+            );
+            setReportPicker(null);
+        } catch (err: any) {
+            Alert.alert(
+                "Report failed",
+                err?.message || "Unable to generate partner report.",
+            );
+        } finally {
+            setGeneratingReport(false);
+        }
+    };
 
-function formatDateTime(value?: string) {
-    if (!value) return "—";
-    const dt = new Date(value);
-    if (isNaN(dt.getTime())) return "—";
-    return dt.toLocaleString();
+    return (
+        <SafeAreaView
+            className="flex-1 bg-white"
+            edges={
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
+            }
+        >
+            <PlatformAdaptiveHeader title="Partnership Dashboard" />
+
+            {loading ? (
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator size="large" color="#4C5FAB" />
+                </View>
+            ) : (
+                <ScrollView
+                    className="flex-1"
+                    contentContainerClassName="px-4 pb-8"
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={loadDashboard}
+                        />
+                    }
+                    showsVerticalScrollIndicator={false}
+                >
+                    {dealError || partnerError ? (
+                        <View className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3">
+                            <Text className="text-sm font-kumbh text-red-700">
+                                {dealError || partnerError}
+                            </Text>
+                        </View>
+                    ) : null}
+
+                    <View className="flex-row gap-2 mb-6">
+                        <Tile
+                            title="Partners"
+                            icon={<Users size={20} color="white" />}
+                            onPress={() =>
+                                router.push("/(admin)/partnerships/partners")
+                            }
+                        />
+
+                        <Tile
+                            title="Deals"
+                            icon={<FolderKanban size={20} color="white" />}
+                            onPress={() =>
+                                router.push("/(admin)/partnerships/deals")
+                            }
+                        />
+                    </View>
+
+                    <Section title="Summary">
+                        <View className="flex-row flex-wrap gap-3">
+                            <SummaryCard
+                                label="Total Partners"
+                                value={String(partners.length)}
+                                tone="blue"
+                            />
+                            <SummaryCard
+                                label="Total Deals"
+                                value={String(deals.length)}
+                                tone="violet"
+                            />
+                            <SummaryCard
+                                label="Closed Won Deals"
+                                value={String(dashboard.closedWon.length)}
+                                tone="emerald"
+                            />
+                            <SummaryCard
+                                label="Open Opportunities"
+                                value={String(dashboard.openDeals.length)}
+                                tone="amber"
+                            />
+                            <SummaryCard
+                                label="Total Deal Value"
+                                value={formatAmount(dashboard.totalDealValue)}
+                                tone="slate"
+                            />
+                            <SummaryCard
+                                label="Commissions Due"
+                                value={formatAmount(
+                                    dashboard.totalCommissionsDue,
+                                )}
+                                tone="violet"
+                            />
+                            <SummaryCard
+                                label="Commissions Paid"
+                                value={formatAmount(
+                                    dashboard.totalCommissionsPaid,
+                                )}
+                                tone="emerald"
+                            />
+                            <SummaryCard
+                                label="Outstanding Balance"
+                                value={formatAmount(
+                                    dashboard.outstandingBalance,
+                                )}
+                                tone="rose"
+                            />
+                        </View>
+                    </Section>
+
+                    <Section title="Deal Pipeline">
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                        >
+                            <View className="flex-row gap-3">
+                                {dashboard.pipeline.map((item) => (
+                                    <View
+                                        key={item.stage}
+                                        className={`w-32 rounded-xl border p-3 ${stageTone[item.stage]}`}
+                                    >
+                                        <Text
+                                            className="text-xs font-kumbh text-gray-500"
+                                            numberOfLines={2}
+                                        >
+                                            {item.stage}
+                                        </Text>
+                                        <Text className="mt-2 text-2xl font-kumbhBold text-gray-900">
+                                            {item.count}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </ScrollView>
+                    </Section>
+
+                    <Section
+                        title="Recent Deals"
+                        action={
+                            <Pressable
+                                onPress={() =>
+                                    router.push("/(admin)/partnerships/deals")
+                                }
+                            >
+                                <Text className="text-sm font-kumbhBold text-[#4C5FAB]">
+                                    View all
+                                </Text>
+                            </Pressable>
+                        }
+                    >
+                        {dashboard.recentDeals.length === 0 ? (
+                            <EmptyState label="No recent deals yet." />
+                        ) : (
+                            dashboard.recentDeals.map((deal) => {
+                                const partner = partnerById.get(deal.partnerId);
+                                return (
+                                    <Pressable
+                                        key={deal._id}
+                                        onPress={() =>
+                                            router.push(
+                                                `/(admin)/partnerships/deals/${deal._id}`,
+                                            )
+                                        }
+                                        className="mb-2 rounded-xl border border-gray-200 p-3"
+                                    >
+                                        <View className="flex-row items-start justify-between">
+                                            <View className="flex-1 pr-3">
+                                                <Text
+                                                    className="font-kumbhBold text-gray-900"
+                                                    numberOfLines={1}
+                                                >
+                                                    {deal.title}
+                                                </Text>
+                                                <Text
+                                                    className="mt-1 text-sm font-kumbh text-gray-500"
+                                                    numberOfLines={1}
+                                                >
+                                                    {partner?.name ||
+                                                        "Unknown partner"}
+                                                </Text>
+                                            </View>
+                                            <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
+                                                {deal.stage}
+                                            </Text>
+                                        </View>
+                                        <Text className="mt-2 text-xs font-kumbh text-gray-500">
+                                            Owner: {deal.assignedOwner || "—"} •
+                                            Updated:{" "}
+                                            {formatDate(deal.updatedAt)}
+                                        </Text>
+                                    </Pressable>
+                                );
+                            })
+                        )}
+                    </Section>
+
+                    <Section title="Top Performing Partners">
+                        {dashboard.topPartners.length === 0 ? (
+                            <EmptyState label="No partner performance data yet." />
+                        ) : (
+                            dashboard.topPartners.map((item) => (
+                                <View
+                                    key={item.partner._id}
+                                    className="mb-2 rounded-xl border border-gray-200 p-3"
+                                >
+                                    <Text
+                                        className="font-kumbhBold text-gray-900"
+                                        numberOfLines={1}
+                                    >
+                                        {item.partner.name}
+                                    </Text>
+                                    <Text className="mt-1 text-sm font-kumbh text-gray-500">
+                                        {item.totalDeals} deals •{" "}
+                                        {item.closedWonDeals} closed won
+                                    </Text>
+                                    <Text className="mt-1 text-sm font-kumbhBold text-gray-900">
+                                        Revenue: {formatAmount(item.revenue)}
+                                    </Text>
+                                </View>
+                            ))
+                        )}
+                    </Section>
+
+                    <Section title="Pending Financial Reconciliations">
+                        {dashboard.pendingReconciliations.length === 0 ? (
+                            <EmptyState label="No pending financial reconciliations." />
+                        ) : (
+                            dashboard.pendingReconciliations.map((deal) => {
+                                const financial = deal.financialReconciliation;
+                                const partner = partnerById.get(deal.partnerId);
+                                const commission = getCommissionSnapshot(deal);
+                                return (
+                                    <Pressable
+                                        key={deal._id}
+                                        onPress={() =>
+                                            router.push(
+                                                `/(admin)/partnerships/deals/${deal._id}`,
+                                            )
+                                        }
+                                        className="mb-2 rounded-xl border border-amber-200 bg-amber-50 p-3"
+                                    >
+                                        <Text
+                                            className="font-kumbhBold text-gray-900"
+                                            numberOfLines={1}
+                                        >
+                                            {deal.title}
+                                        </Text>
+                                        <Text
+                                            className="mt-1 text-sm font-kumbh text-gray-600"
+                                            numberOfLines={1}
+                                        >
+                                            {partner?.name || "Unknown partner"}
+                                        </Text>
+                                        <Text className="mt-2 text-sm font-kumbh text-gray-700">
+                                            Outstanding:{" "}
+                                            {formatAmount(
+                                                commission.outstanding,
+                                            )}
+                                        </Text>
+                                        <Text className="mt-1 text-xs font-kumbh text-gray-600">
+                                            Payment:{" "}
+                                            {financial?.paymentStatus ||
+                                                "Not Due"}{" "}
+                                            • Approval:{" "}
+                                            {financial?.approvalStatus ||
+                                                "Pending"}
+                                        </Text>
+                                    </Pressable>
+                                );
+                            })
+                        )}
+                    </Section>
+
+                    <Section title="Quick Actions">
+                        <View className="flex-row flex-wrap gap-3">
+                            <ActionButton
+                                label="Add Partner"
+                                icon={<Users size={18} color="white" />}
+                                onPress={() =>
+                                    router.push(
+                                        "/(admin)/partnerships/partners/create",
+                                    )
+                                }
+                            />
+                            <ActionButton
+                                label="Add Deal"
+                                icon={<Plus size={18} color="white" />}
+                                onPress={() =>
+                                    router.push(
+                                        "/(admin)/partnerships/deals/create",
+                                    )
+                                }
+                            />
+                            <ActionButton
+                                label="Deal Report"
+                                icon={<BarChart3 size={18} color="white" />}
+                                onPress={() => openReportPicker("deal")}
+                            />
+                            <ActionButton
+                                label="Partner Report"
+                                icon={<FileText size={18} color="white" />}
+                                onPress={() => openReportPicker("partner")}
+                            />
+                        </View>
+                    </Section>
+                </ScrollView>
+            )}
+
+            <Modal
+                visible={reportPicker !== null}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setReportPicker(null)}
+            >
+                <View className="flex-1 justify-end bg-black/30">
+                    <View className="max-h-[78%] rounded-t-3xl bg-white">
+                        <View className="flex-row items-center justify-between border-b border-gray-100 px-5 py-4">
+                            <Text className="text-lg font-kumbhBold text-gray-900">
+                                {reportPicker === "deal"
+                                    ? "Generate Deal Report"
+                                    : "Generate Partner Report"}
+                            </Text>
+                            <Pressable
+                                onPress={() => setReportPicker(null)}
+                                disabled={generatingReport}
+                                className="h-9 w-9 items-center justify-center rounded-full bg-gray-100"
+                            >
+                                <X size={18} color="#111827" />
+                            </Pressable>
+                        </View>
+
+                        <ScrollView
+                            contentContainerClassName="px-5 py-4 pb-8"
+                            showsVerticalScrollIndicator={false}
+                        >
+                            <Text className="mb-3 text-sm font-kumbh text-gray-500">
+                                {reportPicker === "deal"
+                                    ? "Select one deal before generating the Deal Report."
+                                    : "Select one partner before generating the Partner Report."}
+                            </Text>
+
+                            {reportPicker === "deal"
+                                ? deals.map((deal) => {
+                                      const partner = partnerById.get(
+                                          deal.partnerId,
+                                      );
+                                      const snapshot =
+                                          getCommissionSnapshot(deal);
+                                      return (
+                                          <Pressable
+                                              key={deal._id}
+                                              disabled={generatingReport}
+                                              onPress={() =>
+                                                  handleGenerateDealReport(deal)
+                                              }
+                                              className="mb-2 rounded-xl border border-gray-200 p-3"
+                                          >
+                                              <View className="flex-row items-start justify-between">
+                                                  <View className="flex-1 pr-3">
+                                                      <Text
+                                                          className="font-kumbhBold text-gray-900"
+                                                          numberOfLines={1}
+                                                      >
+                                                          {deal.title}
+                                                      </Text>
+                                                      <Text
+                                                          className="mt-1 text-sm font-kumbh text-gray-500"
+                                                          numberOfLines={1}
+                                                      >
+                                                          {partner?.name ||
+                                                              "Unknown partner"}
+                                                      </Text>
+                                                  </View>
+                                                  <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
+                                                      {deal.stage}
+                                                  </Text>
+                                              </View>
+                                              <Text className="mt-2 text-xs font-kumbh text-gray-500">
+                                                  Partner return:{" "}
+                                                  {formatAmount(snapshot.due)} •
+                                                  Outstanding:{" "}
+                                                  {formatAmount(
+                                                      snapshot.outstanding,
+                                                  )}
+                                              </Text>
+                                          </Pressable>
+                                      );
+                                  })
+                                : partners.map((partner) => {
+                                      const partnerDeals = deals.filter(
+                                          (deal) =>
+                                              deal.partnerId === partner._id,
+                                      );
+                                      return (
+                                          <Pressable
+                                              key={partner._id}
+                                              disabled={generatingReport}
+                                              onPress={() =>
+                                                  handleGeneratePartnerReport(
+                                                      partner,
+                                                  )
+                                              }
+                                              className="mb-2 rounded-xl border border-gray-200 p-3"
+                                          >
+                                              <Text
+                                                  className="font-kumbhBold text-gray-900"
+                                                  numberOfLines={1}
+                                              >
+                                                  {partner.name}
+                                              </Text>
+                                              <Text
+                                                  className="mt-1 text-sm font-kumbh text-gray-500"
+                                                  numberOfLines={1}
+                                              >
+                                                  {partner.company ||
+                                                      "No company added"}
+                                              </Text>
+                                              <Text className="mt-2 text-xs font-kumbh text-gray-500">
+                                                  {partnerDeals.length} linked{" "}
+                                                  {partnerDeals.length === 1
+                                                      ? "deal"
+                                                      : "deals"}
+                                              </Text>
+                                          </Pressable>
+                                      );
+                                  })}
+
+                            {generatingReport ? (
+                                <View className="mt-2 items-center py-3">
+                                    <ActivityIndicator
+                                        size="small"
+                                        color="#4C5FAB"
+                                    />
+                                    <Text className="mt-2 text-sm font-kumbh text-gray-500">
+                                        Generating report...
+                                    </Text>
+                                </View>
+                            ) : null}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+        </SafeAreaView>
+    );
 }

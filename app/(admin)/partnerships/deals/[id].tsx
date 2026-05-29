@@ -1,3 +1,4 @@
+import { api } from "@/api/axios";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { selectDealById, selectDealLoading } from "@/redux/deal/deal.selectors";
 import {
@@ -9,14 +10,19 @@ import { selectPartnerById } from "@/redux/partner/partner.selectors";
 import { fetchPartnerById } from "@/redux/partner/partner.thunks";
 import { uploadSingle } from "@/redux/upload/upload.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { generateDealReportPdf } from "@/utils/partnershipReports";
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Sharing from "expo-sharing";
 import {
     Check,
+    Download,
     Edit2,
     ExternalLink,
     FileText,
     Plus,
+    Share2,
     Trash2,
     Upload,
     X,
@@ -37,12 +43,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type TabKey =
-    | "Overview"
-    | "Activities"
-    | "Financials"
-    | "Contributions"
-    | "Documents";
+type TabKey = "Overview" | "Activities" | "Financials" | "Contributions";
+// | "Documents";
 
 type PickedFile = {
     uri: string;
@@ -55,7 +57,7 @@ const TABS: TabKey[] = [
     "Activities",
     "Financials",
     "Contributions",
-    "Documents",
+    // "Documents",
 ];
 
 const DEAL_STAGES = [
@@ -170,7 +172,7 @@ function ActionButton({
         <Pressable
             onPress={onPress}
             disabled={disabled}
-            className={`h-11 px-4 rounded-lg flex-row items-center justify-center ${styles} ${
+            className={`h-11 px-3 rounded-lg flex-row items-center justify-center ${styles} ${
                 disabled ? "opacity-60" : ""
             }`}
         >
@@ -296,6 +298,7 @@ export default function DealDetails() {
     const [activeTab, setActiveTab] = useState<TabKey>("Overview");
     const [deleting, setDeleting] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
     const [activityModalVisible, setActivityModalVisible] = useState(false);
     const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -410,7 +413,11 @@ export default function DealDetails() {
     const uploadPickedFile = async (file: PickedFile | null) => {
         if (!file) return undefined;
         const uploaded = await dispatch(uploadSingle(file)).unwrap();
-        return uploaded.url;
+        return {
+            url: uploaded.url,
+            publicId: uploaded.publicId,
+            resourceType: (uploaded as any).resourceType,
+        };
     };
 
     const handleDelete = () => {
@@ -512,7 +519,11 @@ export default function DealDetails() {
 
         setSaving(true);
         try {
-            const documentUrl = await uploadPickedFile(paymentFile);
+            const documentUpload = await uploadPickedFile(paymentFile);
+            const documentUrl =
+                typeof documentUpload === "string"
+                    ? documentUpload
+                    : documentUpload?.url;
             const nextAmountPaid = amountPaid + paymentAmount;
             const nextBalance = Math.max(agreedAmount - nextAmountPaid, 0);
             const nextPaymentStatus =
@@ -702,8 +713,22 @@ export default function DealDetails() {
 
         setSaving(true);
         try {
-            const url = await uploadPickedFile(documentFile);
+            const uploadResult = await uploadPickedFile(documentFile);
+            const url =
+                typeof uploadResult === "string"
+                    ? uploadResult
+                    : uploadResult?.url;
+            const publicId =
+                typeof uploadResult === "object"
+                    ? uploadResult?.publicId
+                    : null;
+            const resourceType =
+                typeof uploadResult === "object"
+                    ? uploadResult?.resourceType
+                    : null;
+
             if (!url) throw new Error("No document URL returned");
+
             await dispatch(
                 updateDeal({
                     id: deal._id,
@@ -712,6 +737,8 @@ export default function DealDetails() {
                             ...(deal.documents || []),
                             {
                                 url,
+                                publicId: publicId || undefined,
+                                resourceType: resourceType || undefined,
                                 type: documentForm.type as any,
                                 name:
                                     documentForm.name.trim() ||
@@ -729,6 +756,152 @@ export default function DealDetails() {
             Alert.alert("Error", err?.message || "Failed to upload document");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const extractPublicIdFromUrl = (url: string): string | null => {
+        try {
+            const uploadIndex = url.indexOf("/upload/");
+            if (uploadIndex === -1) return null;
+
+            let after = url.substring(uploadIndex + "/upload/".length);
+            const parts = after.split("/");
+            if (parts[0].startsWith("v") && /^v\d+$/.test(parts[0])) {
+                parts.shift();
+            }
+
+            let publicId = parts.join("/").split("?")[0];
+            publicId = publicId.replace(/\.[^/.]+$/, "");
+
+            try {
+                publicId = decodeURIComponent(publicId);
+            } catch {
+                // use raw value if decode fails
+            }
+
+            return publicId || null;
+        } catch {
+            return null;
+        }
+    };
+
+    const handleDeleteDocument = async (index: number) => {
+        if (!deal) return;
+
+        Alert.alert(
+            "Delete document",
+            "Are you sure you want to remove this document?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        setSaving(true);
+                        try {
+                            const document = deal.documents?.[index];
+                            let publicId = document?.publicId;
+                            if (!publicId && document?.url) {
+                                publicId =
+                                    extractPublicIdFromUrl(document.url) ||
+                                    undefined;
+                            }
+
+                            if (publicId) {
+                                try {
+                                    await api.post("/upload/delete", {
+                                        publicId,
+                                        resourceType: document?.resourceType,
+                                    });
+                                } catch {
+                                    // Continue removing from deal even if Cloudinary delete fails
+                                }
+                            }
+
+                            const updatedDocs =
+                                deal.documents?.filter((_, i) => i !== index) ||
+                                [];
+                            await dispatch(
+                                updateDeal({
+                                    id: deal._id,
+                                    updates: { documents: updatedDocs },
+                                }),
+                            ).unwrap();
+                        } catch (err: any) {
+                            Alert.alert(
+                                "Error",
+                                err?.message || "Failed to delete document",
+                            );
+                        } finally {
+                            setSaving(false);
+                        }
+                    },
+                },
+            ],
+        );
+    };
+
+    const handleDownloadDocument = async (document: any) => {
+        try {
+            const safeName = String(document?.name || `document_${Date.now()}`)
+                .replace(/[\\/:*?"<>|]/g, "_")
+                .trim();
+
+            const getExtFromValue = (value?: string) => {
+                if (!value) return "";
+                const cleaned = decodeURIComponent(value)
+                    .split("?")[0]
+                    .split("#")[0];
+                const match = /\.([a-zA-Z0-9]{1,10})$/.exec(cleaned);
+                return match?.[1]?.toLowerCase() || "";
+            };
+
+            const extFromName = getExtFromValue(safeName);
+            const extFromUrl = getExtFromValue(String(document?.url || ""));
+            const inferredExt = extFromName || extFromUrl || "bin";
+
+            const filename = extFromName
+                ? safeName
+                : `${safeName}.${inferredExt}`;
+            const localPath = `${FileSystem.documentDirectory}${filename}`;
+
+            const downloadResult = await FileSystem.downloadAsync(
+                document.url,
+                localPath,
+            );
+
+            if (downloadResult.status < 200 || downloadResult.status >= 300) {
+                throw new Error("Failed to download document");
+            }
+
+            if (Platform.OS === "ios") {
+                await Sharing.shareAsync(localPath, {
+                    mimeType: "application/octet-stream",
+                    dialogTitle: `Download ${filename}`,
+                });
+            } else {
+                Alert.alert("Downloaded", `Document saved to: ${localPath}`);
+            }
+        } catch (err: any) {
+            Alert.alert(
+                "Download failed",
+                err?.message || "Unable to download document",
+            );
+        }
+    };
+
+    const handleGenerateDealReport = async () => {
+        if (!deal) return;
+        setIsGeneratingReport(true);
+        try {
+            await generateDealReportPdf(deal, partner);
+        } catch (err: any) {
+            Alert.alert(
+                "Report failed",
+                err?.message || "Unable to generate deal report.",
+            );
+        } finally {
+            setIsGeneratingReport(false);
         }
     };
 
@@ -836,13 +1009,13 @@ export default function DealDetails() {
 
     const renderFinancials = () => (
         <View>
-            <View className="flex-row flex-wrap gap-2 mb-4">
+            <View className="flex-row flex-wrap gap-1 mb-4">
                 <ActionButton
                     label="Add Payment"
                     icon={<Plus size={18} color="white" />}
                     onPress={() => setPaymentModalVisible(true)}
                 />
-                <ActionButton
+                {/* <ActionButton
                     label="Upload Receipt/Invoice"
                     icon={<Upload size={18} color="#111827" />}
                     variant="secondary"
@@ -850,7 +1023,7 @@ export default function DealDetails() {
                         setDocumentForm({ type: "receipt", name: "" });
                         setDocumentModalVisible(true);
                     }}
-                />
+                /> */}
                 <ActionButton
                     label={
                         commissionApproved
@@ -1043,7 +1216,34 @@ export default function DealDetails() {
                                 {document.url}
                             </Text>
                         </View>
-                        <ExternalLink size={18} color="#3b82f6" />
+                        <View className="flex-row gap-1 items-center">
+                            <Pressable
+                                onPress={() => handleDownloadDocument(document)}
+                                disabled={saving}
+                                className="p-2"
+                            >
+                                <Download
+                                    size={18}
+                                    color={saving ? "#d1d5db" : "#10b981"}
+                                />
+                            </Pressable>
+                            <Pressable
+                                onPress={() => handleDeleteDocument(index)}
+                                disabled={saving}
+                                className="p-2"
+                            >
+                                <Trash2
+                                    size={18}
+                                    color={saving ? "#d1d5db" : "#dc2626"}
+                                />
+                            </Pressable>
+                            <Pressable
+                                onPress={() => Linking.openURL(document.url)}
+                                className="p-2"
+                            >
+                                <ExternalLink size={18} color="#3b82f6" />
+                            </Pressable>
+                        </View>
                     </Pressable>
                 ))
             ) : (
@@ -1119,6 +1319,28 @@ export default function DealDetails() {
                                 Change Stage
                             </Text>
                         </Pressable>
+                        <View className="mt-3">
+                            <ActionButton
+                                label={
+                                    isGeneratingReport
+                                        ? "Generating..."
+                                        : "Generate Deal Report"
+                                }
+                                icon={
+                                    isGeneratingReport ? (
+                                        <ActivityIndicator
+                                            size="small"
+                                            color="#111827"
+                                        />
+                                    ) : (
+                                        <Share2 size={18} color="#111827" />
+                                    )
+                                }
+                                variant="secondary"
+                                disabled={isGeneratingReport}
+                                onPress={handleGenerateDealReport}
+                            />
+                        </View>
                     </View>
 
                     <ScrollView
