@@ -77,13 +77,21 @@ export type Deal = {
         followUpSupport?: string;
         relationshipStrength?: "Weak" | "Moderate" | "Strong" | "Very Strong";
         contributionNotes?: string;
-        valueRating?: "Low Value" | "Medium Value" | "High Value" | "Strategic Value";
+        valueRating?:
+            | "Low Value"
+            | "Medium Value"
+            | "High Value"
+            | "Strategic Value";
     };
 
     contributionLogs?: {
         contributionType: string;
         description: string;
-        valueRating?: "Low Value" | "Medium Value" | "High Value" | "Strategic Value";
+        valueRating?:
+            | "Low Value"
+            | "Medium Value"
+            | "High Value"
+            | "Strategic Value";
         date: string;
         notes?: string;
         createdAt?: string;
@@ -91,6 +99,8 @@ export type Deal = {
 
     documents?: {
         url: string;
+        publicId?: string;
+        resourceType?: string;
         type?: "agreement" | "invoice" | "receipt" | "supporting";
         name?: string;
         uploadedAt: string;

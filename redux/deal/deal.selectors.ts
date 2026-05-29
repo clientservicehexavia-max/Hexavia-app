@@ -1,58 +1,50 @@
+import { createSelector } from "@reduxjs/toolkit";
 import type { RootState } from "@/store";
 import type { Deal } from "./deal.types";
 
-export const selectAllDeals = (state: RootState): Deal[] => {
-    return state.deal.allIds.map((id) => state.deal.byId[id]);
-};
+const selectDealState = (s: RootState) => s.deal;
+const selectById = (s: RootState) => s.deal.byId;
+const selectAllIds = (s: RootState) => s.deal.allIds;
 
-export const selectDealById = (id: string) => (state: RootState): Deal | undefined => {
-    return state.deal.byId[id];
-};
+export const selectAllDeals = createSelector(
+    [selectById, selectAllIds],
+    (byId, allIds) => allIds.map((id) => byId[id]).filter(Boolean)
+);
+
+export const selectDealById = (id: string) => createSelector([selectById], (byId) => byId[id]);
 
 export const selectCurrentDeal = (state: RootState): Deal | null => {
-    return state.deal.currentDeal;
+    return selectDealState(state).currentDeal;
 };
 
 export const selectDealLoading = (state: RootState): boolean => {
-    return state.deal.loading;
+    return selectDealState(state).loading;
 };
 
 export const selectDealError = (state: RootState): string | null => {
-    return state.deal.error;
+    return selectDealState(state).error;
 };
 
 export const selectDealFilters = (state: RootState) => {
-    return state.deal.filters;
+    return selectDealState(state).filters;
 };
 
 export const selectDealPagination = (state: RootState) => {
-    return state.deal.pagination;
+    return selectDealState(state).pagination;
 };
 
-export const selectDealCount = (state: RootState): number => {
-    return state.deal.allIds.length;
-};
+export const selectDealCount = createSelector([selectAllIds], (allIds) => allIds.length);
 
-export const selectDealsByStage = (stage: string) => (state: RootState): Deal[] => {
-    return state.deal.allIds
-        .map((id) => state.deal.byId[id])
-        .filter((deal) => deal.stage === stage);
-};
+export const selectDealsByStage = (stage: string) =>
+    createSelector([selectAllDeals], (deals) => deals.filter((deal) => deal.stage === stage));
 
-export const selectDealsByPartner = (partnerId: string) => (state: RootState): Deal[] => {
-    return state.deal.allIds
-        .map((id) => state.deal.byId[id])
-        .filter((deal) => deal.partnerId === partnerId);
-};
+export const selectDealsByPartner = (partnerId: string) =>
+    createSelector([selectAllDeals], (deals) => deals.filter((deal) => deal.partnerId === partnerId));
 
-export const selectClosedDeals = (state: RootState): Deal[] => {
-    return state.deal.allIds
-        .map((id) => state.deal.byId[id])
-        .filter((deal) => deal.stage === "Closed Won" || deal.stage === "Closed Lost");
-};
+export const selectClosedDeals = createSelector([selectAllDeals], (deals) =>
+    deals.filter((deal) => deal.stage === "Closed Won" || deal.stage === "Closed Lost")
+);
 
-export const selectActiveDeals = (state: RootState): Deal[] => {
-    return state.deal.allIds
-        .map((id) => state.deal.byId[id])
-        .filter((deal) => deal.stage !== "Closed Won" && deal.stage !== "Closed Lost");
-};
+export const selectActiveDeals = createSelector([selectAllDeals], (deals) =>
+    deals.filter((deal) => deal.stage !== "Closed Won" && deal.stage !== "Closed Lost")
+);

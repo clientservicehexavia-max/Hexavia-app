@@ -46,13 +46,7 @@ function useDebounced<T>(value: T, ms: number) {
     return deb;
 }
 
-function PartnerMeta({
-    icon,
-    text,
-}: {
-    icon: React.ReactNode;
-    text: string;
-}) {
+function PartnerMeta({ icon, text }: { icon: React.ReactNode; text: string }) {
     return (
         <View className="flex-row items-center mr-3 mb-1">
             {icon}
@@ -234,7 +228,7 @@ export default function PartnersListScreen() {
                         <Pressable
                             onPress={() =>
                                 router.push(
-                                    "/(admin)/partnerships/partners-create",
+                                    "/(admin)/partnerships/partners/create",
                                 )
                             }
                             className="w-10 h-10 rounded-full items-center justify-center"
