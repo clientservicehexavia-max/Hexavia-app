@@ -46,6 +46,7 @@ export default function PartnerFormScreen() {
     const [form, setForm] = useState<FormData>({
         name: "",
         company: "",
+        description: "",
         contactEmail: "",
         contactPhone: "",
         address: "",
@@ -71,6 +72,7 @@ export default function PartnerFormScreen() {
             setForm({
                 name: partner.name,
                 company: partner.company,
+                description: partner.description,
                 contactEmail: partner.contactEmail,
                 contactPhone: partner.contactPhone,
                 address: partner.address,
@@ -120,6 +122,7 @@ export default function PartnerFormScreen() {
                 const {
                     name,
                     company,
+                    description,
                     contactEmail,
                     contactPhone,
                     address,
@@ -136,6 +139,7 @@ export default function PartnerFormScreen() {
                         updates: {
                             name: name || "",
                             company,
+                            description,
                             contactEmail,
                             contactPhone,
                             address,
@@ -154,6 +158,7 @@ export default function PartnerFormScreen() {
                 const {
                     name,
                     company,
+                    description,
                     contactEmail,
                     contactPhone,
                     address,
@@ -168,6 +173,7 @@ export default function PartnerFormScreen() {
                     createPartner({
                         name: name || "",
                         company,
+                        description,
                         contactEmail,
                         contactPhone,
                         address,
@@ -236,11 +242,12 @@ export default function PartnerFormScreen() {
                             </Text>
                             <TextInput
                                 placeholder="Enter partner name"
+                                placeholderTextColor="#9CA3AF"
                                 value={form.name}
                                 onChangeText={(v) =>
                                     handleUpdateForm("name", v)
                                 }
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 editable={!submitting}
                             />
                         </View>
@@ -252,11 +259,32 @@ export default function PartnerFormScreen() {
                             </Text>
                             <TextInput
                                 placeholder="Enter company name"
+                                placeholderTextColor="#9CA3AF"
                                 value={form.company}
                                 onChangeText={(v) =>
                                     handleUpdateForm("company", v)
                                 }
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
+                                editable={!submitting}
+                            />
+                        </View>
+
+                        {/* Description */}
+                        <View className="mb-6">
+                            <Text className="text-gray-700 font-semibold mb-2">
+                                Description
+                            </Text>
+                            <TextInput
+                                placeholder="Enter description"
+                                placeholderTextColor="#9CA3AF"
+                                value={form.description}
+                                onChangeText={(v) =>
+                                    handleUpdateForm("description", v)
+                                }
+                                multiline
+                                numberOfLines={4}
+                                textAlignVertical="top"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 editable={!submitting}
                             />
                         </View>
@@ -268,12 +296,13 @@ export default function PartnerFormScreen() {
                             </Text>
                             <TextInput
                                 placeholder="Enter email address"
+                                placeholderTextColor="#9CA3AF"
                                 value={form.contactEmail}
                                 onChangeText={(v) =>
                                     handleUpdateForm("contactEmail", v)
                                 }
                                 keyboardType="email-address"
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 editable={!submitting}
                             />
                         </View>
@@ -285,12 +314,13 @@ export default function PartnerFormScreen() {
                             </Text>
                             <TextInput
                                 placeholder="Enter phone number"
+                                placeholderTextColor="#9CA3AF"
                                 value={form.contactPhone}
                                 onChangeText={(v) =>
                                     handleUpdateForm("contactPhone", v)
                                 }
                                 keyboardType="phone-pad"
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 editable={!submitting}
                             />
                         </View>
@@ -302,11 +332,12 @@ export default function PartnerFormScreen() {
                             </Text>
                             <TextInput
                                 placeholder="Enter address"
+                                placeholderTextColor="#9CA3AF"
                                 value={form.address}
                                 onChangeText={(v) =>
                                     handleUpdateForm("address", v)
                                 }
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 editable={!submitting}
                             />
                         </View>
@@ -318,11 +349,12 @@ export default function PartnerFormScreen() {
                             </Text>
                             <TextInput
                                 placeholder="Enter industry"
+                                placeholderTextColor="#9CA3AF"
                                 value={form.industry}
                                 onChangeText={(v) =>
                                     handleUpdateForm("industry", v)
                                 }
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 editable={!submitting}
                             />
                         </View>
@@ -409,6 +441,7 @@ export default function PartnerFormScreen() {
                             <View className="flex-row mb-2 gap-2">
                                 <TextInput
                                     placeholder="Add tags..."
+                                    placeholderTextColor="#9CA3AF"
                                     value={tagInput}
                                     onChangeText={setTagInput}
                                     className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-base"
@@ -452,13 +485,14 @@ export default function PartnerFormScreen() {
                             </Text>
                             <TextInput
                                 placeholder="Enter notes"
+                                placeholderTextColor="#9CA3AF"
                                 value={form.notes}
                                 onChangeText={(v) =>
                                     handleUpdateForm("notes", v)
                                 }
                                 multiline
                                 numberOfLines={4}
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 textAlignVertical="top"
                                 editable={!submitting}
                             />

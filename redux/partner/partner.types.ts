@@ -2,6 +2,7 @@ export type Partner = {
     _id: string;
     name: string;
     company?: string;
+    description?: string;
     contactEmail?: string;
     contactPhone?: string;
     address?: string;

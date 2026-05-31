@@ -254,8 +254,9 @@ export default function CreateDealScreen() {
                                 onChangeText={(v) =>
                                     handleUpdateForm("title", v)
                                 }
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 editable={!submitting}
+                                placeholderTextColor="#9CA3AF"
                             />
                         </View>
 
@@ -413,7 +414,10 @@ export default function CreateDealScreen() {
                             </Text>
                             <TextInput
                                 placeholder="Enter value in numbers"
-                                value={formatAmountForInput(form.expectedDealValue)}
+                                placeholderTextColor="#9CA3AF"
+                                value={formatAmountForInput(
+                                    form.expectedDealValue,
+                                )}
                                 onChangeText={(v) =>
                                     handleUpdateForm(
                                         "expectedDealValue",
@@ -421,7 +425,7 @@ export default function CreateDealScreen() {
                                     )
                                 }
                                 keyboardType="decimal-pad"
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 editable={!submitting}
                             />
                         </View>
@@ -434,6 +438,7 @@ export default function CreateDealScreen() {
                                 </Text>
                                 <TextInput
                                     placeholder="Enter percentage"
+                                    placeholderTextColor="#9CA3AF"
                                     value={
                                         form.agreedPercentage
                                             ? String(form.agreedPercentage)
@@ -446,7 +451,7 @@ export default function CreateDealScreen() {
                                         )
                                     }
                                     keyboardType="decimal-pad"
-                                    className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                    className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                     editable={!submitting}
                                 />
                             </View>
@@ -459,7 +464,10 @@ export default function CreateDealScreen() {
                                 </Text>
                                 <TextInput
                                     placeholder="Enter fixed amount"
-                                    value={formatAmountForInput(form.agreedFixedAmount)}
+                                    placeholderTextColor="#9CA3AF"
+                                    value={formatAmountForInput(
+                                        form.agreedFixedAmount,
+                                    )}
                                     onChangeText={(v) =>
                                         handleUpdateForm(
                                             "agreedFixedAmount",
@@ -467,7 +475,7 @@ export default function CreateDealScreen() {
                                         )
                                     }
                                     keyboardType="decimal-pad"
-                                    className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                    className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                     editable={!submitting}
                                 />
                             </View>
@@ -480,7 +488,10 @@ export default function CreateDealScreen() {
                             </Text>
                             <TextInput
                                 placeholder="Enter expected return"
-                                value={formatAmountForInput(form.expectedPartnerReturn)}
+                                placeholderTextColor="#9CA3AF"
+                                value={formatAmountForInput(
+                                    form.expectedPartnerReturn,
+                                )}
                                 onChangeText={(v) =>
                                     handleUpdateForm(
                                         "expectedPartnerReturn",
@@ -488,7 +499,7 @@ export default function CreateDealScreen() {
                                     )
                                 }
                                 keyboardType="decimal-pad"
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 editable={!submitting}
                             />
                         </View>
@@ -579,13 +590,14 @@ export default function CreateDealScreen() {
                             </Text>
                             <TextInput
                                 placeholder="Enter deal description"
+                                placeholderTextColor="#9CA3AF"
                                 value={form.description}
                                 onChangeText={(v) =>
                                     handleUpdateForm("description", v)
                                 }
                                 multiline
                                 numberOfLines={4}
-                                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                 textAlignVertical="top"
                                 editable={!submitting}
                             />
@@ -599,6 +611,7 @@ export default function CreateDealScreen() {
                             <View className="flex-row mb-2 gap-2">
                                 <TextInput
                                     placeholder="Add tags..."
+                                    placeholderTextColor="#9CA3AF"
                                     value={tagInput}
                                     onChangeText={setTagInput}
                                     className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-base"

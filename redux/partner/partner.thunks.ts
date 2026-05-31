@@ -57,6 +57,7 @@ export const createPartner = createAsyncThunk<
     {
         name: string;
         company?: string;
+        description?: string;
         contactEmail?: string;
         contactPhone?: string;
         address?: string;
