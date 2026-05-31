@@ -32,7 +32,10 @@ export const fetchPartners = createAsyncThunk<
         return data.data.partners;
     } catch (err: any) {
         return rejectWithValue({
-            message: err?.response?.data?.message || err.message || "Failed to fetch partners",
+            message:
+                err?.response?.data?.message ||
+                err.message ||
+                "Failed to fetch partners",
         });
     }
 });
@@ -47,7 +50,10 @@ export const fetchPartnerById = createAsyncThunk<
         return data.data;
     } catch (err: any) {
         return rejectWithValue({
-            message: err?.response?.data?.message || err.message || "Failed to fetch partner",
+            message:
+                err?.response?.data?.message ||
+                err.message ||
+                "Failed to fetch partner",
         });
     }
 });
@@ -61,7 +67,12 @@ export const createPartner = createAsyncThunk<
         contactEmail?: string;
         contactPhone?: string;
         address?: string;
-        partnerType?: "individual" | "company" | "investor" | "vendor" | "other";
+        partnerType?:
+            | "individual"
+            | "company"
+            | "investor"
+            | "vendor"
+            | "other";
         industry?: string;
         engagementTags?: string[];
         notes?: string;
@@ -75,7 +86,10 @@ export const createPartner = createAsyncThunk<
         return data.data;
     } catch (err: any) {
         return rejectWithValue({
-            message: err?.response?.data?.message || err.message || "Failed to create partner",
+            message:
+                err?.response?.data?.message ||
+                err.message ||
+                "Failed to create partner",
         });
     }
 });
@@ -84,7 +98,17 @@ export const updatePartner = createAsyncThunk<
     Partner,
     {
         id: string;
-        updates: Partial<Omit<Partner, "_id" | "createdAt" | "updatedAt" | "deleted" | "createdBy" | "updatedBy">>;
+        updates: Partial<
+            Omit<
+                Partner,
+                | "_id"
+                | "createdAt"
+                | "updatedAt"
+                | "deleted"
+                | "createdBy"
+                | "updatedBy"
+            >
+        >;
     },
     { rejectValue: { message: string } }
 >("partner/updatePartner", async ({ id, updates }, { rejectWithValue }) => {
@@ -93,7 +117,10 @@ export const updatePartner = createAsyncThunk<
         return data.data;
     } catch (err: any) {
         return rejectWithValue({
-            message: err?.response?.data?.message || err.message || "Failed to update partner",
+            message:
+                err?.response?.data?.message ||
+                err.message ||
+                "Failed to update partner",
         });
     }
 });
@@ -108,7 +135,10 @@ export const deletePartner = createAsyncThunk<
         return { id };
     } catch (err: any) {
         return rejectWithValue({
-            message: err?.response?.data?.message || err.message || "Failed to delete partner",
+            message:
+                err?.response?.data?.message ||
+                err.message ||
+                "Failed to delete partner",
         });
     }
 });
