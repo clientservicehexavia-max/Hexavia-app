@@ -7,6 +7,6 @@ const BACKEND_ORIGIN = "https://hexavia.cloud";
 export const ENV = {
     API_BASE_URL: `${BACKEND_ORIGIN}/api`,
     WS_URL: BACKEND_ORIGIN,
-    REQUEST_TIMEOUT_MS: 30_000,
+    REQUEST_TIMEOUT_MS: 60_000, // 60 seconds for most requests
     EXPO_PUBLIC_OPENAI_API_KEY: "",
 };

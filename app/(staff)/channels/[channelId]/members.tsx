@@ -1,180 +1,273 @@
 // app/(staff)/channels/[channelId]/members.tsx
-import React, { useMemo, useCallback, useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  Image,
-  RefreshControl,
-  ActivityIndicator,
-  Pressable,
-  Alert,
-  Platform,
-} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChevronLeft, Plus, Share2 } from "lucide-react-native";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
-
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  fetchChannelById,
-  removeMemberFromChannel,
-} from "@/redux/channels/channels.thunks";
+    CalendarDays,
+    FileText,
+    FolderOpen,
+    Plus,
+    Share2,
+    ShieldCheck,
+    UserMinus,
+    UsersRound,
+} from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Platform,
+    Pressable,
+    RefreshControl,
+    Text,
+    View,
+} from "react-native";
+import {
+    SafeAreaView,
+    useSafeAreaInsets,
+} from "react-native-safe-area-context";
+
+import { api } from "@/api/axios";
+import OptionSheet from "@/components/common/OptionSheet";
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { PRIMARY } from "@/constants/Colors";
+import { selectAdminUsers } from "@/redux/admin/admin.slice";
+import {
+    adminAddChannelMember,
+    fetchAdminUsers,
+} from "@/redux/admin/admin.thunks";
+import type { ChannelLink } from "@/redux/channelLinks/channelLinks.types";
+import type { ChannelNote } from "@/redux/channelNotes/channelNotes.types";
 import { selectChannelById } from "@/redux/channels/channels.selectors";
 import {
-  adminAddChannelMember,
-  fetchAdminUsers,
-} from "@/redux/admin/admin.thunks";
-import { fetchChannelLinks } from "@/redux/channelLinks/channelLinks.thunks";
-import type { ChannelLink } from "@/redux/channelLinks/channelLinks.types";
-import { fetchChannelNotes } from "@/redux/channelNotes/channelNotes.thunks";
-import type { ChannelNote } from "@/redux/channelNotes/channelNotes.types";
-import { selectAdminUsers } from "@/redux/admin/admin.slice";
-import { selectUser } from "@/redux/user/user.slice";
-import { StatusBar } from "expo-status-bar";
-import OptionSheet from "@/components/common/OptionSheet";
+    fetchChannelById,
+    removeMemberFromChannel,
+} from "@/redux/channels/channels.thunks";
 import type { ChannelResource } from "@/redux/channels/resources.types";
-import { slugifyFilename } from "@/utils/slugAndCloudinary";
-import { api } from "@/api/axios";
+import { selectUser } from "@/redux/user/user.slice";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 type MemberItem = {
-  id: string;
-  username: string;
-  avatar?: string | null;
-  role?: string | null;
-  channelType?: string | null;
+    id: string;
+    username: string;
+    avatar?: string | null;
+    role?: string | null;
+    channelType?: string | null;
 };
 
 type SummaryPdfResponse = {
-  success?: boolean;
-  pdfUrl?: string;
-  summaryText?: string;
-  message?: string;
+    success?: boolean;
+    pdfUrl?: string;
+    summaryText?: string;
+    message?: string;
+    filename?: string;
 };
 
 function initialsFrom(value?: string | null) {
-  const s = String(value ?? "").trim();
-  if (!s) return "??";
-  const [a, b] = s.split(/\s+/);
-  return ((a?.[0] ?? "") + (b?.[0] ?? "")).toUpperCase() || "?";
+    const s = String(value ?? "").trim();
+    if (!s) return "??";
+    const [a, b] = s.split(/\s+/);
+    return ((a?.[0] ?? "") + (b?.[0] ?? "")).toUpperCase() || "?";
 }
 
 function Chip({ children }: { children: React.ReactNode }) {
-  return (
-    <View className="bg-gray-100 rounded-full px-3 py-1 mr-2 mb-2">
-      <Text className="text-xs text-gray-700 font-kumbh">{children}</Text>
-    </View>
-  );
+    return (
+        <View className="bg-white/20 rounded-full px-3 py-1.5 mr-2 mb-2 border border-white/20">
+            <Text className="text-xs text-white font-kumbh">{children}</Text>
+        </View>
+    );
+}
+
+function formatRole(role?: string | null) {
+    const value = String(role || "member").trim();
+    if (!value) return "Member";
+    return value
+        .split(/[-_\s]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
+
+function StatTile({
+    icon,
+    label,
+    value,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    value: string;
+}) {
+    return (
+        <View className="flex-1 min-w-[96px] rounded-2xl bg-white border border-gray-100 px-4 py-3">
+            <View className="flex-row items-center">
+                <View className="h-8 w-8 rounded-full bg-[#EEF2FF] items-center justify-center mr-2">
+                    {icon}
+                </View>
+                <Text
+                    className="text-xs text-gray-500 font-kumbh flex-1"
+                    numberOfLines={1}
+                >
+                    {label}
+                </Text>
+            </View>
+            <Text
+                className="mt-3 text-lg text-gray-950 font-kumbhBold"
+                numberOfLines={1}
+            >
+                {value}
+            </Text>
+        </View>
+    );
+}
+
+function ActionButton({
+    label,
+    icon,
+    onPress,
+    variant = "light",
+    disabled,
+}: {
+    label: string;
+    icon: React.ReactNode;
+    onPress: () => void;
+    variant?: "primary" | "light";
+    disabled?: boolean;
+}) {
+    const isPrimary = variant === "primary";
+    return (
+        <Pressable
+            onPress={onPress}
+            disabled={disabled}
+            className={`flex-1 min-h-[48px] rounded-2xl px-4 flex-row items-center justify-center ${
+                isPrimary ? "bg-primary" : "bg-white border border-gray-100"
+            }`}
+            style={{
+                opacity: disabled ? 0.72 : 1,
+                shadowColor: "#111827",
+                shadowOpacity: isPrimary ? 0.12 : 0.05,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 6 },
+                elevation: isPrimary ? 3 : 1,
+            }}
+        >
+            {icon}
+            <Text
+                className={`ml-2 text-sm font-kumbhBold ${
+                    isPrimary ? "text-white" : "text-gray-900"
+                }`}
+                numberOfLines={1}
+            >
+                {label}
+            </Text>
+        </Pressable>
+    );
 }
 
 function fmtDate(d?: string | Date | null) {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  if (!date || Number.isNaN(date.getTime())) return "—";
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+    if (!d) return "—";
+    const date = typeof d === "string" ? new Date(d) : d;
+    if (!date || Number.isNaN(date.getTime())) return "—";
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
 }
 
 function escapeHtml(input?: string | number | null) {
-  if (input === null || input === undefined) return "";
-  return String(input)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    if (input === null || input === undefined) return "";
+    return String(input)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 function statusBadgeColor(s?: string) {
-  switch (String(s || "").toLowerCase()) {
-    case "completed":
-      return "#16a34a";
-    case "in-progress":
-      return "#f59e0b";
-    case "not-started":
-      return "#9ca3af";
-    case "canceled":
-      return "#ef4444";
-    default:
-      return "#6b7280";
-  }
+    switch (String(s || "").toLowerCase()) {
+        case "completed":
+            return "#16a34a";
+        case "in-progress":
+            return "#f59e0b";
+        case "not-started":
+            return "#9ca3af";
+        case "canceled":
+            return "#ef4444";
+        default:
+            return "#6b7280";
+    }
 }
 
 function detectResourceCategory(resource: ChannelResource) {
-  const explicit = String(resource.category ?? "").toLowerCase();
-  if (explicit) return explicit;
-  const mime = String(resource.mime || resource.mimetype || "").toLowerCase();
-  if (mime.startsWith("image/")) return "image";
-  if (mime.startsWith("audio/")) return "audio";
-  if (mime.startsWith("video/")) return "video";
-  if (mime.includes("pdf") || mime.includes("document")) return "document";
-  const name = String(resource.name || "").toLowerCase();
-  const url = String(resource.resourceUpload || "").toLowerCase();
-  if (/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/.test(name + url)) return "image";
-  if (/\.(mp3|wav|m4a|aac|ogg)$/.test(name + url)) return "audio";
-  if (/\.(mp4|mov|avi|mkv|webm)$/.test(name + url)) return "video";
-  if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt)$/.test(name + url))
-    return "document";
-  return "other";
+    const explicit = String(resource.category ?? "").toLowerCase();
+    if (explicit) return explicit;
+    const mime = String(resource.mime || resource.mimetype || "").toLowerCase();
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+    if (mime.includes("pdf") || mime.includes("document")) return "document";
+    const name = String(resource.name || "").toLowerCase();
+    const url = String(resource.resourceUpload || "").toLowerCase();
+    if (/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/.test(name + url)) return "image";
+    if (/\.(mp3|wav|m4a|aac|ogg)$/.test(name + url)) return "audio";
+    if (/\.(mp4|mov|avi|mkv|webm)$/.test(name + url)) return "video";
+    if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt)$/.test(name + url))
+        return "document";
+    return "other";
 }
 
 function resolvePdfUrl(pathOrUrl: string) {
-  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
-  const base = (api.defaults.baseURL ?? "").replace(/\/+$/, "");
-  const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
-  return `${base}${path}`;
+    if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+    const base = (api.defaults.baseURL ?? "").replace(/\/+$/, "");
+    const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+    return `${base}${path}`;
 }
 
 function htmlForSingleChannelReport(payload: {
-  channelName: string;
-  channelCode?: string;
-  generatedAt: Date;
-  createdAt?: string;
-  createdBy?: string;
-  members: MemberItem[];
-  tasks: {
-    _id: string;
-    name: string;
-    description?: string | null;
-    status?: string;
+    channelName: string;
+    channelCode?: string;
+    generatedAt: Date;
     createdAt?: string;
-    updatedAt?: string;
-    dueDate?: string;
-    due_date?: string;
-  }[];
-  resources: ChannelResource[];
-  links: ChannelLink[];
-  notes: ChannelNote[];
+    createdBy?: string;
+    members: MemberItem[];
+    tasks: {
+        _id: string;
+        name: string;
+        description?: string | null;
+        status?: string;
+        createdAt?: string;
+        updatedAt?: string;
+        dueDate?: string;
+        due_date?: string;
+    }[];
+    resources: ChannelResource[];
+    links: ChannelLink[];
+    notes: ChannelNote[];
 }) {
-  const {
-    channelName,
-    channelCode,
-    generatedAt,
-    createdAt,
-    createdBy,
-    members,
-    tasks,
-    resources,
-    links,
-    notes,
-  } = payload;
+    const {
+        channelName,
+        channelCode,
+        generatedAt,
+        createdAt,
+        createdBy,
+        members,
+        tasks,
+        resources,
+        links,
+        notes,
+    } = payload;
 
-  const taskRows =
-    tasks.length > 0
-      ? tasks
-          .map((t, i) => {
-            const due = t.dueDate || t.due_date;
-            return `
+    const taskRows =
+        tasks.length > 0
+            ? tasks
+                  .map((t, i) => {
+                      const due = t.dueDate || t.due_date;
+                      return `
               <tr>
                 <td>${i + 1}</td>
                 <td class="task-title">${escapeHtml(t.name || "Untitled Task")}</td>
                 <td><span class="status-pill" style="background:${statusBadgeColor(
-                  t.status
+                    t.status,
                 )};color:#fff;">${escapeHtml(t.status || "unknown")}</span></td>
                 <td>${escapeHtml(fmtDate(t.createdAt))}</td>
                 <td>${escapeHtml(fmtDate(t.updatedAt))}</td>
@@ -182,15 +275,15 @@ function htmlForSingleChannelReport(payload: {
                 <td>${escapeHtml(t.description || "—")}</td>
               </tr>
             `;
-          })
-          .join("")
-      : `<tr><td colspan="7" class="empty-row">No tasks found.</td></tr>`;
+                  })
+                  .join("")
+            : `<tr><td colspan="7" class="empty-row">No tasks found.</td></tr>`;
 
-  const resourceRows =
-    resources.length > 0
-      ? resources
-          .map(
-            (r, i) => `
+    const resourceRows =
+        resources.length > 0
+            ? resources
+                  .map(
+                      (r, i) => `
               <tr>
                 <td>${i + 1}</td>
                 <td>${escapeHtml(r.name || "Untitled")}</td>
@@ -198,115 +291,134 @@ function htmlForSingleChannelReport(payload: {
                 <td>${escapeHtml(r.description || "—")}</td>
                 <td>${escapeHtml(r.resourceUpload || "—")}</td>
               </tr>
-            `
-          )
-          .join("")
-      : `<tr><td colspan="5" class="empty-row">No resources found.</td></tr>`;
+            `,
+                  )
+                  .join("")
+            : `<tr><td colspan="5" class="empty-row">No resources found.</td></tr>`;
 
-  const linksMarkup =
-    links.length > 0
-      ? links
-          .map(
-            (l) => `
+    const linksMarkup =
+        links.length > 0
+            ? links
+                  .map(
+                      (l) => `
               <li class="ln-item">
                 <div class="ln-title">${escapeHtml(l.title || "Link")}</div>
                 <div class="ln-url">${escapeHtml(l.url)}</div>
                 ${
-                  l.description
-                    ? `<div class="ln-desc">${escapeHtml(l.description)}</div>`
-                    : ""
+                    l.description
+                        ? `<div class="ln-desc">${escapeHtml(l.description)}</div>`
+                        : ""
                 }
               </li>
-            `
-          )
-          .join("")
-      : `<li class="ln-empty">No links</li>`;
+            `,
+                  )
+                  .join("")
+            : `<li class="ln-empty">No links</li>`;
 
-  const notesMarkup =
-    notes.length > 0
-      ? notes
-          .map(
-            (n) => `
+    const notesMarkup =
+        notes.length > 0
+            ? notes
+                  .map(
+                      (n) => `
               <li class="ln-item">
                 <div class="ln-title">${escapeHtml(n.title || "Untitled Note")}</div>
                 <div class="ln-desc">${escapeHtml(n.description || "—")}</div>
               </li>
-            `
-          )
-          .join("")
-      : `<li class="ln-empty">No notes</li>`;
+            `,
+                  )
+                  .join("")
+            : `<li class="ln-empty">No notes</li>`;
 
-  const memberMarkup =
-    members.length > 0
-      ? members
-          .map(
-            (m) =>
-              `<span class="member-chip">${escapeHtml(m.username || "Member")}</span>`
-          )
-          .join("")
-      : `<span class="ln-empty">No members found</span>`;
+    const memberMarkup =
+        members.length > 0
+            ? members
+                  .map(
+                      (m) =>
+                          `<span class="member-chip">${escapeHtml(m.username || "Member")}</span>`,
+                  )
+                  .join("")
+            : `<span class="ln-empty">No members found</span>`;
 
-  const completed = tasks.filter((t) => t.status === "completed").length;
-  const inProgress = tasks.filter((t) => t.status === "in-progress").length;
-  const notStarted = tasks.filter((t) => t.status === "not-started").length;
-  const canceled = tasks.filter((t) => t.status === "canceled").length;
+    const completed = tasks.filter((t) => t.status === "completed").length;
+    const inProgress = tasks.filter((t) => t.status === "in-progress").length;
+    const notStarted = tasks.filter((t) => t.status === "not-started").length;
+    const canceled = tasks.filter((t) => t.status === "canceled").length;
 
-  const narrativeLines = (() => {
-    if (!tasks.length) {
-      return [
-        "No tasks were recorded for this project in the selected period.",
-        "Add tasks with owners and due dates to improve tracking.",
-      ];
-    }
-    const completionRate = tasks.length
-      ? Math.round((completed / tasks.length) * 100)
-      : 0;
-    return [
-      `This report summarizes ${tasks.length} task${tasks.length === 1 ? "" : "s"} for ${escapeHtml(channelName)}.`,
-      `${completed} completed, ${inProgress} in progress, ${notStarted} not started, and ${canceled} canceled.`,
-      `Completion rate is ${completionRate}%.`,
-      `${resources.length} resource${resources.length === 1 ? "" : "s"}, ${links.length} link${links.length === 1 ? "" : "s"}, and ${notes.length} note${notes.length === 1 ? "" : "s"} were logged.`,
+    const narrativeLines = (() => {
+        if (!tasks.length) {
+            return [
+                "No tasks were recorded for this project in the selected period.",
+                "Add tasks with owners and due dates to improve tracking.",
+            ];
+        }
+        const completionRate = tasks.length
+            ? Math.round((completed / tasks.length) * 100)
+            : 0;
+        return [
+            `This report summarizes ${tasks.length} task${tasks.length === 1 ? "" : "s"} for ${escapeHtml(channelName)}.`,
+            `${completed} completed, ${inProgress} in progress, ${notStarted} not started, and ${canceled} canceled.`,
+            `Completion rate is ${completionRate}%.`,
+            `${resources.length} resource${resources.length === 1 ? "" : "s"}, ${links.length} link${links.length === 1 ? "" : "s"}, and ${notes.length} note${notes.length === 1 ? "" : "s"} were logged.`,
+        ];
+    })();
+
+    const nextSteps = (() => {
+        const steps: string[] = [];
+        if (notStarted > 0)
+            steps.push("Prioritize not-started tasks and assign owners.");
+        if (inProgress > 0)
+            steps.push("Review in-progress tasks for blockers.");
+        if (canceled > 0)
+            steps.push("Revisit canceled items to confirm scope changes.");
+        steps.push("Confirm upcoming milestones and due dates.");
+        return steps;
+    })();
+
+    const contextObjectives = [
+        "Summarize project execution in plain language for stakeholders.",
+        "Highlight delivery momentum, risks, and resource activity.",
+        "Provide a clear next‑step plan for the upcoming period.",
     ];
-  })();
 
-  const nextSteps = (() => {
-    const steps: string[] = [];
-    if (notStarted > 0) steps.push("Prioritize not-started tasks and assign owners.");
-    if (inProgress > 0) steps.push("Review in-progress tasks for blockers.");
-    if (canceled > 0) steps.push("Revisit canceled items to confirm scope changes.");
-    steps.push("Confirm upcoming milestones and due dates.");
-    return steps;
-  })();
+    const highlights = (() => {
+        if (!tasks.length) {
+            return [
+                "No activity recorded in the selected period.",
+                "Consider broadening the date range to capture milestones.",
+            ];
+        }
+        const items: string[] = [];
+        if (completed > 0)
+            items.push(
+                `${completed} task${completed === 1 ? "" : "s"} completed.`,
+            );
+        if (inProgress > 0)
+            items.push(
+                `${inProgress} task${inProgress === 1 ? "" : "s"} in progress.`,
+            );
+        if (resources.length > 0)
+            items.push(
+                `${resources.length} resource${resources.length === 1 ? "" : "s"} uploaded.`,
+            );
+        return items;
+    })();
 
-  const contextObjectives = [
-    "Summarize project execution in plain language for stakeholders.",
-    "Highlight delivery momentum, risks, and resource activity.",
-    "Provide a clear next‑step plan for the upcoming period.",
-  ];
+    const risks = (() => {
+        const items: string[] = [];
+        if (notStarted > 0)
+            items.push(
+                `${notStarted} task${notStarted === 1 ? "" : "s"} not started yet.`,
+            );
+        if (canceled > 0)
+            items.push(
+                `${canceled} task${canceled === 1 ? "" : "s"} canceled.`,
+            );
+        if (items.length === 0)
+            items.push("No critical risks identified in this period.");
+        return items;
+    })();
 
-  const highlights = (() => {
-    if (!tasks.length) {
-      return [
-        "No activity recorded in the selected period.",
-        "Consider broadening the date range to capture milestones.",
-      ];
-    }
-    const items: string[] = [];
-    if (completed > 0) items.push(`${completed} task${completed === 1 ? "" : "s"} completed.`);
-    if (inProgress > 0) items.push(`${inProgress} task${inProgress === 1 ? "" : "s"} in progress.`);
-    if (resources.length > 0) items.push(`${resources.length} resource${resources.length === 1 ? "" : "s"} uploaded.`);
-    return items;
-  })();
-
-  const risks = (() => {
-    const items: string[] = [];
-    if (notStarted > 0) items.push(`${notStarted} task${notStarted === 1 ? "" : "s"} not started yet.`);
-    if (canceled > 0) items.push(`${canceled} task${canceled === 1 ? "" : "s"} canceled.`);
-    if (items.length === 0) items.push("No critical risks identified in this period.");
-    return items;
-  })();
-
-  return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -708,617 +820,664 @@ function htmlForSingleChannelReport(payload: {
 }
 
 function RowMember({
-  item,
-  onPress,
-  onRemove,
-  canRemove,
-  isRemoving,
+    item,
+    onPress,
+    onRemove,
+    canRemove,
+    isRemoving,
 }: {
-  item: MemberItem;
-  onPress?: () => void;
-  onRemove?: () => void;
-  canRemove?: boolean;
-  isRemoving?: boolean;
+    item: MemberItem;
+    onPress?: () => void;
+    onRemove?: () => void;
+    canRemove?: boolean;
+    isRemoving?: boolean;
 }) {
-  return (
-    <View className="flex-row items-center px-5 py-3 border-b border-gray-100">
-      <Pressable
-        onPress={onPress}
-        className="flex-row items-center flex-1 active:bg-gray-50"
-        disabled={!onPress}
-      >
-        {item.avatar ? (
-          <Image
-            source={{ uri: item.avatar }}
-            className="w-10 h-10 rounded-full"
-          />
-        ) : (
-          <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center">
-            <Text className="text-gray-700 font-semibold font-kumbh">
-              {initialsFrom(item.username)}
-            </Text>
-          </View>
-        )}
-        <View className="ml-3 flex-1">
-          <Text className="text-base font-medium text-gray-900 font-kumbh">
-            {item.username || "Member"}
-          </Text>
-          {!!item.role && (
-            <Text className="text-xs text-gray-500 font-kumbh">
-              {item.role}
-            </Text>
-          )}
-        </View>
-      </Pressable>
+    const displayRole = formatRole(item.role);
+    const isAdminLike = ["admin", "super-admin", "owner"].includes(
+        String(item.role || "").toLowerCase(),
+    );
 
-      {canRemove && (
-        <Pressable
-          onPress={onRemove}
-          disabled={isRemoving}
-          className="bg-red-50 px-3 py-2 rounded-full active:bg-red-100"
-        >
-          {isRemoving ? (
-            <ActivityIndicator size="small" color="#dc2626" />
-          ) : (
-            <Text className="text-xs font-semibold text-red-600 font-kumbh">
-              Remove
-            </Text>
-          )}
-        </Pressable>
-      )}
-    </View>
-  );
+    return (
+        <View className="mx-5 mb-3 rounded-3xl bg-white border border-gray-100 px-4 py-3 flex-row items-center">
+            <Pressable
+                onPress={onPress}
+                className="flex-row items-center flex-1 active:bg-gray-50"
+                disabled={!onPress}
+            >
+                {item.avatar ? (
+                    <Image
+                        source={{ uri: item.avatar }}
+                        className="w-12 h-12 rounded-2xl"
+                    />
+                ) : (
+                    <View className="w-12 h-12 rounded-2xl bg-[#EEF2FF] items-center justify-center">
+                        <Text className="text-[#4C5FAB] font-kumbhBold">
+                            {initialsFrom(item.username)}
+                        </Text>
+                    </View>
+                )}
+                <View className="ml-3 flex-1">
+                    <Text
+                        className="text-base text-gray-950 font-kumbhBold"
+                        numberOfLines={1}
+                    >
+                        {item.username || "Member"}
+                    </Text>
+                    <View className="mt-1 flex-row items-center">
+                        {isAdminLike && (
+                            <ShieldCheck
+                                size={13}
+                                color={PRIMARY}
+                                style={{ marginRight: 4 }}
+                            />
+                        )}
+                        <Text className="text-xs text-gray-500 font-kumbh">
+                            {displayRole}
+                        </Text>
+                    </View>
+                </View>
+            </Pressable>
+
+            {canRemove && (
+                <Pressable
+                    onPress={onRemove}
+                    disabled={isRemoving}
+                    className="h-10 w-10 bg-red-50 rounded-full items-center justify-center active:bg-red-100"
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${item.username || "member"}`}
+                >
+                    {isRemoving ? (
+                        <ActivityIndicator size="small" color="#dc2626" />
+                    ) : (
+                        <UserMinus size={17} color="#dc2626" />
+                    )}
+                </Pressable>
+            )}
+        </View>
+    );
 }
 
 export default function ChannelInfoScreen() {
-  const { channelId: rawId } = useLocalSearchParams<{ channelId: string }>();
-  const channelId = typeof rawId === "string" ? rawId : rawId?.[0];
+    const { channelId: rawId } = useLocalSearchParams<{ channelId: string }>();
+    const channelId = typeof rawId === "string" ? rawId : rawId?.[0];
 
-  const insets = useSafeAreaInsets();
-  const dispatch = useAppDispatch();
-  const router = useRouter();
+    const insets = useSafeAreaInsets();
+    const dispatch = useAppDispatch();
+    const router = useRouter();
 
-  const me = useAppSelector(selectUser);
-  const path =
-    me?.role === "client"
-      ? "/(client)/(tabs)/chats/[channelId]"
-      : me?.role === "staff"
-        ? "/(staff)/(tabs)/chats/[channelId]"
-        : "/(admin)/chats/[channelId]";
+    const me = useAppSelector(selectUser);
 
-  const channelSel = useMemo(
-    () => selectChannelById(channelId ?? ""),
-    [channelId]
-  );
-  const channel = useAppSelector(channelSel);
-  const [refreshing, setRefreshing] = useState(false);
-  const [removingId, setRemovingId] = useState<string | null>(null);
-  const [isAddSheetVisible, setAddSheetVisible] = useState(false);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-
-  const onRefresh = useCallback(async () => {
-    if (!channelId) return;
-    setRefreshing(true);
-    try {
-      await dispatch(fetchChannelById(channelId)).unwrap();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [dispatch, channelId]);
-
-  const meRole = (me?.role ?? "").toLowerCase();
-  const canManageMembers = meRole === "admin" || meRole === "super-admin";
-  const meId = me?._id ? String(me._id) : null;
-  const adminUsers = useAppSelector(selectAdminUsers);
-  const isAddingMember = useAppSelector((state) => state.admin.addingMember);
-
-  const tryRemoveMember = useCallback(
-    async (member: MemberItem) => {
-      if (!channelId) return;
-      const rawType = (member.channelType || "normal").toLowerCase();
-      const type = rawType === "member" ? "normal" : rawType;
-      setRemovingId(member.id);
-      try {
-        await dispatch(
-          removeMemberFromChannel({ channelId, userId: member.id, type })
-        ).unwrap();
-      } catch (err) {
-        console.warn("[channel/remove-member] failed", err);
-      } finally {
-        setRemovingId(null);
-      }
-    },
-    [dispatch, channelId]
-  );
-
-  const confirmRemove = useCallback(
-    (member: MemberItem) => {
-      if (!member?.id || !channelId) return;
-      Alert.alert(
-        "Remove member",
-        `Remove ${member.username || "this member"} from the channel?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Remove",
-            style: "destructive",
-            onPress: () => tryRemoveMember(member),
-          },
-        ]
-      );
-    },
-    [channelId, tryRemoveMember]
-  );
-
-  useEffect(() => {
-    if (!canManageMembers) return;
-    dispatch(fetchAdminUsers());
-  }, [canManageMembers, dispatch]);
-
-  const members: MemberItem[] = useMemo(() => {
-    if (!channel) return [];
-
-    const rawMembers = Array.isArray((channel as any)?.members)
-      ? (channel as any).members
-      : [];
-
-    if (rawMembers.length > 0) {
-      const mapped: MemberItem[] = rawMembers.map((m: any, idx: number) => {
-        const source = m?._id ?? m ?? {};
-        const userId =
-          source?._id ??
-          source?.id ??
-          m?.userId ??
-          m?.memberId ??
-          `member-${idx}`;
-        const rawType = m?.type ?? m?.memberType ?? "normal";
-        const username =
-          source?.username ??
-          source?.name ??
-          source?.email ??
-          source?.displayName ??
-          `member-${idx}`;
-        return {
-          id: String(userId),
-          username,
-          avatar:
-            source?.profilePicture ??
-            source?.avatar ??
-            null,
-          role: source?.role ?? m?.role ?? "member",
-          channelType: rawType ? String(rawType) : null,
-        };
-      });
-      const seen = new Set<string>();
-      const deduped: MemberItem[] = [];
-      for (const curr of mapped) {
-        const id = curr.id || `member-${deduped.length}`;
-        if (seen.has(id)) continue;
-        seen.add(id);
-        deduped.push({ ...curr, id });
-      }
-      return deduped;
-    }
-
-    const byId = new Map<string, MemberItem>();
-
-    const cb = (channel as any).createdBy;
-    if (cb) {
-      const id = String(typeof cb === "string" ? cb : cb?._id ?? "");
-      if (id) {
-        byId.set(id, {
-          id,
-          username:
-            (typeof cb === "string"
-              ? "Owner"
-              : cb?.username || cb?.name || cb?.email || "Owner") + " (Owner)",
-          avatar: (cb as any)?.profilePicture ?? null,
-          role: "owner",
-        });
-      }
-    }
-
-    const resArr: any[] = Array.isArray((channel as any)?.resources)
-      ? (channel as any).resources
-      : [];
-    for (const r of resArr) {
-      const uid = r?.addedBy ? String(r.addedBy) : "";
-      if (!uid) continue;
-      if (!byId.has(uid)) {
-        byId.set(uid, {
-          id: uid,
-          username:
-            uid === (typeof cb === "string" ? cb : cb?._id)
-              ? (cb?.username || cb?.name || cb?.email || "Owner") + " (Owner)"
-              : "Admin",
-          avatar: null,
-          role: "admin",
-        });
-      }
-    }
-
-    if (me?._id && !byId.has(String(me._id))) {
-      byId.set(String(me._id), {
-        id: String(me._id),
-        username: me?.fullname || me?.username || me?.email || "You",
-        avatar: (me as any)?.profilePicture ?? null,
-        role: "you",
-      });
-    }
-
-    return Array.from(byId.values());
-  }, [channel, me?._id]);
-
-  const availableAddUsers = useMemo(() => {
-    const memberIds = new Set(members.map((m) => m.id));
-    return adminUsers.filter(
-      (user) => user?._id && !memberIds.has(String(user._id))
+    const channelSel = useMemo(
+        () => selectChannelById(channelId ?? ""),
+        [channelId],
     );
-  }, [adminUsers, members]);
+    const channel = useAppSelector(channelSel);
+    const [refreshing, setRefreshing] = useState(false);
+    const [removingId, setRemovingId] = useState<string | null>(null);
+    const [isAddSheetVisible, setAddSheetVisible] = useState(false);
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
-  const addUserOptions = useMemo(() => {
-    return availableAddUsers.map((user) => {
-      const displayRole = user.role ?? "member";
-      const displayName =
-        user.fullname || user.username || user.email || "User";
-      return {
-        value: user._id,
-        label: `${displayName} (${displayRole})`,
-      };
-    });
-  }, [availableAddUsers]);
-
-  const handleOpenAddMember = useCallback(() => {
-    if (addUserOptions.length === 0) {
-      Alert.alert(
-        "No users available",
-        "All fetched users already belong to this channel."
-      );
-      return;
-    }
-    setAddSheetVisible(true);
-  }, [addUserOptions.length]);
-
-  const handleAddMember = useCallback(
-    async (value: string | number) => {
-      if (!channelId) return;
-      const channelCode = (channel as any)?.code ?? channelId;
-      if (!channelCode) {
-        Alert.alert(
-          "Missing channel code",
-          "Cannot add members because the channel has no code."
-        );
-        return;
-      }
-
-      try {
-        await dispatch(
-          adminAddChannelMember({
-            code: String(channelCode),
-            userId: String(value),
-            type: "pm",
-            channelId: String(channelId),
-          })
-        ).unwrap();
-        await dispatch(fetchChannelById(channelId)).unwrap();
-      } catch (err) {
-        console.warn("[admin/add-channel-member] failed", err);
-      }
-    },
-    [channel, channelId, dispatch]
-  );
-
-  const isLoading = !channel && !!channelId;
-
-  const handleGenerateReport = useCallback(async () => {
-    if (!channelId || !channel) return;
-
-    setIsGeneratingReport(true);
-    try {
-      const endpointResponse = await api.post<SummaryPdfResponse>(
-        `/channel/${channelId}/summary-pdf`
-      );
-      const rawPdfUrl = endpointResponse.data?.pdfUrl;
-      if (!rawPdfUrl) {
-        throw new Error(
-          endpointResponse.data?.message || "Summary PDF URL was not returned."
-        );
-      }
-
-      const pdfUrl = resolvePdfUrl(rawPdfUrl);
-      if (Platform.OS === "web") {
-        if (typeof window !== "undefined") {
-          window.open(pdfUrl, "_blank", "noopener,noreferrer");
-        }
-        return;
-      }
-
-      const safeName = slugifyFilename(channel.name || "Project");
-      const stamp = new Date().toISOString().slice(0, 10);
-      const namedUri = `${FileSystem.cacheDirectory}summary_${safeName}_${stamp}.pdf`;
-      await FileSystem.downloadAsync(pdfUrl, namedUri);
-
-      const canShare = await Sharing.isAvailableAsync();
-      if (!canShare) {
-        Alert.alert(
-          "Share unavailable",
-          "Sharing is not available on this device."
-        );
-        return;
-      }
-      await Sharing.shareAsync(namedUri, {
-        UTI: "com.adobe.pdf",
-        mimeType: "application/pdf",
-        dialogTitle: `Export Report - ${channel.name || "Channel"}`,
-      });
-    } catch (endpointErr: any) {
-      // fallback: keep existing local generation if summary endpoint fails
-      try {
-        const latestChannel = await dispatch(fetchChannelById(channelId)).unwrap();
-        const [links, notes] = await Promise.all([
-          dispatch(fetchChannelLinks(channelId))
-            .unwrap()
-            .catch(() => [] as ChannelLink[]),
-          dispatch(fetchChannelNotes(channelId))
-            .unwrap()
-            .catch(() => [] as ChannelNote[]),
-        ]);
-
-        const ownerName =
-          typeof (latestChannel as any)?.createdBy === "string"
-            ? String((latestChannel as any).createdBy)
-            : (latestChannel as any)?.createdBy?.username ||
-              (latestChannel as any)?.createdBy?.name ||
-              (latestChannel as any)?.createdBy?.email ||
-              "Unknown";
-
-        const html = htmlForSingleChannelReport({
-          channelName: latestChannel.name || "Channel",
-          channelCode: (latestChannel as any)?.code,
-          generatedAt: new Date(),
-          createdAt: (latestChannel as any)?.createdAt,
-          createdBy: ownerName,
-          members,
-          tasks: Array.isArray((latestChannel as any)?.tasks)
-            ? ((latestChannel as any).tasks as any[])
-            : [],
-          resources: Array.isArray((latestChannel as any)?.resources)
-            ? ((latestChannel as any).resources as ChannelResource[])
-            : [],
-          links: Array.isArray(links) ? links : [],
-          notes: Array.isArray(notes) ? notes : [],
-        });
-
-        if (Platform.OS === "web") {
-          await Print.printAsync({ html });
-          return;
-        }
-
-        const file = await Print.printToFileAsync({ html });
-        const safeName = slugifyFilename(latestChannel.name || "Project");
-        const stamp = new Date().toISOString().slice(0, 10);
-        const namedUri = `${FileSystem.cacheDirectory}${safeName}_${stamp}.pdf`;
+    const onRefresh = useCallback(async () => {
+        if (!channelId) return;
+        setRefreshing(true);
         try {
-          await FileSystem.moveAsync({ from: file.uri, to: namedUri });
-        } catch {
-          // keep original uri if rename fails
+            await dispatch(fetchChannelById(channelId)).unwrap();
+        } finally {
+            setRefreshing(false);
         }
-        const canShare = await Sharing.isAvailableAsync();
-        if (!canShare) {
-          Alert.alert(
-            "Share unavailable",
-            "Sharing is not available on this device."
-          );
-          return;
-        }
-        await Sharing.shareAsync(
-          (await FileSystem.getInfoAsync(namedUri)).exists ? namedUri : file.uri,
-          {
-            UTI: "com.adobe.pdf",
-            mimeType: "application/pdf",
-            dialogTitle: `Export Report - ${latestChannel.name || "Channel"}`,
-          }
-        );
-      } catch (fallbackErr: any) {
-        Alert.alert(
-          "Generate report failed",
-          endpointErr?.message || fallbackErr?.message || "Please try again."
-        );
-      }
-    } finally {
-      setIsGeneratingReport(false);
-    }
-  }, [channelId, channel, dispatch, members]);
+    }, [dispatch, channelId]);
 
-  const HeaderBar = (
-    <View
-      style={{ paddingTop: insets.top }}
-      className="bg-white border-b border-gray-100"
-    >
-      <View className="px-4 pb-3 pt-2">
-        <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={() =>
-              router.push({ pathname: path as any, params: { channelId } })
+    const meRole = (me?.role ?? "").toLowerCase();
+    const canManageMembers = meRole === "admin" || meRole === "super-admin";
+    const meId = me?._id ? String(me._id) : null;
+    const adminUsers = useAppSelector(selectAdminUsers);
+    const isAddingMember = useAppSelector((state) => state.admin.addingMember);
+
+    const tryRemoveMember = useCallback(
+        async (member: MemberItem) => {
+            if (!channelId) return;
+            const rawType = (member.channelType || "normal").toLowerCase();
+            const type = rawType === "member" ? "normal" : rawType;
+            setRemovingId(member.id);
+            try {
+                await dispatch(
+                    removeMemberFromChannel({
+                        channelId,
+                        userId: member.id,
+                        type,
+                    }),
+                ).unwrap();
+            } catch (err) {
+                console.warn("[channel/remove-member] failed", err);
+            } finally {
+                setRemovingId(null);
             }
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            hitSlop={12}
-            className="h-10 w-10 rounded-full items-center justify-center bg-gray-100 mr-2"
-          >
-            <ChevronLeft size={22} color="#111827" />
-          </Pressable>
-          <Text className="text-2xl font-semibold font-kumbh text-center">
-            Channel Info
-          </Text>
-          <View className="w-10" />
-        </View>
-      </View>
-    </View>
-  );
-
-  const header = (
-    <View className="px-5 pt-4 pb-3">
-      <Text className="text-2xl font-semibold text-gray-900 font-kumbh">
-        {channel?.name ?? "Channel"}
-      </Text>
-
-      {!!(channel as any)?.code && (
-        <Text className="text-gray-600 mt-1 font-kumbh">
-          Code: {(channel as any).code}
-        </Text>
-      )}
-
-      {!!channel?.description && (
-        <Text className="text-gray-700 mt-2 font-kumbh">
-          {channel.description}
-        </Text>
-      )}
-
-      <View className="flex-row flex-wrap mt-3">
-        <Chip>
-          {members.length} member{members.length === 1 ? "" : "s"}
-        </Chip>
-
-        {!!(channel as any)?.createdAt && (
-          <Chip>
-            Created {new Date((channel as any).createdAt).toLocaleDateString()}
-          </Chip>
-        )}
-
-        {!!(channel as any)?.createdBy && (
-          <Chip>
-            Owner:{" "}
-            {typeof (channel as any).createdBy === "string"
-              ? (channel as any).createdBy
-              : (channel as any).createdBy?.username ||
-                (channel as any).createdBy?.name ||
-                "Unknown"}
-          </Chip>
-        )}
-      </View>
-
-      <View className="flex-row mt-4">
-        <Pressable
-          className="bg-primary px-4 py-3 rounded-2xl mr-3"
-          onPress={() =>
-            router.push({
-              pathname: "/(staff)/channels/[channelId]/resources" as any,
-              params: { channelId },
-            })
-          }
-        >
-          <Text className="text-white font-medium font-kumbh">Resources</Text>
-        </Pressable>
-
-        <Pressable
-          className="bg-gray-200 px-4 py-3 rounded-2xl"
-          onPress={() =>
-            router.push({
-              pathname: "/(staff)/channels/[channelId]/tasks" as any,
-              params: { channelId },
-            })
-          }
-        >
-          <Text className="text-gray-900 font-medium font-kumbh">Tasks</Text>
-        </Pressable>
-      </View>
-      <View className="mt-3">
-        <Pressable
-          className="bg-primary px-4 py-3 rounded-2xl flex-row items-center justify-center"
-          disabled={isGeneratingReport}
-          onPress={handleGenerateReport}
-          style={{ opacity: isGeneratingReport ? 0.7 : 1 }}
-        >
-          {isGeneratingReport ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Share2 size={18} color="#ffffff" />
-          )}
-          <Text className="text-white font-medium font-kumbh ml-2">
-            {isGeneratingReport ? "Generating report..." : "Generate Report"}
-          </Text>
-        </Pressable>
-      </View>
-
-      <Text className="mt-6 mb-2 text-sm font-semibold text-gray-800 font-kumbh">
-        Members
-      </Text>
-    </View>
-  );
-
-  if (isLoading) {
-    return (
-      <View
-        style={{ paddingTop: insets.top }}
-        className="flex-1 bg-white items-center justify-center"
-      >
-        <ActivityIndicator />
-        <Text className="text-gray-600 mt-3 font-kumbh">Loading channel...</Text>
-      </View>
+        },
+        [dispatch, channelId],
     );
-  }
 
-  return (
-    <View className="flex-1 bg-white relative">
-      <StatusBar style="dark" />
-      {HeaderBar}
+    const confirmRemove = useCallback(
+        (member: MemberItem) => {
+            if (!member?.id || !channelId) return;
+            Alert.alert(
+                "Remove member",
+                `Remove ${member.username || "this member"} from the channel?`,
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Remove",
+                        style: "destructive",
+                        onPress: () => tryRemoveMember(member),
+                    },
+                ],
+            );
+        },
+        [channelId, tryRemoveMember],
+    );
 
-      <FlatList
-        data={members}
-        keyExtractor={(m) => m.id}
-        ListHeaderComponent={header}
-        renderItem={({ item }) => {
-          const memberRole = (item.role ?? "").toLowerCase();
-          const isPrivileged = ["admin", "super-admin"].includes(memberRole);
-          const isSelf = meId === item.id;
-          const canRemoveMember =
-            canManageMembers && !isSelf && !isPrivileged;
+    useEffect(() => {
+        if (!canManageMembers) return;
+        dispatch(fetchAdminUsers());
+    }, [canManageMembers, dispatch]);
 
-          return (
-            <RowMember
-              item={item}
-              onPress={() => {
-                // e.g., router.push({ pathname: "/(staff)/users/[userId]", params: { userId: item.id }});
-              }}
-              canRemove={canRemoveMember}
-              isRemoving={removingId === item.id}
-              onRemove={() => confirmRemove(item)}
-            />
-          );
-        }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+    const members: MemberItem[] = useMemo(() => {
+        if (!channel) return [];
+
+        const rawMembers = Array.isArray((channel as any)?.members)
+            ? (channel as any).members
+            : [];
+
+        if (rawMembers.length > 0) {
+            const mapped: MemberItem[] = rawMembers.map(
+                (m: any, idx: number) => {
+                    const source = m?._id ?? m ?? {};
+                    const userId =
+                        source?._id ??
+                        source?.id ??
+                        m?.userId ??
+                        m?.memberId ??
+                        `member-${idx}`;
+                    const rawType = m?.type ?? m?.memberType ?? "normal";
+                    const username =
+                        source?.username ??
+                        source?.name ??
+                        source?.email ??
+                        source?.displayName ??
+                        `member-${idx}`;
+                    return {
+                        id: String(userId),
+                        username,
+                        avatar:
+                            source?.profilePicture ?? source?.avatar ?? null,
+                        role: source?.role ?? m?.role ?? "member",
+                        channelType: rawType ? String(rawType) : null,
+                    };
+                },
+            );
+            const seen = new Set<string>();
+            const deduped: MemberItem[] = [];
+            for (const curr of mapped) {
+                const id = curr.id || `member-${deduped.length}`;
+                if (seen.has(id)) continue;
+                seen.add(id);
+                deduped.push({ ...curr, id });
+            }
+            return deduped;
         }
-        contentContainerStyle={{ paddingBottom: 24 }}
-        ListEmptyComponent={
-          <View className="px-5 py-10">
-            <Text className="text-gray-500 font-kumbh">No members found.</Text>
-          </View>
+
+        const byId = new Map<string, MemberItem>();
+
+        const cb = (channel as any).createdBy;
+        if (cb) {
+            const id = String(typeof cb === "string" ? cb : (cb?._id ?? ""));
+            if (id) {
+                byId.set(id, {
+                    id,
+                    username:
+                        (typeof cb === "string"
+                            ? "Owner"
+                            : cb?.username ||
+                              cb?.name ||
+                              cb?.email ||
+                              "Owner") + " (Owner)",
+                    avatar: (cb as any)?.profilePicture ?? null,
+                    role: "owner",
+                });
+            }
         }
-        />
-      <OptionSheet
-        visible={isAddSheetVisible}
-        onClose={() => setAddSheetVisible(false)}
-        onSelect={handleAddMember}
-        title="Add member to channel"
-        options={addUserOptions}
-      />
-      {canManageMembers && (
-        <View className="absolute bottom-6 right-6">
-          <Pressable
-            onPress={handleOpenAddMember}
-            disabled={isAddingMember}
-            className="h-14 w-14 rounded-full bg-primary items-center justify-center shadow-lg"
-          >
-            {isAddingMember ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Plus size={26} color="#fff" />
-            )}
-          </Pressable>
+
+        const resArr: any[] = Array.isArray((channel as any)?.resources)
+            ? (channel as any).resources
+            : [];
+        for (const r of resArr) {
+            const uid = r?.addedBy ? String(r.addedBy) : "";
+            if (!uid) continue;
+            if (!byId.has(uid)) {
+                byId.set(uid, {
+                    id: uid,
+                    username:
+                        uid === (typeof cb === "string" ? cb : cb?._id)
+                            ? (cb?.username ||
+                                  cb?.name ||
+                                  cb?.email ||
+                                  "Owner") + " (Owner)"
+                            : "Admin",
+                    avatar: null,
+                    role: "admin",
+                });
+            }
+        }
+
+        if (me?._id && !byId.has(String(me._id))) {
+            byId.set(String(me._id), {
+                id: String(me._id),
+                username: me?.fullname || me?.username || me?.email || "You",
+                avatar: (me as any)?.profilePicture ?? null,
+                role: "you",
+            });
+        }
+
+        return Array.from(byId.values());
+    }, [channel, me]);
+
+    const availableAddUsers = useMemo(() => {
+        const memberIds = new Set(members.map((m) => m.id));
+        return adminUsers.filter(
+            (user) => user?._id && !memberIds.has(String(user._id)),
+        );
+    }, [adminUsers, members]);
+
+    const addUserOptions = useMemo(() => {
+        return availableAddUsers.map((user) => {
+            const displayRole = user.role ?? "member";
+            const displayName =
+                user.fullname || user.username || user.email || "User";
+            return {
+                value: user._id,
+                label: `${displayName} (${displayRole})`,
+            };
+        });
+    }, [availableAddUsers]);
+
+    const handleOpenAddMember = useCallback(() => {
+        if (addUserOptions.length === 0) {
+            Alert.alert(
+                "No users available",
+                "All fetched users already belong to this channel.",
+            );
+            return;
+        }
+        setAddSheetVisible(true);
+    }, [addUserOptions.length]);
+
+    const handleAddMember = useCallback(
+        async (value: string | number) => {
+            if (!channelId) return;
+            const channelCode = (channel as any)?.code ?? channelId;
+            if (!channelCode) {
+                Alert.alert(
+                    "Missing channel code",
+                    "Cannot add members because the channel has no code.",
+                );
+                return;
+            }
+
+            try {
+                await dispatch(
+                    adminAddChannelMember({
+                        code: String(channelCode),
+                        userId: String(value),
+                        type: "pm",
+                        channelId: String(channelId),
+                    }),
+                ).unwrap();
+                await dispatch(fetchChannelById(channelId)).unwrap();
+            } catch (err) {
+                console.warn("[admin/add-channel-member] failed", err);
+            }
+        },
+        [channel, channelId, dispatch],
+    );
+
+    const isLoading = !channel && !!channelId;
+    const ownerName =
+        typeof (channel as any)?.createdBy === "string"
+            ? (channel as any).createdBy
+            : (channel as any)?.createdBy?.username ||
+              (channel as any)?.createdBy?.name ||
+              "Unknown";
+    const createdDate = (channel as any)?.createdAt
+        ? new Date((channel as any).createdAt).toLocaleDateString()
+        : "—";
+
+    const handleGenerateReport = useCallback(async () => {
+        if (!channelId || !channel) return;
+
+        setIsGeneratingReport(true);
+        try {
+            const endpointResponse = await api.post<SummaryPdfResponse>(
+                `/channel/${channelId}/summary-pdf`,
+                {},
+                { timeout: 120_000 }, // 2 minutes for report generation (includes AI summary + PDF)
+            );
+            if (!endpointResponse.data?.success) {
+                throw new Error(
+                    endpointResponse.data?.message ||
+                        "Summary generation failed.",
+                );
+            }
+
+            router.push({
+                pathname: "/(admin)/report/[channelId]" as any,
+                params: {
+                    channelId,
+                    title: `Export Report - ${channel.name || "Channel"}`,
+                },
+            });
+            return;
+        } catch (endpointErr: any) {
+            // Local HTML fallback commented out — navigate failure is reported.
+            /*
+            try {
+                const latestChannel = await dispatch(
+                    fetchChannelById(channelId),
+                ).unwrap();
+                const [links, notes] = await Promise.all([
+                    dispatch(fetchChannelLinks(channelId))
+                        .unwrap()
+                        .catch(() => [] as ChannelLink[]),
+                    dispatch(fetchChannelNotes(channelId))
+                        .unwrap()
+                        .catch(() => [] as ChannelNote[]),
+                ]);
+
+                const ownerName =
+                    typeof (latestChannel as any)?.createdBy === "string"
+                        ? String((latestChannel as any).createdBy)
+                        : (latestChannel as any)?.createdBy?.username ||
+                          (latestChannel as any)?.createdBy?.name ||
+                          (latestChannel as any)?.createdBy?.email ||
+                          "Unknown";
+
+                const html = htmlForSingleChannelReport({
+                    channelName: latestChannel.name || "Channel",
+                    channelCode: (latestChannel as any)?.code,
+                    generatedAt: new Date(),
+                    createdAt: (latestChannel as any)?.createdAt,
+                    createdBy: ownerName,
+                    members,
+                    tasks: Array.isArray((latestChannel as any)?.tasks)
+                        ? ((latestChannel as any).tasks as any[])
+                        : [],
+                    resources: Array.isArray((latestChannel as any)?.resources)
+                        ? ((latestChannel as any)
+                              .resources as ChannelResource[])
+                        : [],
+                    links: Array.isArray(links) ? links : [],
+                    notes: Array.isArray(notes) ? notes : [],
+                });
+
+                if (Platform.OS === "web") {
+                    await Print.printAsync({ html });
+                } else {
+                    const file = await Print.printToFileAsync({ html });
+                    const safeName = slugifyFilename(
+                        latestChannel.name || "Project",
+                    );
+                    const stamp = new Date().toISOString().slice(0, 10);
+                    const namedUri = `${FileSystem.cacheDirectory}${safeName}_${stamp}.pdf`;
+                    try {
+                        await FileSystem.moveAsync({ from: file.uri, to: namedUri });
+                    } catch {
+                        // keep original uri if rename fails
+                    }
+                    const canShare = await Sharing.isAvailableAsync();
+                    if (canShare) {
+                        await Sharing.shareAsync(
+                            (await FileSystem.getInfoAsync(namedUri)).exists
+                                ? namedUri
+                                : file.uri,
+                            {
+                                UTI: "com.adobe.pdf",
+                                mimeType: "application/pdf",
+                                dialogTitle: `Export Report - ${latestChannel.name || "Channel"}`,
+                            },
+                        );
+                    }
+                }
+            } catch (fallbackErr: any) {
+                // fallback suppressed during refactor
+            }
+            */
+
+            Alert.alert(
+                "Generate report failed",
+                endpointErr?.message ||
+                    endpointErr?.response?.data?.message ||
+                    String(endpointErr) ||
+                    "Please try again.",
+            );
+        } finally {
+            setIsGeneratingReport(false);
+        }
+    }, [channelId, channel, router]);
+
+    const header = (
+        <View className="px-5 pt-4 pb-5">
+            <View
+                className="rounded-[28px] bg-primary p-5 overflow-hidden"
+                style={{
+                    shadowColor: "#111827",
+                    shadowOpacity: 0.14,
+                    shadowRadius: 18,
+                    shadowOffset: { width: 0, height: 10 },
+                    elevation: 4,
+                }}
+            >
+                <View className="flex-row items-start justify-between">
+                    <View className="flex-1 pr-4">
+                        <Text className="text-white/75 text-xs uppercase tracking-wider font-kumbhBold">
+                            Project Channel
+                        </Text>
+                        <Text
+                            className="mt-2 text-2xl text-white font-kumbhBold"
+                            numberOfLines={2}
+                        >
+                            {channel?.name ?? "Channel"}
+                        </Text>
+                    </View>
+
+                    {!!(channel as any)?.code && (
+                        <View className="rounded-2xl bg-white/15 px-3 py-2 border border-white/15">
+                            <Text className="text-white/70 text-[10px] uppercase font-kumbhBold">
+                                Code
+                            </Text>
+                            <Text className="text-white text-sm font-kumbhBold">
+                                {(channel as any).code}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
+                {!!channel?.description && (
+                    <Text
+                        className="mt-4 text-white/85 leading-5 font-kumbh"
+                        numberOfLines={3}
+                    >
+                        {channel.description}
+                    </Text>
+                )}
+
+                <View className="flex-row flex-wrap mt-5">
+                    <Chip>
+                        {members.length} member{members.length === 1 ? "" : "s"}
+                    </Chip>
+                    {(channel as any)?.createdAt ? (
+                        <Chip>Created {createdDate}</Chip>
+                    ) : null}
+                    {(channel as any)?.createdBy ? (
+                        <Chip>Owner: {ownerName}</Chip>
+                    ) : null}
+                </View>
+            </View>
+
+            <View className="flex-row gap-3 mt-4">
+                <StatTile
+                    icon={<UsersRound size={16} color={PRIMARY} />}
+                    label="Members"
+                    value={String(members.length)}
+                />
+                <StatTile
+                    icon={<CalendarDays size={16} color={PRIMARY} />}
+                    label="Created"
+                    value={createdDate}
+                />
+            </View>
+
+            <View className="flex-row gap-3 mt-4">
+                <ActionButton
+                    label="Resources"
+                    icon={<FolderOpen size={18} color="#ffffff" />}
+                    variant="primary"
+                    onPress={() =>
+                        router.push({
+                            pathname:
+                                "/(staff)/channels/[channelId]/resources" as any,
+                            params: { channelId },
+                        })
+                    }
+                />
+
+                <ActionButton
+                    label="Tasks"
+                    icon={<FileText size={18} color={PRIMARY} />}
+                    onPress={() =>
+                        router.push({
+                            pathname:
+                                "/(staff)/channels/[channelId]/tasks" as any,
+                            params: { channelId },
+                        })
+                    }
+                />
+            </View>
+            <View className="mt-3 flex-row">
+                <ActionButton
+                    label={
+                        isGeneratingReport
+                            ? "Generating report..."
+                            : "Generate Report"
+                    }
+                    icon={
+                        isGeneratingReport ? (
+                            <ActivityIndicator size="small" color="#ffffff" />
+                        ) : (
+                            <Share2 size={18} color="#ffffff" />
+                        )
+                    }
+                    variant="primary"
+                    disabled={isGeneratingReport}
+                    onPress={handleGenerateReport}
+                />
+            </View>
+
+            <Text className="text-lg text-gray-950 font-kumbhBold mt-5">
+                Members
+            </Text>
         </View>
-      )}
-    </View>
-  );
+    );
+
+    if (isLoading) {
+        return (
+            <View
+                style={{ paddingTop: insets.top }}
+                className="flex-1 bg-[#F7F8FB] items-center justify-center"
+            >
+                <ActivityIndicator />
+                <Text className="text-gray-600 mt-3 font-kumbh">
+                    Loading channel...
+                </Text>
+            </View>
+        );
+    }
+
+    const isIOS = Platform.OS === "ios";
+    return (
+        <SafeAreaView
+            edges={
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
+            }
+            className="flex-1 bg-[#F7F8FB]"
+        >
+            <PlatformAdaptiveHeader title="Channel Info" />
+
+            <FlatList
+                data={members}
+                keyExtractor={(m) => m.id}
+                ListHeaderComponent={header}
+                renderItem={({ item }) => {
+                    const memberRole = (item.role ?? "").toLowerCase();
+                    const isPrivileged = ["admin", "super-admin"].includes(
+                        memberRole,
+                    );
+                    const isSelf = meId === item.id;
+                    const canRemoveMember =
+                        canManageMembers && !isSelf && !isPrivileged;
+
+                    return (
+                        <RowMember
+                            item={item}
+                            onPress={() => {
+                                // e.g., router.push({ pathname: "/(staff)/users/[userId]", params: { userId: item.id }});
+                            }}
+                            canRemove={canRemoveMember}
+                            isRemoving={removingId === item.id}
+                            onRemove={() => confirmRemove(item)}
+                        />
+                    );
+                }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                    />
+                }
+                contentContainerStyle={{ paddingBottom: 24 }}
+                ListEmptyComponent={
+                    <View className="mx-5 mt-2 rounded-3xl bg-white border border-gray-100 px-5 py-12 items-center">
+                        <View className="h-12 w-12 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-3">
+                            <UsersRound size={22} color={PRIMARY} />
+                        </View>
+                        <Text className="text-gray-950 font-kumbhBold">
+                            No members found.
+                        </Text>
+                        <Text className="text-gray-500 mt-1 text-center font-kumbh">
+                            Added members will appear here.
+                        </Text>
+                    </View>
+                }
+            />
+            <OptionSheet
+                visible={isAddSheetVisible}
+                onClose={() => setAddSheetVisible(false)}
+                onSelect={handleAddMember}
+                title="Add member to channel"
+                options={addUserOptions}
+            />
+            {canManageMembers && (
+                <View className="absolute bottom-6 right-6">
+                    <Pressable
+                        onPress={handleOpenAddMember}
+                        disabled={isAddingMember}
+                        className="h-14 w-14 rounded-full bg-primary items-center justify-center shadow-lg"
+                    >
+                        {isAddingMember ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <Plus size={26} color="#fff" />
+                        )}
+                    </Pressable>
+                </View>
+            )}
+        </SafeAreaView>
+    );
 }

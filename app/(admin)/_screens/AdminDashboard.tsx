@@ -4,6 +4,7 @@ import {
     Bell,
     ChevronRight,
     FolderKanban,
+    Handshake,
     UserPlus,
     Users,
 } from "lucide-react-native";
@@ -43,11 +44,11 @@ export default function AdminDashboard() {
     return (
         <SafeAreaView
             edges={isIOS ? ["top", "left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-white"
         >
             <ScrollView
-                className="flex-1 bg-white"
-                contentContainerClassName="pb-8"
+                className="flex-1"
+                contentContainerClassName="pb-8 px-4"
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -71,6 +72,7 @@ export default function AdminDashboard() {
                                 router.push("/(admin)/(tabs)/client")
                             }
                         />
+
                         <Tile
                             title="Projects"
                             icon={<UserPlus size={22} color="white" />}
@@ -96,6 +98,12 @@ export default function AdminDashboard() {
                             title="Prospects"
                             icon={<FolderKanban size={22} color="white" />}
                             onPress={() => router.push("/(admin)/prospects")}
+                        />
+
+                        <Tile
+                            title="Partnerships"
+                            icon={<Handshake size={22} color="white" />}
+                            onPress={() => router.push("/(admin)/partnerships")}
                         />
                     </View>
                 </View>

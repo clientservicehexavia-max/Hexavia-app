@@ -1,4 +1,6 @@
 // app/(admin)/finance/index.tsx
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 import clsx from "clsx";
 import { useRouter } from "expo-router";
 import { ArrowDown, ArrowUp, Eye, Plus } from "lucide-react-native";
@@ -16,6 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { STORAGE_KEYS } from "@/storage/keys";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 /* ───────── Expenses (existing) ───────── */
@@ -34,6 +37,7 @@ import { fetchFinance } from "@/redux/finance/finance.thunks";
 
 /* ───────── Clients (for Receivables) ───────── */
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { SwipeableTabView } from "@/components/ui/SwipeableTabView";
 import { selectClientFilters } from "@/redux/client/client.selectors";
 import { fetchClients } from "@/redux/client/client.thunks";
 
@@ -41,14 +45,21 @@ type Flow = "Receivables" | "Expenses";
 
 type Txn = {
     id: string;
-    title: "Expense" | "Receive";
+    title: string;
     amount: number;
     time: string;
     status: "Successful" | "Pending";
     description: string;
+    projectName?: string;
+    clientName?: string;
+    companyName?: string;
+    source?: string;
+    engagement?: string;
+    isExternal?: boolean;
+    isFullyPaid?: boolean;
     dir: "up" | "down";
     dateKey: string;
-    kind: "expense" | "receivable";
+    kind: "expense" | "clientReceivable";
 };
 
 const NGN = (n: number) =>
@@ -92,7 +103,28 @@ function getTotalPaid(client: any) {
 
 function buildFilteredReceivables(clients: any[]) {
     return (clients || [])
-        .filter((c: any) => getTotalPaid(c) > 0)
+        .filter((c: any) => {
+            // Include clients with payment activity, plus all external receivables
+            // that have been paid (including fully paid ones).
+            const paid = getTotalPaid(c);
+            const hasPaid = Number.isFinite(paid) && paid > 0;
+            const isExternal = Boolean(c?.isExternal);
+            const outstanding = getOutstandingReceivable(c);
+            const hasOutstanding = outstanding > 0;
+            const isFullyPaid = hasPaid && outstanding === 0;
+
+            // External receivables with any payment history are always included
+            // Regular clients must be active/current with payment history
+            if (isExternal) {
+                return true;
+            }
+
+            const isActive =
+                String(c?.status ?? "").toLowerCase() === "active" ||
+                String(c?.status ?? "").toLowerCase() === "current";
+
+            return isActive && hasPaid;
+        })
         .sort(
             (a: any, b: any) =>
                 new Date(b?.createdAt || 0).getTime() -
@@ -130,6 +162,30 @@ function dateBucket(iso?: string) {
     });
 }
 
+const ENGAGEMENT_BADGES: Record<string, string> = {
+    BWE: "bg-amber-500",
+    "Inner Circle": "bg-violet-500",
+    Consulting: "bg-emerald-500",
+    Partnerships: "bg-rose-500",
+    Retreat: "bg-cyan-500",
+};
+
+function getEngagementBadge(engagement?: string) {
+    return ENGAGEMENT_BADGES[engagement || ""] || "bg-[#4C5FAB]";
+}
+
+const ENGAGEMENT_TEXT_COLORS: Record<string, string> = {
+    BWE: "text-amber-500",
+    "Inner Circle": "text-violet-500",
+    Consulting: "text-emerald-500",
+    Partnerships: "text-rose-500",
+    Retreat: "text-cyan-500",
+};
+
+function getEngagementTextColor(engagement?: string) {
+    return ENGAGEMENT_TEXT_COLORS[engagement || ""] || "text-[#4C5FAB]";
+}
+
 const ADMIN_FINANCE_PIN = "1473695";
 
 export default function FinanceIndex() {
@@ -137,17 +193,54 @@ export default function FinanceIndex() {
     const dispatch = useAppDispatch();
 
     const [pinLocked, setPinLocked] = useState(true);
+    const [isPasswordCheckInitialized, setIsPasswordCheckInitialized] =
+        useState(false);
     const [pinInput, setPinInput] = useState("");
     const [pinError, setPinError] = useState("");
     const [receivablesPage, setReceivablesPage] = useState(1);
     const [filteredReceivables, setFilteredReceivables] = useState<any[]>([]);
     const RECEIVABLES_LIMIT = 20;
 
-    const handlePinSubmit = () => {
+    // Check if password was already verified in this session
+    useEffect(() => {
+        const checkFinancePasswordVerified = async () => {
+            try {
+                const verified = await AsyncStorage.getItem(
+                    STORAGE_KEYS.FINANCE_PASSWORD_VERIFIED,
+                );
+                setPinLocked(verified !== "true");
+            } catch (error) {
+                console.error(
+                    "Error checking finance password verification:",
+                    error,
+                );
+                // Default to locked on error
+                setPinLocked(true);
+            } finally {
+                setIsPasswordCheckInitialized(true);
+            }
+        };
+
+        checkFinancePasswordVerified();
+    }, []);
+
+    const handlePinSubmit = async () => {
         if (pinInput.trim() === ADMIN_FINANCE_PIN) {
             setPinLocked(false);
             setPinError("");
             setPinInput("");
+            // Store that password was verified in this session
+            try {
+                await AsyncStorage.setItem(
+                    STORAGE_KEYS.FINANCE_PASSWORD_VERIFIED,
+                    "true",
+                );
+            } catch (error) {
+                console.error(
+                    "Error saving finance password verification:",
+                    error,
+                );
+            }
             return;
         }
 
@@ -181,30 +274,37 @@ export default function FinanceIndex() {
     /* Totals */
     const total = useMemo(() => {
         if (tab === "Receivables") {
-            const sum = (filteredReceivables || []).reduce(
+            const clientSum = (filteredReceivables || []).reduce(
                 (acc, c: any) => acc + getTotalPaid(c),
                 0,
             );
-            return sum;
+            return clientSum;
         }
         // Expenses: keep your existing summary behavior
         return summary?.totalExpenses || 0;
-    }, [summary, tab, filteredReceivables]);
+    }, [summary, tab, filteredReceivables, records]);
 
     /* Section builder */
     const sections = useMemo(() => {
         if (tab === "Receivables") {
-            const txns: Txn[] = (clients || []).map((c: any) => ({
+            const clientTxns: Txn[] = (clients || []).map((c: any) => ({
                 id: c._id,
-                title: "Receive",
+                title: c?.isExternal ? c?.engagement || "External" : "Receive",
                 amount: getTotalPaid(c),
                 time: formatTime(c?.createdAt || ""),
-                description: String(c?.name || "Unnamed client"),
+                description: `${c?.projectName || "Unnamed project"}\n${c?.name || "Unnamed client"}`,
+                projectName: c?.projectName || "Unnamed project",
+                clientName: c?.name || "Unnamed client",
+                engagement: c?.engagement,
+                isExternal: Boolean(c?.isExternal),
+                isFullyPaid: getOutstandingReceivable(c) === 0,
                 status: "Pending",
                 dir: "down",
                 dateKey: dateBucket(c?.createdAt || ""),
-                kind: "receivable", // <- new
+                kind: "clientReceivable",
             }));
+
+            const txns: Txn[] = [...clientTxns];
 
             const map = new Map<string, Txn[]>();
             txns.forEach((t) => {
@@ -329,14 +429,40 @@ export default function FinanceIndex() {
         }
     }, [showClientPicker, clients?.length, fetchAndPaginateReceivables]);
 
+    // Keep both tabs fresh when returning from child screens.
+    useFocusEffect(
+        useCallback(() => {
+            if (pinLocked) return;
+
+            if (tab === "Receivables") {
+                fetchAndPaginateReceivables(false);
+            } else {
+                dispatch(setFinancePage(1));
+                dispatch(
+                    fetchFinance({
+                        ...financeFilters,
+                        type: "expense",
+                        page: 1,
+                    }) as any,
+                );
+            }
+        }, [
+            pinLocked,
+            tab,
+            fetchAndPaginateReceivables,
+            dispatch,
+            financeFilters,
+        ]),
+    );
+
     /* Refresh */
     const onRefresh = useCallback(() => {
-        console.log("Loading");
         if (pinLocked) return;
 
         if (tab === "Receivables") {
             if (clientsLoading) return;
             fetchAndPaginateReceivables(true);
+            dispatch(setFinancePage(1));
         } else {
             if (financeLoading) return;
             dispatch(setFinancePage(1));
@@ -365,8 +491,9 @@ export default function FinanceIndex() {
         if (tab === "Receivables") {
             // Reveal next local page (21-40, 41-60...) from cached filtered list
             if (clientsLoading) return;
-            if ((clients?.length ?? 0) >= (filteredReceivables?.length ?? 0))
+            if ((clients?.length ?? 0) >= (filteredReceivables?.length ?? 0)) {
                 return;
+            }
 
             const nextPage = receivablesPage + 1;
             const nextVisible = (filteredReceivables || []).slice(
@@ -427,96 +554,82 @@ export default function FinanceIndex() {
     return (
         <SafeAreaView
             edges={
-                isIOS
-                    ? ["left", "right", "bottom"]
-                    : ["top", "left", "right", "bottom"]
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
             className="flex-1 bg-white"
         >
-            <Modal
-                visible={pinLocked}
-                transparent
-                animationType="fade"
-                statusBarTranslucent
-                onRequestClose={() => {}}
-            >
-                <View className="flex-1 bg-black/70 px-5 justify-center">
-                    <View className="bg-white rounded-3xl p-6 shadow-lg shadow-black/30">
-                        <Text className="text-xl font-kumbhBold text-[#111827] mb-1">
-                            Finance Access
-                        </Text>
-                        <Text className="text-sm text-gray-500 font-kumbh mb-4">
-                            Enter the secret admin pin to continue.
-                        </Text>
-
-                        <View className="rounded-2xl border border-gray-200 px-4 py-3 mb-2">
-                            <TextInput
-                                value={pinInput}
-                                onChangeText={(text) =>
-                                    setPinInput(text.replace(/\s+/g, ""))
-                                }
-                                placeholder="Enter Pin"
-                                placeholderTextColor="#9CA3AF"
-                                keyboardType="number-pad"
-                                maxLength={7}
-                                secureTextEntry
-                                className="font-kumbh text-base text-[#111827]"
-                                autoFocus
-                            />
-                        </View>
-                        {pinError ? (
-                            <Text className="text-sm text-red-500 font-kumbh mb-3">
-                                {pinError}
+            {isPasswordCheckInitialized && (
+                <Modal
+                    visible={pinLocked}
+                    transparent
+                    animationType="fade"
+                    statusBarTranslucent
+                    onRequestClose={() => {}}
+                >
+                    <View className="flex-1 bg-black/70 px-5 justify-center">
+                        <View className="bg-white rounded-3xl p-6 shadow-lg shadow-black/30">
+                            <Text className="text-xl font-kumbhBold text-[#111827] mb-1">
+                                Finance Access
                             </Text>
-                        ) : (
-                            <Text className="text-xs text-gray-400 font-kumbh mb-3">
-                                Pin is 7 digits long.
+                            <Text className="text-sm text-gray-500 font-kumbh mb-4">
+                                Enter the secret admin pin to continue.
                             </Text>
-                        )}
 
-                        <Pressable
-                            onPress={handlePinSubmit}
-                            disabled={!pinInput}
-                            className={clsx(
-                                "h-12 rounded-2xl items-center justify-center",
-                                pinInput
-                                    ? "bg-[#4C5FAB] active:opacity-90"
-                                    : "bg-gray-300",
+                            <View className="rounded-2xl border border-gray-200 ios:px-4 android:px-2 ios:py-3 mb-2">
+                                <TextInput
+                                    value={pinInput}
+                                    onChangeText={(text) =>
+                                        setPinInput(text.replace(/\s+/g, ""))
+                                    }
+                                    placeholder="Enter Pin"
+                                    placeholderTextColor="#9CA3AF"
+                                    keyboardType="number-pad"
+                                    maxLength={7}
+                                    secureTextEntry
+                                    className="font-kumbh text-base text-[#111827]"
+                                    autoFocus
+                                />
+                            </View>
+                            {pinError ? (
+                                <Text className="text-sm text-red-500 font-kumbh mb-3">
+                                    {pinError}
+                                </Text>
+                            ) : (
+                                <Text className="text-xs text-gray-400 font-kumbh mb-3">
+                                    Pin is 7 digits long.
+                                </Text>
                             )}
-                        >
-                            <Text className="text-white font-kumbhBold">
-                                Unlock Finance
-                            </Text>
-                        </Pressable>
 
-                        <Pressable
-                            onPress={() => router.back()}
-                            className="h-12 rounded-2xl items-center justify-center mt-3 border border-gray-200 active:opacity-90"
-                        >
-                            <Text className="text-[#111827] font-kumbh">
-                                Go Back
-                            </Text>
-                        </Pressable>
+                            <Pressable
+                                onPress={handlePinSubmit}
+                                disabled={!pinInput}
+                                className={clsx(
+                                    "h-12 rounded-2xl items-center justify-center",
+                                    pinInput
+                                        ? "bg-[#4C5FAB] active:opacity-90"
+                                        : "bg-gray-300",
+                                )}
+                            >
+                                <Text className="text-white font-kumbhBold">
+                                    Unlock Finance
+                                </Text>
+                            </Pressable>
+
+                            <Pressable
+                                onPress={() => router.back()}
+                                className="h-12 rounded-2xl items-center justify-center mt-3 border border-gray-200 active:opacity-90"
+                            >
+                                <Text className="text-[#111827] font-kumbh">
+                                    Go Back
+                                </Text>
+                            </Pressable>
+                        </View>
                     </View>
-                </View>
-            </Modal>
+                </Modal>
+            )}
 
             {/* Header */}
             <PlatformAdaptiveHeader title="Finance" />
-
-            {/* Tabs */}
-            <View className="mt-2 flex-row items-end justify-between">
-                <TabButton
-                    label="Receivables"
-                    active={tab === "Receivables"}
-                    onPress={() => setTab("Receivables")}
-                />
-                <TabButton
-                    label="Expenses"
-                    active={tab === "Expenses"}
-                    onPress={() => setTab("Expenses")}
-                />
-            </View>
 
             {/* Total card */}
             <View className="px-5 mt-2">
@@ -541,74 +654,83 @@ export default function FinanceIndex() {
                 </View>
             </View>
 
-            {/* Sectioned list */}
-            <SectionList
-                className="mt-5"
-                sections={sections}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={{ paddingBottom: 24 }}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        tintColor="#4C5FAB"
-                        // tintColor="#F00"
-                    />
+            {/* Tabs with content */}
+            <SwipeableTabView
+                navigationState={{
+                    index: tab === "Receivables" ? 0 : 1,
+                    routes: [
+                        { key: "receivables", title: "Receivables" },
+                        { key: "expenses", title: "Expenses" },
+                    ],
+                }}
+                onIndexChange={(index) =>
+                    setTab(index === 0 ? "Receivables" : "Expenses")
                 }
-                onEndReachedThreshold={0.2}
-                onEndReached={loadMore}
-                renderSectionHeader={({ section: { title } }) => (
-                    <Text className="px-5 py-3 text-gray-500 font-kumbh">
-                        {title}
-                    </Text>
+                renderScene={() => (
+                    <View className="flex-1 pt-2">
+                        <SectionList
+                            sections={sections}
+                            keyExtractor={(item) => item.id}
+                            contentContainerStyle={{ paddingBottom: 24 }}
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={onRefresh}
+                                    tintColor="#4C5FAB"
+                                />
+                            }
+                            onEndReachedThreshold={0.2}
+                            onEndReached={loadMore}
+                            renderSectionHeader={({ section: { title } }) => (
+                                <View className="bg-white">
+                                    <Text className="px-5 py-1.5 text-gray-500 font-kumbh">
+                                        {title}
+                                    </Text>
+                                </View>
+                            )}
+                            ItemSeparatorComponent={() => (
+                                <View className="h-[1px] bg-gray-200 ml-[76px]" />
+                            )}
+                            renderItem={({ item }) => (
+                                <TxnRow
+                                    item={item}
+                                    onPress={() =>
+                                        item.kind === "expense"
+                                            ? router.push(
+                                                  `/(admin)/finance/${item.id}`,
+                                              )
+                                            : router.push({
+                                                  pathname:
+                                                      "/(admin)/clients/installments",
+                                                  params: {
+                                                      clientId: item.id,
+                                                  },
+                                              })
+                                    }
+                                />
+                            )}
+                            ListFooterComponent={
+                                isLoadingMore ? (
+                                    <Text className="text-center text-gray-400 font-kumbh my-3">
+                                        Loading more…
+                                    </Text>
+                                ) : null
+                            }
+                            stickySectionHeadersEnabled
+                        />
+                    </View>
                 )}
-                ItemSeparatorComponent={() => (
-                    <View className="h-[1px] bg-gray-200 ml-[76px]" />
-                )}
-                renderItem={({ item }) => (
-                    <TxnRow
-                        item={item}
-                        onPress={() =>
-                            item.kind === "expense"
-                                ? router.push(`/(admin)/finance/${item.id}`)
-                                : router.push({
-                                      pathname: "/(admin)/clients/installments",
-                                      params: { clientId: item.id },
-                                  })
-                        }
-                    />
-                )}
-                // ListEmptyComponent={
-                //     tab === "Receivables" && clientsLoading ? (
-                //         <View className="py-8 items-center justify-center">
-                //             <ActivityIndicator size="small" color="#4C5FAB" />
-                //             <Text className="mt-2 text-gray-400 font-kumbh">
-                //                 Loading receivables…
-                //             </Text>
-                //         </View>
-                //     ) : null
-                // }
-                ListFooterComponent={
-                    isLoadingMore ? (
-                        <Text className="text-center text-gray-400 font-kumbh my-3">
-                            Loading more…
-                        </Text>
-                    ) : null
-                }
-                stickySectionHeadersEnabled
+                tabBarProps={{
+                    activeColor: "#4C5FAB",
+                    inactiveColor: "#6B7280",
+                }}
             />
 
             {/* Floating button */}
             <Pressable
                 onPress={() => {
                     if (tab === "Receivables") {
-                        // ensure we have clients ready when opening the modal
-                        if (!clients || clients.length === 0) {
-                            fetchAndPaginateReceivables(false);
-                        }
-                        setClientSearch("");
-                        setSelectedClientId(null);
-                        setShowClientPicker(true);
+                        router.push("/(admin)/finance/receivable");
                     } else {
                         router.push("/(admin)/finance/form");
                     }
@@ -644,8 +766,20 @@ export default function FinanceIndex() {
                         </Text>
                         <Text className="text-gray-500 font-kumbh mb-4">
                             Select the client to create/install an installment
-                            plan for.
+                            plan for, or add a manual receivable.
                         </Text>
+
+                        <Pressable
+                            onPress={() => {
+                                setShowClientPicker(false);
+                                router.push("/(admin)/finance/receivable");
+                            }}
+                            className="h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center mb-4"
+                        >
+                            <Text className="text-white font-kumbhBold">
+                                Add Manual Receivable
+                            </Text>
+                        </Pressable>
 
                         {/* Search */}
                         <View className="rounded-2xl border border-gray-200 px-4 py-3 mb-3">
@@ -785,46 +919,15 @@ export default function FinanceIndex() {
 
 /* ───────── UI bits ───────── */
 
-function TabButton({
-    label,
-    active,
-    onPress,
-}: {
-    label: "Receivables" | "Expenses";
-    active: boolean;
-    onPress: () => void;
-}) {
-    return (
-        <View className="flex-1 items-center">
-            <Pressable onPress={onPress}>
-                <Text
-                    className={clsx(
-                        "font-kumbh text-base",
-                        active ? "text-blue-500 font-kumbhBold" : "text-text",
-                    )}
-                >
-                    {label}
-                </Text>
-            </Pressable>
-            <View
-                className={clsx(
-                    "h-[3px] w-40 rounded-full mt-2",
-                    active ? "bg-blue-300" : "bg-transparent",
-                )}
-            />
-        </View>
-    );
-}
-
-function TxnRow({
-    item,
-    onPress,
-}: {
-    item: Txn;
-    onPress: () => void; // <- new
-}) {
-    const iconBg = "bg-blue-500";
+function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
+    const iconBg =
+        item.kind === "expense"
+            ? "bg-emerald-500"
+            : item.isExternal && item.engagement
+              ? getEngagementBadge(item.engagement)
+              : "bg-blue-500";
     const isPending = item.status === "Pending";
+
     return (
         <Pressable
             onPress={onPress}
@@ -844,22 +947,77 @@ function TxnRow({
             </View>
 
             <View className="flex-1">
-                <Text className="text-base font-kumbhBold text-text">
-                    {item.title}
-                </Text>
                 <Text
                     className={clsx(
-                        "mt-1 text-sm font-kumbh",
-                        isPending ? "text-yellow-600" : "text-green-600",
+                        "text-base font-kumbhBold",
+                        item.isExternal
+                            ? getEngagementTextColor(item.engagement)
+                            : "text-text",
                     )}
                     numberOfLines={1}
                 >
-                    {item.description}
+                    {item.title}
                 </Text>
+                {item.isExternal && item.engagement ? (
+                    <View>
+                        <Text
+                            className="text-sm font-kumbh text-gray-600"
+                            numberOfLines={1}
+                        >
+                            {item.projectName}
+                        </Text>
+                        <Text
+                            className={clsx(
+                                "text-sm font-kumbh",
+                                isPending
+                                    ? "text-yellow-600"
+                                    : "text-green-600",
+                            )}
+                            numberOfLines={1}
+                        >
+                            {item.clientName}
+                        </Text>
+                    </View>
+                ) : item.projectName && item.clientName ? (
+                    <View>
+                        <Text
+                            className="text-sm font-kumbh text-gray-600"
+                            numberOfLines={1}
+                        >
+                            {item.projectName}
+                        </Text>
+                        <Text
+                            className={clsx(
+                                "text-sm font-kumbh",
+                                isPending
+                                    ? "text-yellow-600"
+                                    : "text-green-600",
+                            )}
+                            numberOfLines={1}
+                        >
+                            {item.clientName}
+                        </Text>
+                    </View>
+                ) : (
+                    <Text
+                        className={clsx(
+                            "text-sm font-kumbh",
+                            isPending ? "text-yellow-600" : "text-green-600",
+                        )}
+                        numberOfLines={1}
+                    >
+                        {item.description}
+                    </Text>
+                )}
             </View>
 
             <View className="items-end">
-                <Text className="text-base font-kumbhBold text-text">
+                <Text
+                    className={clsx(
+                        "text-base font-kumbhBold",
+                        item.isFullyPaid ? "text-green-600" : "text-text",
+                    )}
+                >
                     {NGN(item.amount)}
                 </Text>
                 <Text className="text-sm text-gray-500 font-kumbh mt-1">

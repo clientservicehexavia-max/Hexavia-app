@@ -1,12 +1,14 @@
 import { api } from "@/api/axios";
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import ActionSheet from "@/components/staff/chat/ActionSheet";
 import AttachmentTray from "@/components/staff/chat/AttachmentTray";
 import BottomStack from "@/components/staff/chat/BottomStack";
-import ChatHeader from "@/components/staff/chat/ChatHeader";
 import Composer from "@/components/staff/chat/Composer";
 import MessageBubble from "@/components/staff/chat/MessageBubble";
 import { showError } from "@/components/ui/toast";
+import { PRIMARY } from "@/constants/Colors";
 import { useKeyboardSpacer } from "@/hooks/useKeyboardSpacer";
+import { getSocket } from "@/realtime/socket";
 import { selectChannelById } from "@/redux/channels/channels.slice";
 import {
     fetchChannelById,
@@ -17,6 +19,7 @@ import { ensureThread, setCurrentThread } from "@/redux/chat/chat.slice";
 import { fetchMessages } from "@/redux/chat/chat.thunks";
 import { uploadSingle } from "@/redux/upload/upload.thunks";
 import { selectUser } from "@/redux/user/user.slice";
+import { clearActiveChannelId, saveActiveChannelId } from "@/storage/auth";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { AttachmentKind, Message, ReplyMeta } from "@/types/chat";
 import type { ChatTaggedUser } from "@/types/chat-model";
@@ -33,8 +36,9 @@ import * as Clipboard from "expo-clipboard";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { ChevronDown, ClipboardIcon, Cloud } from "lucide-react-native";
 import React, {
     useCallback,
     useEffect,
@@ -43,11 +47,13 @@ import React, {
     useState,
 } from "react";
 import {
+    Alert,
+    AppState,
     FlatList,
-    InteractionManager,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     Text,
     View,
 } from "react-native";
@@ -62,6 +68,9 @@ export default function ChatScreen() {
     const { channelId: rawId } = useLocalSearchParams<{ channelId: string }>();
     const dispatch = useAppDispatch();
     const router = useRouter();
+    const isIOS = Platform.OS === "ios";
+
+    // ...existing code...
 
     const user = useAppSelector(selectUser);
     const meId = user?._id;
@@ -69,35 +78,6 @@ export default function ChatScreen() {
 
     const channelSel = useMemo(() => selectChannelById(channelId), [channelId]);
     const channel = useAppSelector(channelSel);
-
-    const initialLoadedRef = useRef<Record<string, boolean>>({});
-    const didEnterScrollRef = useRef<Record<string, boolean>>({});
-    const enterChannelRef = useRef<string | null>(null);
-
-    useEffect(() => {
-        if (!channelId) return;
-
-        enterChannelRef.current = channelId;
-        // allow the enter-scroll to run again for this channel
-        didEnterScrollRef.current[channelId] = false;
-
-        // treat as bottom on entry
-        atBottomRef.current = true;
-        isInteractingRef.current = false;
-    }, [channelId]);
-
-    useEffect(() => {
-        if (!channelId) return;
-
-        // only once per channel entry
-        if (initialLoadedRef.current[channelId]) return;
-        initialLoadedRef.current[channelId] = true;
-
-        // load first page immediately
-        dispatch(
-            fetchMessages({ id: channelId, type: TYPE, limit: 50, skip: 0 }),
-        );
-    }, [channelId, dispatch]);
 
     useEffect(() => {
         if (!meId) return;
@@ -129,15 +109,59 @@ export default function ChatScreen() {
         if (!channelId || !meId) return;
         dispatch(ensureThread({ id: channelId, kind: "community" }));
         dispatch(setCurrentThread(channelId));
+        saveActiveChannelId(channelId);
         dispatch({ type: "chat/joinChannel", payload: { meId, channelId } });
     }, [dispatch, channelId, meId]);
 
     const messagesFromRedux = useAppSelector(selectMessagesForCurrent);
 
+    const refreshMissedMessages = useCallback(() => {
+        if (!channelId) return;
+        dispatch(
+            fetchMessages({ id: channelId, type: TYPE, limit: 50, skip: 0 }),
+        );
+    }, [channelId, dispatch]);
+
+    useFocusEffect(
+        useCallback(() => {
+            // User is now viewing this channel screen
+            if (channelId && meId) {
+                const socket = getSocket();
+                socket?.emit("viewingChannel", { userId: meId, channelId });
+                console.log(`📱 User ${meId} viewing channel ${channelId}`);
+            }
+
+            refreshMissedMessages();
+
+            // Cleanup: user left the chat screen
+            return () => {
+                if (channelId && meId) {
+                    const socket = getSocket();
+                    socket?.emit("leftChatScreen", { userId: meId, channelId });
+                    console.log(
+                        `📱 User ${meId} left chat screen for channel ${channelId}`,
+                    );
+                }
+            };
+        }, [refreshMissedMessages, channelId, meId]),
+    );
+
+    useEffect(() => {
+        const sub = AppState.addEventListener("change", (next) => {
+            if (next === "active") {
+                refreshMissedMessages();
+            }
+        });
+
+        return () => sub.remove();
+    }, [refreshMissedMessages]);
+
     const [trayOpen, setTrayOpen] = useState(false);
     const [sheetOpen, setSheetOpen] = useState(false);
     const [selected, setSelected] = useState<Message | null>(null);
     const [replyTo, setReplyTo] = useState<ReplyMeta | null>(null);
+    const showScrollToBottomRef = useRef(false);
+    const scrollButtonRef = useRef<View>(null);
     type ChatListItem =
         | { type: "date"; key: string; ts: number }
         | { type: "message"; key: string; message: Message };
@@ -149,62 +173,85 @@ export default function ChatScreen() {
     const recorderState = useAudioRecorderState(audioRecorder, 200);
     const recordRef = useRef<typeof audioRecorder | null>(null);
 
-    const title = channel?.name ?? "Fin Team";
-    const subtitle = channel?.description ?? "Mr Chiboy and 5 Others…";
+    const title = channel?.name ?? "";
+    const subtitle = channel?.description ?? "";
 
     const data = useMemo<Message[]>(() => {
-        return (messagesFromRedux || []).map((m: any) => ({
-            id: m.id,
-            text: m.text,
-            createdAt: m.createdAt,
-            senderId: m.senderId,
-            senderName: m.senderName ?? "",
-            avatar: m.avatar ?? undefined,
-            status: m.status,
-            isRead: m.isRead,
-            mediaUri: (m as any).mediaUri,
-            mimeType: (m as any).mimeType,
-            durationMs: (m as any).durationMs,
-            replyTo: (m as any).replyTo,
-        }));
+        return (messagesFromRedux || []).map((m: any) => {
+            const rawTs = m.createdAt;
+            let createdAtNum: number = NaN;
+            if (typeof rawTs === "number") createdAtNum = rawTs;
+            else if (typeof rawTs === "string") {
+                const p = Date.parse(rawTs);
+                if (!Number.isNaN(p)) createdAtNum = p;
+            } else if (rawTs instanceof Date) createdAtNum = rawTs.getTime();
+
+            return {
+                id: m.id,
+                text: m.text,
+                createdAt: createdAtNum,
+                senderId: m.senderId,
+                senderName: m.senderName ?? "",
+                avatar: m.avatar ?? undefined,
+                status: m.status,
+                isRead: m.isRead,
+                mediaUri: (m as any).mediaUri,
+                mimeType: (m as any).mimeType,
+                durationMs: (m as any).durationMs,
+                replyTo: (m as any).replyTo,
+            };
+        });
     }, [messagesFromRedux]);
 
     const listData = useMemo<ChatListItem[]>(() => {
         const out: ChatListItem[] = [];
-        let lastDateKey: string | null = null;
-        for (const m of data) {
+        const sortedData = [...data].reverse();
+
+        // Iterate by index so we can look ahead and place the date separator
+        // AFTER the message. This matches the visual grouping when using an
+        // inverted FlatList (newest messages at the bottom).
+        for (let i = 0; i < sortedData.length; i++) {
+            const m = sortedData[i];
             if (!m) continue;
             const isTyping = m.id === "typing";
             const ts = typeof m.createdAt === "number" ? m.createdAt : NaN;
+
+            // 1) Push the message first
+            out.push({ type: "message", key: `m-${m.id}`, message: m });
+
+            // 2) If this message marks the end of a day (i.e. the next
+            // message is a different day or there is no next message), push
+            // a date separator AFTER the message so the separator visually
+            // attaches to the group that just finished.
             if (!isTyping && Number.isFinite(ts)) {
-                const dateKey = getDateKey(ts);
-                if (dateKey !== lastDateKey) {
-                    out.push({ type: "date", key: `d-${dateKey}`, ts });
-                    lastDateKey = dateKey;
+                // Find the next non-typing message to compare dates against.
+                let j = i + 1;
+                let next: typeof m | undefined = undefined;
+                for (; j < sortedData.length; j++) {
+                    const candidate = sortedData[j];
+                    if (!candidate) continue;
+                    if (candidate.id === "typing") continue;
+                    next = candidate;
+                    break;
+                }
+
+                const nextTs = next
+                    ? typeof next.createdAt === "number"
+                        ? next.createdAt
+                        : NaN
+                    : NaN;
+                if (!next || getDateKey(nextTs) !== getDateKey(ts)) {
+                    out.push({
+                        type: "date",
+                        key: `d-${getDateKey(ts)}-${i}`,
+                        ts,
+                    });
                 }
             }
-            out.push({ type: "message", key: `m-${m.id}`, message: m });
         }
+
         return out;
     }, [data]);
-
-    useEffect(() => {
-        if (!channelId) return;
-        if (!data.length) return;
-
-        // only do this once per entry
-        if (didEnterScrollRef.current[channelId]) return;
-        if (enterChannelRef.current !== channelId) return;
-
-        didEnterScrollRef.current[channelId] = true;
-        pendingInitialSnapRef.current = true;
-
-        InteractionManager.runAfterInteractions(() => {
-            requestAnimationFrame(() => {
-                listRef.current?.scrollToEnd({ animated: true });
-            });
-        });
-    }, [channelId, data.length]);
 
     useEffect(() => {
         setRecordDurationMs(recorderState.durationMillis ?? 0);
@@ -298,11 +345,55 @@ export default function ChatScreen() {
     const handleDeleteSelected = () => {
         if (!selected || !meId) return;
         if (selected.senderId !== meId) return;
-        dispatch({
-            type: "chat/deleteMessage",
-            payload: { userId: meId, messageId: selected.id },
-        });
+
+        Alert.alert(
+            "Delete Message",
+            "Are you sure you want to delete this message? This action cannot be undone.",
+            [
+                {
+                    text: "Cancel",
+                    onPress: () => setSheetOpen(false),
+                    style: "cancel",
+                },
+                {
+                    text: "Delete",
+                    onPress: () => {
+                        dispatch({
+                            type: "chat/deleteMessage",
+                            payload: { userId: meId, messageId: selected.id },
+                        });
+                        setSheetOpen(false);
+                    },
+                    style: "destructive",
+                },
+            ],
+        );
     };
+
+    const handleRetryMessage = useCallback(
+        (message: Message) => {
+            if (!channelId || !meId) return;
+            dispatch({
+                type: "chat/retrySendChannel",
+                payload: { messageId: message.id },
+            });
+            setSheetOpen(false);
+        },
+        [channelId, dispatch, meId],
+    );
+
+    const handleDeleteMessage = useCallback(
+        (message: Message) => {
+            if (!meId || message.senderId !== meId) return;
+
+            dispatch({
+                type: "chat/deleteMessage",
+                payload: { userId: meId, messageId: message.id },
+            });
+            setSheetOpen(false);
+        },
+        [dispatch, meId],
+    );
 
     const items = useMemo(() => {
         const base = [
@@ -326,72 +417,23 @@ export default function ChatScreen() {
             },
         ];
 
-        if (selected?.senderId === meId) {
+        if (selected && selected.senderId === meId) {
+            if (selected.status === "failed") {
+                base.push({
+                    key: "retry",
+                    label: "Retry Send",
+                    onPress: () => handleRetryMessage(selected),
+                });
+            }
             base.push({
                 key: "delete",
                 label: "Delete",
-                danger: true,
                 onPress: handleDeleteSelected,
             });
         }
 
         return base;
-    }, [handleDeleteSelected, meId, selected]);
-
-    const ALWAYS_SNAP_TO_BOTTOM = false;
-    const atBottomRef = useRef(true);
-    const isInteractingRef = useRef(false);
-    const lastRealMsgIdRef = useRef<string | null>(null);
-    const pendingAutoScrollRef = useRef(false);
-    const pendingInitialSnapRef = useRef(false);
-    const contentHeightRef = useRef(0);
-    const BOTTOM_THRESHOLD = 80;
-
-    const getLastRealMsgId = (arr: Message[]) => {
-        for (let i = arr.length - 1; i >= 0; i--) {
-            if (arr[i]?.id !== "typing") return arr[i].id;
-        }
-        return null;
-    };
-
-    useEffect(() => {
-        const lastRealId = getLastRealMsgId(data);
-        if (!lastRealId) return;
-        if (lastRealId !== lastRealMsgIdRef.current) {
-            const shouldAuto =
-                ALWAYS_SNAP_TO_BOTTOM ||
-                (atBottomRef.current && !isInteractingRef.current);
-            if (shouldAuto) pendingAutoScrollRef.current = true;
-            lastRealMsgIdRef.current = lastRealId;
-        }
-    }, [data]);
-
-    const scrollToEnd = () => {
-        requestAnimationFrame(() =>
-            listRef.current?.scrollToEnd({ animated: true }),
-        );
-    };
-
-    const lastTopLoadRef = useRef(0);
-
-    const handleScroll = ({
-        nativeEvent: { contentOffset, contentSize, layoutMeasurement },
-    }: any) => {
-        const y = contentOffset.y;
-
-        const distanceFromBottom =
-            contentSize.height - (contentOffset.y + layoutMeasurement.height);
-        atBottomRef.current = distanceFromBottom < BOTTOM_THRESHOLD;
-
-        // auto-load older when near top
-        if (y < 40) {
-            const now = Date.now();
-            if (now - lastTopLoadRef.current > 800) {
-                lastTopLoadRef.current = now;
-                loadOlder();
-            }
-        }
-    };
+    }, [handleDeleteSelected, handleRetryMessage, meId, selected]);
 
     const handlePick = async (kind: AttachmentKind) => {
         try {
@@ -440,7 +482,7 @@ export default function ChatScreen() {
                                 } as any,
                             },
                         });
-                        scrollToEnd();
+                        scrollToBottom();
                     }
                 }
             }
@@ -489,7 +531,7 @@ export default function ChatScreen() {
                                 },
                             },
                         });
-                        scrollToEnd();
+                        scrollToBottom();
                     }
                 }
             }
@@ -534,7 +576,7 @@ export default function ChatScreen() {
                                 attachment: { mediaUri: url, mimeType: type },
                             },
                         });
-                        scrollToEnd();
+                        scrollToBottom();
                     }
                 }
             }
@@ -590,7 +632,7 @@ export default function ChatScreen() {
                                 attachment: { mediaUri: url, mimeType: type },
                             },
                         });
-                        scrollToEnd();
+                        scrollToBottom();
                     } else {
                         showError("Upload succeeded but no file URL returned.");
                     }
@@ -657,10 +699,9 @@ export default function ChatScreen() {
     const kb = useKeyboardSpacer();
     const baseBottom = trayOpen ? 220 : 100;
     const paddingBottom = baseBottom + kb;
-
-    useEffect(() => {
-        if (!channelId) return;
-    }, [channelId, dispatch]);
+    const scrollToBottomButtonBottom = baseBottom + kb + 12;
+    const SHOW_SCROLL_TO_BOTTOM_OFFSET = 120;
+    const HIDE_SCROLL_TO_BOTTOM_OFFSET = 40;
 
     const loadingOlder = useAppSelector(
         (s) => s.chat.loadingByThread?.[channelId!],
@@ -683,6 +724,55 @@ export default function ChatScreen() {
         messagesFromRedux?.length,
         dispatch,
     ]);
+
+    const lastTopLoadRef = useRef(0);
+    const handleEndReached = useCallback(() => {
+        const now = Date.now();
+        if (now - lastTopLoadRef.current < 800) return;
+        lastTopLoadRef.current = now;
+        loadOlder();
+    }, [loadOlder]);
+
+    const scrollToBottom = useCallback(() => {
+        // Keep this path minimal so touch feedback is immediate.
+        showScrollToBottomRef.current = false;
+        scrollButtonRef.current?.setNativeProps({
+            style: {
+                width: 0,
+                height: 0,
+                opacity: 0,
+            },
+        });
+        const nativeScrollView = listRef.current?.getNativeScrollRef?.() as
+            | { scrollTo?: (opts: { y: number; animated: boolean }) => void }
+            | undefined;
+
+        nativeScrollView?.scrollTo?.({ y: 0, animated: true });
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }, []);
+
+    const setScrollButtonVisible = useCallback((visible: boolean) => {
+        if (showScrollToBottomRef.current === visible) return;
+        showScrollToBottomRef.current = visible;
+        scrollButtonRef.current?.setNativeProps({
+            style: {
+                width: visible ? 40 : 0,
+                height: visible ? 40 : 0,
+                opacity: visible ? 1 : 0,
+            },
+        });
+    }, []);
+
+    const handleListScroll = useCallback(
+        (e: any) => {
+            const y = e?.nativeEvent?.contentOffset?.y ?? 0;
+            const shouldShow = showScrollToBottomRef.current
+                ? y > HIDE_SCROLL_TO_BOTTOM_OFFSET
+                : y > SHOW_SCROLL_TO_BOTTOM_OFFSET;
+            setScrollButtonVisible(shouldShow);
+        },
+        [setScrollButtonVisible],
+    );
 
     const lastSendRef = useRef(0);
     const MIN_INTERVAL_MS = 350;
@@ -799,7 +889,44 @@ export default function ChatScreen() {
         setDraftText("");
         setReplyTo(null);
         setTrayOpen(false);
+        // Ensure the view scrolls to show the newly-sent message immediately.
+        // Use a short timeout to allow the FlatList to update its content/layout.
+        setTimeout(() => {
+            try {
+                scrollToBottom();
+            } catch (e) {
+                // noop
+            }
+        }, 50);
     };
+
+    // Auto-scroll when new messages arrive. If the user is already at the
+    // bottom (showScrollToBottomRef is false) we should keep them pinned to
+    // the latest message. Also always scroll if the incoming message is from
+    // the current user so they can see their sent message.
+    const lastMessageIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        const lastMsg =
+            messagesFromRedux && messagesFromRedux.length
+                ? messagesFromRedux[messagesFromRedux.length - 1]
+                : undefined;
+        if (!lastMsg) return;
+        if (lastMsg.id === lastMessageIdRef.current) return;
+        lastMessageIdRef.current = lastMsg.id;
+
+        const shouldForceScroll =
+            !showScrollToBottomRef.current || lastMsg.senderId === meId;
+        if (shouldForceScroll) {
+            // Delay slightly to wait for layout/keyboard adjustments.
+            setTimeout(() => {
+                try {
+                    scrollToBottom();
+                } catch (e) {
+                    // ignore
+                }
+            }, 60);
+        }
+    }, [messagesFromRedux?.length]);
 
     const sendVoiceNote = useCallback(
         async (voice: {
@@ -852,7 +979,7 @@ export default function ChatScreen() {
                             },
                         });
                     }
-                    scrollToEnd();
+                    scrollToBottom();
                 } else {
                     showError("Upload succeeded but no file URL returned.");
                 }
@@ -861,29 +988,117 @@ export default function ChatScreen() {
                 showError("Failed to send voice note.");
             }
         },
-        [channelId, dispatch, meId, scrollToEnd],
+        [channelId, dispatch, meId, scrollToBottom],
     );
 
+    // Helper to emit leaveChannel
+    const emitLeaveChannel = React.useCallback(() => {
+        if (meId && channelId) {
+            dispatch({
+                type: "chat/leaveChannel",
+                payload: { meId, channelId },
+            });
+        }
+    }, [dispatch, meId, channelId]);
+
+    // Leave channel when navigating away (unmount)
+    // useEffect(() => {
+    //     return () => {
+    //         emitLeaveChannel();
+    //     };
+    // }, [emitLeaveChannel]);
+
+    useFocusEffect(
+        useCallback(() => {
+            return () => {
+                clearActiveChannelId();
+            };
+        }, [clearActiveChannelId]),
+    );
+
+    // Leave channel when app is backgrounded (minimized)
+    // useEffect(() => {
+    //     const sub = AppState.addEventListener("change", (next) => {
+    //         if (next === "background" || next === "inactive") {
+    //             emitLeaveChannel();
+    //         }
+    //     });
+    //     return () => sub.remove();
+    // }, [emitLeaveChannel]);
+
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <SafeAreaView
+            className="flex-1 bg-white"
+            edges={
+                user?.role === "staff"
+                    ? isIOS
+                        ? ["left", "right"]
+                        : ["top", "left", "right"]
+                    : isIOS
+                      ? ["left", "right", "bottom"]
+                      : ["top", "left", "right"]
+            }
+        >
             <StatusBar style="dark" />
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
-                keyboardVerticalOffset={0}
+                keyboardVerticalOffset={isIOS ? 100 : 72}
                 style={{ flex: 1 }}
             >
-                <ChatHeader
+                {/* <ChatHeader
                     title={title}
                     subtitle={subtitle}
                     onPress={handleOpenResources}
                     onTaskOpen={handleOpenTasks}
                     channelId={channelId}
+                /> */}
+
+                <PlatformAdaptiveHeader
+                    title={title}
+                    description={subtitle}
+                    multilineTitle
+                    backgroundColor="#F3F4F6"
+                    onTitlePress={() =>
+                        router.push({
+                            pathname: "/(staff)/channels/[channelId]/members",
+                            params: { channelId: channelId as any },
+                        })
+                    }
+                    headerRight={({ tintColor }) => (
+                        <View className="flex-row items-center gap-2">
+                            <Pressable
+                                onPress={handleOpenTasks}
+                                className="w-10 h-10 rounded-full items-center justify-center"
+                                hitSlop={8}
+                                style={{
+                                    backgroundColor: PRIMARY,
+                                }}
+                            >
+                                <ClipboardIcon size={22} color="white" />
+                                {/* <Text className="text-sm font-kumbh">
+                                    Tasks
+                                </Text> */}
+                            </Pressable>
+                            <Pressable
+                                onPress={handleOpenResources}
+                                className="w-10 h-10 items-center justify-center"
+                                hitSlop={8}
+                            >
+                                <Cloud size={25} color={tintColor} />
+                                {/* <Text className="text-sm font-kumbh">
+                                    Resources
+                                </Text> */}
+                            </Pressable>
+                        </View>
+                    )}
                 />
                 <FlatList
                     ref={listRef}
                     style={{ flex: 1 }}
+                    inverted
+                    maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
                     contentContainerStyle={{
-                        paddingTop: 16,
+                        paddingTop: 5,
                         paddingBottom: paddingBottom,
                     }}
                     data={listData}
@@ -913,6 +1128,8 @@ export default function ChatScreen() {
                                 msg={item.message}
                                 isMe={item.message.senderId === meId}
                                 onLongPress={openSheetFor}
+                                onRetry={handleRetryMessage}
+                                onDeleteMessage={handleDeleteMessage}
                                 mentionMap={mentionMap}
                             />
                         );
@@ -922,56 +1139,38 @@ export default function ChatScreen() {
                         Platform.OS === "ios" ? "interactive" : "on-drag"
                     }
                     keyboardShouldPersistTaps="handled"
-                    onScroll={handleScroll}
+                    onScroll={handleListScroll}
                     scrollEventThrottle={16}
-                    onScrollBeginDrag={() => {
-                        isInteractingRef.current = true;
-                    }}
                     onScrollEndDrag={() => {
-                        isInteractingRef.current = false;
                         markVisibleAsRead();
                     }}
                     onMomentumScrollEnd={() => {
-                        isInteractingRef.current = false;
                         markVisibleAsRead();
                     }}
-                    onContentSizeChange={(w, h) => {
-                        contentHeightRef.current = h;
-
-                        if (pendingInitialSnapRef.current) {
-                            pendingInitialSnapRef.current = false;
-                            requestAnimationFrame(() => {
-                                listRef.current?.scrollToEnd({
-                                    animated: true,
-                                });
-                            });
-                        }
-
-                        if (pendingAutoScrollRef.current) {
-                            pendingAutoScrollRef.current = false;
-                            requestAnimationFrame(() => {
-                                listRef.current?.scrollToEnd({
-                                    animated: true,
-                                });
-                                if (Platform.OS === "android") {
-                                    InteractionManager.runAfterInteractions(
-                                        () => {
-                                            listRef.current?.scrollToOffset({
-                                                offset: Math.max(
-                                                    0,
-                                                    contentHeightRef.current,
-                                                ),
-                                                animated: true,
-                                            });
-                                        },
-                                    );
-                                }
-                            });
-                        }
-                    }}
-                    refreshing={!!loadingOlder}
-                    onRefresh={loadOlder}
+                    onEndReached={handleEndReached}
+                    onEndReachedThreshold={0.2}
                 />
+                <View
+                    ref={scrollButtonRef}
+                    collapsable={false}
+                    style={{
+                        position: "absolute",
+                        right: 10,
+                        bottom: scrollToBottomButtonBottom,
+                        zIndex: 10,
+                        width: 0,
+                        height: 0,
+                        opacity: 0,
+                        overflow: "hidden",
+                    }}
+                >
+                    <Pressable
+                        onPressIn={scrollToBottom}
+                        className="rounded-full bg-gray-200 w-11 h-11 items-center justify-center"
+                    >
+                        <ChevronDown color="black" size={30} />
+                    </Pressable>
+                </View>
                 <BottomStack
                     tray={
                         trayOpen ? (

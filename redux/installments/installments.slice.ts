@@ -9,8 +9,8 @@ import type { InstallmentRow, InstallmentsState } from "./installments.types";
 const initialState: InstallmentsState = {
     clientId: "",
     rows: [
-        { amount: "5000", due: "01/02/2025" },
-        { amount: "", due: "" },
+        { amount: "5000", due: "01/02/2025", isPaid: false },
+        { amount: "", due: "", isPaid: false },
     ],
     totalAmount: "60000",
     amountPaid: "48000",
@@ -53,7 +53,10 @@ const installmentsSlice = createSlice({
             state.rows = next;
         },
         addRow(state) {
-            state.rows = [...state.rows, { amount: "", due: "" }];
+            state.rows = [
+                ...state.rows,
+                { amount: "", due: "", isPaid: false },
+            ];
         },
         removeRow(state, action: PayloadAction<number>) {
             const idx = action.payload;
@@ -67,7 +70,7 @@ const installmentsSlice = createSlice({
             state.lastAdd = null;
         },
         resetForm(state) {
-            state.rows = [{ amount: "", due: "" }];
+            state.rows = [{ amount: "", due: "", isPaid: false }];
             state.totalAmount = "";
             state.amountPaid = "";
         },

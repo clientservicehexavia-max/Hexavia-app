@@ -13,16 +13,16 @@ export default function Tile({
     return (
         <Pressable
             onPress={onPress}
-            className="flex-1 h-32 rounded-2xl bg-primary-500 active:opacity-90"
+            className="flex-1 h-32 rounded-xl bg-primary-500 active:opacity-90"
             style={{ overflow: "hidden" }}
         >
             <View className="flex-1 p-4 justify-between">
                 <View className="opacity-90">{icon}</View>
                 <View className="flex-row items-center justify-between">
-                    <Text className="text-white text-3xl font-kumbhBold">
+                    <Text className="text-white text-2xl font-kumbhBold">
                         {title}
                     </Text>
-                    <Text className="text-white text-2xl">↗︎</Text>
+                    <Text className="text-white text-xl">↗︎</Text>
                 </View>
             </View>
         </Pressable>

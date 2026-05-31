@@ -18,7 +18,7 @@ export default function SectionCard({
     const Wrapper = onPress ? Pressable : View;
     return (
         <Wrapper
-            className={clsx("rounded-3xl bg-background p-4 my-2", className)}
+            className={clsx("rounded-xl bg-background p-4 my-2", className)}
             onPress={onPress as any}
         >
             {!noTitle && title ? (

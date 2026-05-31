@@ -1,12 +1,7 @@
 // app/(admin)/channels/index.tsx  (or wherever this file lives)
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
-import {
-    /* MoreVertical, */ Copy,
-    Plus,
-    Search,
-    Trash2,
-} from "lucide-react-native";
+import { Plus, Search, Trash2 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator, // <- kept for commented block
@@ -180,13 +175,13 @@ export default function ChannelsIndex() {
     return (
         <SafeAreaView
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white px-2"
+            className="flex-1 bg-white"
         >
             {/* Header */}
             <PlatformAdaptiveHeader
                 title="Projects"
                 headerRight={({ tintColor }) => (
-                    <View className="flex-row items-center gap-2 pr-1">
+                    <View className="flex-row items-center gap-2 ios:mr-3">
                         <Pressable
                             onPress={() =>
                                 router.push("/(admin)/channels/create")
@@ -214,7 +209,7 @@ export default function ChannelsIndex() {
             />
 
             {/* Search */}
-            <View className="my-3 flex-row items-center rounded-full bg-gray-200 ios:h-14 android:h-12 px-4 gap-2">
+            <View className="my-2 flex-row items-center rounded-xl bg-gray-200 ios:h-14 android:h-12 px-4 gap-2 mx-2">
                 <Search size={20} color="#6B7280" />
                 <TextInput
                     value={query}
@@ -246,7 +241,11 @@ export default function ChannelsIndex() {
                     keyExtractor={(item) => item._id}
                     numColumns={2}
                     columnWrapperStyle={{ gap: 5 }}
-                    contentContainerStyle={{ paddingBottom: 24, gap: 5 }}
+                    contentContainerStyle={{
+                        paddingBottom: 24,
+                        gap: 5,
+                        paddingHorizontal: 8,
+                    }}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -254,57 +253,17 @@ export default function ChannelsIndex() {
                         />
                     }
                     renderItem={({ item, index }) => (
-                        <View style={{ flex: 1, position: "relative" }}>
-                            <ChannelCard
-                                title={item.name ?? ""}
-                                code={item.code ?? ""}
-                                description={item.description ?? undefined}
-                                tint={getTint(item, index)}
-                                onPress={() => {
-                                    router.push({
-                                        pathname: "/(admin)/chats/[channelId]",
-                                        params: { channelId: item._id },
-                                    });
-                                }}
-                                onLongPress={() => openActions(item)}
-                            />
-
-                            {/* Copy icon (replaces ellipsis). No background behind it. */}
-                            <Pressable
-                                onPress={() => copyCode(item.code)}
-                                style={{
-                                    position: "absolute",
-                                    top: 6,
-                                    right: 6,
-                                    width: 32,
-                                    height: 32,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                }}
-                                hitSlop={8}
-                            >
-                                <Copy size={12} color="#ffffff" />
-                            </Pressable>
-
-                            {/* ===== Channel Actions button (commented out) =====
-              <Pressable
-                onPress={() => openMenu(item._id)}
-                style={{
-                  position: "absolute",
-                  top: 6,
-                  right: 6,
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "rgba(0,0,0,0.2)",
-                }}
-              >
-                <MoreVertical size={18} color="#fff" />
-              </Pressable>
-              =================================================== */}
-                        </View>
+                        <ChannelCard
+                            item={item}
+                            tint={getTint(item, index)}
+                            onPress={() => {
+                                router.push({
+                                    pathname: "/(admin)/chats/[channelId]",
+                                    params: { channelId: item._id },
+                                });
+                            }}
+                            onLongPress={() => openActions(item)}
+                        />
                     )}
                     ListEmptyComponent={
                         <View className="px-5 py-16">

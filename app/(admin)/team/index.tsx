@@ -39,8 +39,11 @@ export default function TeamIndex() {
     const dispatch = useAppDispatch();
     const isIOS = Platform.OS === "ios";
 
-    const staff = useAppSelector(selectAdminUsers).filter(
-        (u) => u.role === "staff",
+    const team = useAppSelector(selectAdminUsers).filter(
+        (u) =>
+            u.role === "staff" ||
+            u.role === "admin" ||
+            u.role === "super-admin",
     );
     const loading = useAppSelector(selectAdminLoading);
     const error = useAppSelector(selectAdminErrors);
@@ -56,7 +59,7 @@ export default function TeamIndex() {
     const [showOrderSheet, setShowOrderSheet] = useState(false);
 
     useEffect(() => {
-        dispatch(fetchAdminUsers({ role: "staff" }));
+        dispatch(fetchAdminUsers());
         dispatch(fetchSanctions()); // load all so we can count
     }, [dispatch]);
 
@@ -64,7 +67,7 @@ export default function TeamIndex() {
         setRefreshing(true);
         try {
             await Promise.all([
-                dispatch(fetchAdminUsers({ role: "staff" })).unwrap(),
+                dispatch(fetchAdminUsers()).unwrap(),
                 dispatch(fetchSanctions()).unwrap(),
             ]);
         } finally {
@@ -74,7 +77,7 @@ export default function TeamIndex() {
 
     const data = useMemo(() => {
         const q = query.trim().toLowerCase();
-        let list = staff;
+        let list = team;
 
         if (q) {
             list = list.filter((u) => {
@@ -119,22 +122,20 @@ export default function TeamIndex() {
         }
 
         return sorted;
-    }, [staff, query, sortBy, sortOrder]);
+    }, [team, query, sortBy, sortOrder]);
 
     return (
         <SafeAreaView
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-white"
         >
             {/* Header */}
             <PlatformAdaptiveHeader
                 title="Team"
                 headerRight={({ tintColor }) => (
                     <Pressable
-                        onPress={() =>
-                            router.push("/(admin)/team/sanctions/create")
-                        }
-                        className="w-10 h-10 rounded-full items-center justify-center mr-2"
+                        onPress={() => router.push("/(admin)/team/create")}
+                        className="w-10 h-10 rounded-full items-center justify-center ios:mr-3"
                         hitSlop={8}
                         style={{
                             backgroundColor: PRIMARY,
@@ -149,7 +150,7 @@ export default function TeamIndex() {
             {/* Sanction Grid Card */}
             <Pressable
                 onPress={() => router.push("/(admin)/team/sanctions")}
-                className="my-3 rounded-xl flex-row justify-between items-center bg-primary-50 p-4 border border-primary-100"
+                className="my-3 mx-4 rounded-xl flex-row justify-between items-center bg-primary-50 p-4 border border-primary-100"
             >
                 <View>
                     <Text className="text-2xl font-kumbh text-text">
@@ -160,33 +161,10 @@ export default function TeamIndex() {
                     </Text>
                 </View>
                 <ChevronRight />
-
-                {/* <View className="mt-4 flex-row gap-3">
-                    <Pressable
-                        onPress={() => router.push("/(admin)/team/sanctions")}
-                        className="flex-1 h-12 rounded-xl border border-primary-400 items-center justify-center"
-                    >
-                        <Text className="text-primary-600 font-kumbhBold">
-                            View
-                        </Text>
-                    </Pressable>
-
-                    <Pressable
-                        onPress={() =>
-                            router.push("/(admin)/team/sanctions/create")
-                        }
-                        className="flex-1 h-12 rounded-xl bg-primary-500 items-center justify-center active:opacity-90 flex-row gap-2"
-                    >
-                        <Plus size={18} color="#fff" />
-                        <Text className="text-white font-kumbhBold">
-                            Add New
-                        </Text>
-                    </Pressable>
-                </View> */}
             </Pressable>
 
             {/* Search + Filters */}
-            <View>
+            <View className="px-4">
                 <View className="flex-row items-center rounded-xl bg-gray-200 ios:py-2 android:py-0.5 px-4">
                     <Search size={18} color="#6B7280" />
                     <TextInput
@@ -227,14 +205,14 @@ export default function TeamIndex() {
                 <View className="flex-1 items-center justify-center">
                     <ActivityIndicator />
                     <Text className="mt-2 text-gray-500 font-kumbh">
-                        Loading staff…
+                        Loading team members…
                     </Text>
                 </View>
             ) : (
                 <FlatList
                     data={data}
                     keyExtractor={(i) => i._id}
-                    contentContainerClassName="pt-6 pb-12"
+                    contentContainerClassName="pt-6 pb-12 px-4"
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -254,7 +232,7 @@ export default function TeamIndex() {
                                 label="Username"
                                 value={item.username ?? "—"}
                             />
-                            <Row label="Role" value={item.role} />
+                            <Row label="Role" value={formatRole(item.role)} />
                             <Row
                                 label="Status"
                                 value={item.suspended ? "Suspended" : "Active"}
@@ -283,7 +261,9 @@ export default function TeamIndex() {
                     ListEmptyComponent={
                         <View className="px-5 py-16">
                             <Text className="text-center text-gray-500 font-kumbh">
-                                {error ? `Error: ${error}` : "No staff found."}
+                                {error
+                                    ? `Error: ${error}`
+                                    : "No team members found."}
                             </Text>
                         </View>
                     }
@@ -293,7 +273,7 @@ export default function TeamIndex() {
             <OptionSheet
                 visible={showSortSheet}
                 onClose={() => setShowSortSheet(false)}
-                title="Sort staff by"
+                title="Sort team by"
                 selectedValue={sortBy}
                 onSelect={(v) => setSortBy(v as "name" | "createdAt")}
                 options={[
@@ -321,7 +301,10 @@ function Row({ label, value }: { label: string; value: string }) {
     return (
         <View className="flex-row items-center justify-between py-1">
             <Text className="text-base text-gray-700 font-kumbh">{label}</Text>
-            <Text className="text-base text-text font-kumbhBold max-w-[60%] text-right">
+            <Text
+                className="text-base text-text font-kumbhBold max-w-[60%] text-right"
+                numberOfLines={1}
+            >
                 {value}
             </Text>
         </View>
@@ -335,4 +318,14 @@ function formatDate(d?: string) {
     } catch {
         return d;
     }
+}
+
+function formatRole(r?: string) {
+    if (!r) return "—";
+    // Replace separators with spaces, then Title Case each word
+    const cleaned = r.replace(/[-_]+/g, " ");
+    return cleaned
+        .split(" ")
+        .map((w) => (w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w))
+        .join(" ");
 }

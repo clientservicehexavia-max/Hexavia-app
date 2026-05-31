@@ -1,16 +1,19 @@
 import { logout } from "@/redux/auth/auth.slice";
 import { resetChat } from "@/redux/chat/chat.slice";
 import { selectPhase, selectUser } from "@/redux/user/user.slice";
-import { fetchProfile } from "@/redux/user/user.thunks";
+import { fetchProfile, updateProfile } from "@/redux/user/user.thunks";
+import { clearPendingUpdate, getPendingUpdate } from "@/storage/appUpdate";
 import { clearToken, clearUser } from "@/storage/auth";
 import { useAppDispatch } from "@/store/hooks";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import * as Updates from "expo-updates";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
     Image,
+    Linking,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -53,7 +56,6 @@ export default function Profile() {
     const dispatch = useAppDispatch();
     const router = useRouter();
     const user = useSelector(selectUser);
-    // console.log(user)
     const phase = useSelector(selectPhase);
     const [refreshing, setRefreshing] = useState(false);
     const onRefresh = useCallback(async () => {
@@ -67,7 +69,12 @@ export default function Profile() {
         }, [dispatch, user]),
     );
     const avatarUri = user?.profilePicture || undefined;
-    const logoutHandler = useCallback(() => {
+    const logoutHandler = useCallback(async () => {
+        try {
+            await dispatch(
+                updateProfile({ expoPushToken: null, silent: true }),
+            );
+        } catch {}
         dispatch(logout());
         dispatch({ type: "chat/disconnect" });
         dispatch(resetChat());
@@ -169,6 +176,49 @@ export default function Profile() {
         user?.username,
     ]);
 
+    const [pending, setPending] = useState<any | null>(null);
+
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            const p = await getPendingUpdate();
+            if (!mounted) return;
+            setPending(p);
+        })();
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const applyPending = useCallback(async () => {
+        if (!pending) return;
+        try {
+            if (
+                pending.ota &&
+                Updates?.fetchUpdateAsync &&
+                Updates?.reloadAsync
+            ) {
+                await Updates.fetchUpdateAsync();
+                try {
+                    await clearPendingUpdate();
+                } catch {}
+                setPending(null);
+                await Updates.reloadAsync();
+                return;
+            }
+            if (pending.storeUrl) {
+                const can = await Linking.canOpenURL(pending.storeUrl);
+                if (can) {
+                    await Linking.openURL(pending.storeUrl);
+                    try {
+                        await clearPendingUpdate();
+                    } catch {}
+                    setPending(null);
+                }
+            }
+        } catch {}
+    }, [pending]);
+
     return (
         <View className="flex-1 bg-gray-50">
             {/* <StatusBar style="light" /> */}
@@ -199,6 +249,29 @@ export default function Profile() {
                 }
             >
                 {topCard}
+
+                {pending && (
+                    <View className="mx-4 mt-4 rounded-2xl bg-yellow-50 p-4">
+                        <Text className="font-kumbhBold text-sm text-yellow-800">
+                            App update available
+                        </Text>
+                        <Text className="mt-1 text-sm text-yellow-700">
+                            {pending.latestVersion
+                                ? `Version: ${pending.latestVersion}`
+                                : "A new update is available."}
+                        </Text>
+                        <View className="mt-3 flex-row justify-end">
+                            <Pressable
+                                onPress={applyPending}
+                                className="rounded-xl bg-yellow-600 px-3 py-2"
+                            >
+                                <Text className="text-sm font-kumbhBold text-white">
+                                    Update
+                                </Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                )}
 
                 {/* Details */}
                 <View className="mt-5 px-4">

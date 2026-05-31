@@ -1,5 +1,5 @@
 // app/(admin)/team/sanctions/[staffId].tsx
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import {
     Calendar,
     Pencil,
@@ -51,7 +51,6 @@ type RowStatus = "Active" | "Resolved";
 
 export default function StaffSanctions() {
     const isIOS = Platform.OS === "ios";
-    const router = useRouter();
     const { staffId, name } = useLocalSearchParams();
     const staffIdValue = Array.isArray(staffId) ? staffId[0] : staffId;
     const staffName = Array.isArray(name) ? name[0] : name;
@@ -232,10 +231,23 @@ export default function StaffSanctions() {
             {/* Header */}
             <PlatformAdaptiveHeader
                 title={staffName ? `${staffName}'s Sanctions` : "Sanctions"}
+                headerRight={({ tintColor }) => (
+                    <Pressable
+                        onPress={() => {
+                            setCreateReason("");
+                            createReasonRef.current = "";
+                            setCreateOpen(true);
+                        }}
+                        className="w-10 h-10 rounded-full items-center justify-center"
+                        hitSlop={8}
+                    >
+                        <Plus size={30} color={tintColor} />
+                    </Pressable>
+                )}
             />
 
             {/* Pills */}
-            <View className="flex-row gap-2">
+            <View className="flex-row gap-2 mt-3">
                 {(["All", "Active", "Resolved"] as const).map((tab) => (
                     <Pressable
                         key={tab}
@@ -255,22 +267,6 @@ export default function StaffSanctions() {
                         </Text>
                     </Pressable>
                 ))}
-            </View>
-
-            <View className="pt-3">
-                <Pressable
-                    onPress={() => {
-                        setCreateReason("");
-                        createReasonRef.current = "";
-                        setCreateOpen(true);
-                    }}
-                    className="rounded-xl bg-primary px-4 py-3 flex-row items-center justify-center gap-2 active:opacity-90"
-                >
-                    <Plus size={16} color="#FFFFFF" />
-                    <Text className="text-white font-kumbhBold text-sm">
-                        Create Sanction
-                    </Text>
-                </Pressable>
             </View>
 
             {/* List */}

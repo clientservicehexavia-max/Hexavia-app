@@ -1,7 +1,7 @@
 // app/_layout.tsx
 import { persistor, store, type RootState } from "@/store";
 import { useFonts } from "expo-font";
-import { Slot, router } from "expo-router";
+import { Stack, router, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { Platform, View } from "react-native";
@@ -15,6 +15,7 @@ import "../global.css";
 
 import { TOAST_TOP_OFFSET, toastConfig } from "@/components/ui/toast";
 import { setPushToken } from "@/redux/auth/auth.slice";
+import { getActiveChannelId } from "@/storage/auth";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getExpoPushToken } from "@/utils/pushToken";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -55,6 +56,14 @@ const chatPathForRole = (role?: string | null | undefined) =>
           ? "/(staff)/(tabs)/chats/[channelId]"
           : "/(admin)/chats/[channelId]";
 
+/** Role-specific channel list route (for proper back navigation history) */
+const channelListPathForRole = (role?: string | null | undefined) =>
+    role === "client"
+        ? "/(client)/channels"
+        : role === "staff"
+          ? "/(staff)/channels"
+          : "/(admin)/channels";
+
 export default function RootLayout() {
     const [fontsLoaded] = useFonts({
         "KumbhSans-Regular": require("../assets/fonts/KumbhSans-Regular.ttf"),
@@ -90,6 +99,15 @@ export default function RootLayout() {
 function AppFrame() {
     const role = useAppSelector((s: RootState) => s.auth.user?.role);
     const phase = useAppSelector((s: RootState) => s.auth.phase);
+    const rootNavigationState = useRootNavigationState();
+    const isNavigationReady = Boolean(rootNavigationState?.key);
+    const meId = useAppSelector(
+        (s: RootState) =>
+            String(
+                (s.auth.user as any)?._id ?? (s.user.user as any)?._id ?? "",
+            ) || null,
+    );
+
     const dispatch = useAppDispatch();
 
     useEffect(() => {
@@ -105,37 +123,79 @@ function AppFrame() {
     }, [dispatch]);
 
     useEffect(() => {
-        const sub = Notifications.addNotificationResponseReceivedListener(
-            async (response) => {
-                const data = response.notification.request.content.data as any;
-                const channelId = data?.channelId as string | undefined;
-                const kind = data?.kind as string | undefined;
+        if (phase !== "authenticated" || !meId) return;
 
-                if (channelId && phase !== "authenticated") {
+        dispatch({ type: "chat/connect", payload: { meId } });
+
+        return () => {
+            dispatch({ type: "chat/disconnect" });
+        };
+    }, [dispatch, meId, phase]);
+
+    useEffect(() => {
+        const handleNotificationResponse = async (
+            response: Notifications.NotificationResponse,
+        ) => {
+            if (!isNavigationReady) return;
+
+            const data = response.notification.request.content.data ?? {};
+            const channelId = data?.channelId as string | undefined;
+            const kind = data?.kind as string | undefined;
+            const activeChannelId = await getActiveChannelId();
+
+            if (kind === "finance") {
+                router.push("/(admin)/finance");
+                return;
+            }
+
+            if (kind === "channel") {
+                if (!channelId) return;
+
+                if (phase !== "authenticated") {
                     await AsyncStorage.setItem(PENDING_CHANNEL_KEY, channelId);
                     return;
                 }
 
-                if (kind === "chat" && channelId) {
+                if (activeChannelId === channelId) {
+                    return;
+                }
+
+                // Push channel list first, then channel detail,
+                // so back navigation returns to a valid list screen.
+                router.dismissAll();
+                router.replace("/(admin)/(tabs)/project");
+                setTimeout(() => {
                     router.push({
                         pathname: chatPathForRole(role),
                         params: { channelId },
                     } as any);
-                    return;
-                }
+                }, 0);
+            }
+        };
 
-                if (kind === "finance") {
-                    router.push("/(admin)/finance");
-                    return;
-                }
-            },
+        const sub = Notifications.addNotificationResponseReceivedListener(
+            handleNotificationResponse,
         );
+
+        Notifications.getLastNotificationResponseAsync().then((response) => {
+            if (response && isNavigationReady) {
+                void handleNotificationResponse(response);
+            }
+        });
+
         return () => sub.remove();
-    }, [role, phase]);
+    }, [role, phase, isNavigationReady]);
 
     return (
         <View style={{ flex: 1 }}>
-            <Slot />
+            {/* <Slot /> */}
+            <Stack
+                screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: "#F3F4F6" }, // tailwind background
+                    animation: "ios_from_right",
+                }}
+            />
             <AppUpdatePrompt />
         </View>
     );

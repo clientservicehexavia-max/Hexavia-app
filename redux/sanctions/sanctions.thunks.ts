@@ -10,6 +10,12 @@ import {
 } from "./sanctions.type";
 import { showPromise } from "@/components/ui/toast";
 
+const normalizeSanction = (raw: any): ApiSanction => ({
+  ...raw,
+  createdAt: raw?.createdAt ?? raw?.date ?? undefined,
+  user: raw?.user ?? raw?.sanctionUser ?? undefined,
+});
+
 export const fetchSanctions = createAsyncThunk<
   { rows: ApiSanction[]; userIdKey: string | "_all" },
   SanctionsQuery | void,
@@ -29,11 +35,7 @@ export const fetchSanctions = createAsyncThunk<
           ? data.data
           : [];
 
-    const rows: ApiSanction[] = rowsRaw.map((s: any) => ({
-      ...s,
-      createdAt: s.createdAt ?? s.date ?? undefined,
-      user: s.user ?? s.sanctionUser ?? undefined,
-    }));
+    const rows: ApiSanction[] = rowsRaw.map(normalizeSanction);
 
     return { rows, userIdKey: query?.userId ?? "_all" };
   } catch (err) {
@@ -62,11 +64,7 @@ export const createSanction = createAsyncThunk<
       : await showPromise(request, "Creating Sanction...", "Sanction given");
 
     const created = (data as any)?.sanction ?? data;
-    return {
-      ...created,
-      createdAt: created.date ?? undefined,
-      user: created.sanctionUser ?? undefined,
-    } as ApiSanction;
+    return normalizeSanction(created);
   } catch (err) {
     const e = err as AxiosError<any>;
     return rejectWithValue(e.response?.data?.message || e.message);
@@ -116,7 +114,7 @@ export const updateSanction = createAsyncThunk<
       "Sanction Updated"
     );
 
-    return data;
+    return normalizeSanction((data as any)?.sanction ?? data);
   } catch (err) {
     const e = err as AxiosError<any>;
     return rejectWithValue(e.response?.data?.message || e.message);

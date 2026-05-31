@@ -25,6 +25,7 @@ export interface Client {
     threats?: string;
     deliverables?: string;
     payableAmount?: number;
+    isExternal?: boolean;
     document?: string | null;
     documentUrl?: string | null;
     status?: ClientStatus;
@@ -46,6 +47,10 @@ export interface ClientFilters {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     from?: string;
+    createdAtFrom?: string;
+    createdAtTo?: string;
+    updatedAtFrom?: string;
+    updatedAtTo?: string;
 }
 
 export interface Pagination {
@@ -77,6 +82,7 @@ export interface ClientCreateInput {
     threats?: string;
     deliverables?: string;
     payableAmount?: number;
+    isExternal?: boolean;
     document?: string | null;
     documentUrl?: string;
     documentFile?: { uri: string; name: string; type?: string };

@@ -388,57 +388,60 @@ export default function NotificationsScreen() {
             {isInitialLoading ? (
                 <NotificationsSkeleton />
             ) : (
-                <SectionList
-                    sections={filtered}
-                    keyExtractor={(item, index) =>
-                        String(
-                            item.id ??
-                                `${item.createdAt ?? "no-date"}-${index}`,
-                        )
-                    }
-                    refreshing={refreshing}
-                    onRefresh={onRefresh}
-                    renderSectionHeader={({ section: { title } }) => (
-                        <View className="bg-gray-50 py-2">
-                            <Text className="text-sm font-medium text-gray-600">
-                                {title}
-                            </Text>
-                        </View>
-                    )}
-                    renderItem={({ item }) => (
-                        <View className="flex-row items-start p-3 border-b border-gray-100">
-                            <View className="w-10 h-10 rounded-full bg-blue-500 items-center justify-center mr-3">
-                                {iconFor(item.kind)}
-                            </View>
-                            <View className="flex-1">
-                                <Text className="font-semibold text-base mb-1">
-                                    {item.title}
-                                </Text>
-                                <Text className="text-gray-600 mb-1">
-                                    {item.message}
-                                </Text>
-                                <Text className="text-xs text-gray-500">
-                                    {timeAgo(item.createdAt)}
+                <View className="flex-1">
+                    <SectionList
+                        className="flex-1"
+                        sections={filtered}
+                        keyExtractor={(item, index) =>
+                            String(
+                                item.id ??
+                                    `${item.createdAt ?? "no-date"}-${index}`,
+                            )
+                        }
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        renderSectionHeader={({ section: { title } }) => (
+                            <View className="bg-gray-50 py-2">
+                                <Text className="text-sm font-medium text-gray-600">
+                                    {title}
                                 </Text>
                             </View>
-                        </View>
-                    )}
-                    ListEmptyComponent={
-                        <View className="flex-1 items-center justify-center py-14 px-6">
-                            <View className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center mb-3">
-                                <MessageSquare size={22} color="#6B7280" />
+                        )}
+                        renderItem={({ item }) => (
+                            <View className="flex-row items-start py-2 border-b border-gray-100">
+                                <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center mr-3">
+                                    {iconFor(item.kind)}
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="font-semibold text-base mb-0.5">
+                                        {item.title}
+                                    </Text>
+                                    <Text className="text-gray-600 mb-0.5">
+                                        {item.message}
+                                    </Text>
+                                    <Text className="text-xs text-gray-500">
+                                        {timeAgo(item.createdAt)}
+                                    </Text>
+                                </View>
                             </View>
-                            <Text className="text-base font-semibold text-gray-800 mb-1">
-                                No notifications
-                            </Text>
-                            <Text className="text-gray-500 text-center">
-                                {query.trim()
-                                    ? "No results match your search."
-                                    : "When something important happens, you will see it here."}
-                            </Text>
-                        </View>
-                    }
-                />
+                        )}
+                        ListEmptyComponent={
+                            <View className="flex-1 items-center justify-center py-14 px-6">
+                                <View className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center mb-3">
+                                    <MessageSquare size={22} color="#6B7280" />
+                                </View>
+                                <Text className="text-base font-semibold text-gray-800 mb-1">
+                                    No notifications
+                                </Text>
+                                <Text className="text-gray-500 text-center">
+                                    {query.trim()
+                                        ? "No results match your search."
+                                        : "When something important happens, you will see it here."}
+                                </Text>
+                            </View>
+                        }
+                    />
+                </View>
             )}
 
             {/* FAB for Admin */}

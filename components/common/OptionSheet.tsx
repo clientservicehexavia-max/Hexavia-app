@@ -121,7 +121,7 @@ export default function OptionSheet({
                 onPress={onClose}
                 className="flex-1 justify-end bg-black/50"
             >
-                <View className="bg-white rounded-t-xl max-h-96">
+                <View className="bg-white rounded-t-xl max-h-[500px]">
                     <View className="px-6 py-3 border-b border-gray-200 justify-center items-center">
                         <Text className="text-xl font-kumbhBold text-center">
                             {title}
