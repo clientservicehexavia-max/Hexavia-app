@@ -25,6 +25,10 @@ const mimeFromExt: Record<string, string> = {
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ppt: "application/vnd.ms-powerpoint",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  m4a: "audio/mp4",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  aac: "audio/aac",
 };
 
 const extractPublicId = (body: any) => {
@@ -57,7 +61,11 @@ export const uploadSingle = createAsyncThunk<
     } as any);
 
     const req = api.post("/upload/single", form, {
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "multipart/form-data",
+      },
+      timeout: 120_000,
       transformRequest: (v) => v,
       onUploadProgress: (evt) => {
         if (!evt.total) return;
@@ -85,6 +93,8 @@ export const uploadSingle = createAsyncThunk<
       filename: body?.filename ?? name,
       message: body?.message ?? null,
       publicId,
+      resourceType:
+        body?.data?.resourceType ?? body?.data?.resource_type ?? null,
     };
   } catch (err: any) {
     const msg =

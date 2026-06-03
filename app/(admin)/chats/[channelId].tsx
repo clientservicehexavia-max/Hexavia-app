@@ -1,4 +1,3 @@
-import { api } from "@/api/axios";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import ActionSheet from "@/components/staff/chat/ActionSheet";
 import AttachmentTray from "@/components/staff/chat/AttachmentTray";
@@ -31,6 +30,7 @@ import {
     setAudioModeAsync,
     useAudioRecorder,
     useAudioRecorderState,
+    type RecordingOptions,
 } from "expo-audio";
 import * as Clipboard from "expo-clipboard";
 import * as DocumentPicker from "expo-document-picker";
@@ -63,6 +63,11 @@ import {
 } from "react-native-safe-area-context";
 
 const TYPE: "community" | "direct" = "community";
+const VOICE_RECORDING_OPTIONS: RecordingOptions = {
+    ...RecordingPresets.HIGH_QUALITY,
+    numberOfChannels: 1,
+    bitRate: 64000,
+};
 
 export default function ChatScreen() {
     const { channelId: rawId } = useLocalSearchParams<{ channelId: string }>();
@@ -160,6 +165,7 @@ export default function ChatScreen() {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [selected, setSelected] = useState<Message | null>(null);
     const [replyTo, setReplyTo] = useState<ReplyMeta | null>(null);
+    const [pendingVoiceNotes, setPendingVoiceNotes] = useState<Message[]>([]);
     const showScrollToBottomRef = useRef(false);
     const scrollButtonRef = useRef<View>(null);
     type ChatListItem =
@@ -169,15 +175,17 @@ export default function ChatScreen() {
     const [isRecording, setIsRecording] = useState(false);
     const [recordDurationMs, setRecordDurationMs] = useState(0);
     const [draftText, setDraftText] = useState("");
-    const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-    const recorderState = useAudioRecorderState(audioRecorder, 200);
+    const audioRecorder = useAudioRecorder(VOICE_RECORDING_OPTIONS);
+    const recorderState = useAudioRecorderState(audioRecorder, 1000);
     const recordRef = useRef<typeof audioRecorder | null>(null);
+    const recordingBusyRef = useRef(false);
+    const recordingPermissionGrantedRef = useRef(false);
 
     const title = channel?.name ?? "";
     const subtitle = channel?.description ?? "";
 
     const data = useMemo<Message[]>(() => {
-        return (messagesFromRedux || []).map((m: any) => {
+        const messages = (messagesFromRedux || []).map((m: any) => {
             const rawTs = m.createdAt;
             let createdAtNum: number = NaN;
             if (typeof rawTs === "number") createdAtNum = rawTs;
@@ -201,7 +209,9 @@ export default function ChatScreen() {
                 replyTo: (m as any).replyTo,
             };
         });
-    }, [messagesFromRedux]);
+
+        return [...messages, ...pendingVoiceNotes];
+    }, [messagesFromRedux, pendingVoiceNotes]);
 
     const listData = useMemo<ChatListItem[]>(() => {
         const out: ChatListItem[] = [];
@@ -254,7 +264,10 @@ export default function ChatScreen() {
     }, [data]);
 
     useEffect(() => {
-        setRecordDurationMs(recorderState.durationMillis ?? 0);
+        const next = recorderState.durationMillis ?? 0;
+        setRecordDurationMs((prev) =>
+            Math.floor(prev / 1000) === Math.floor(next / 1000) ? prev : next,
+        );
     }, [recorderState.durationMillis]);
 
     useEffect(() => {
@@ -278,62 +291,122 @@ export default function ChatScreen() {
     }, []);
 
     const startRecording = async () => {
-        const perm = await AudioModule.requestRecordingPermissionsAsync();
-        if (!perm.granted) return;
-        await setAudioModeAsync({
-            allowsRecording: true,
-            playsInSilentMode: true,
-            shouldPlayInBackground: false,
-        });
-        await audioRecorder.prepareToRecordAsync();
-        audioRecorder.record();
-        recordRef.current = audioRecorder;
+        if (recordingBusyRef.current) return;
+        recordingBusyRef.current = true;
+        setTrayOpen(false);
         setIsRecording(true);
         setRecordDurationMs(0);
+
+        try {
+            if (!recordingPermissionGrantedRef.current) {
+                const perm =
+                    await AudioModule.requestRecordingPermissionsAsync();
+                if (!perm.granted) {
+                    setIsRecording(false);
+                    showError("Microphone permission is required.");
+                    return;
+                }
+                recordingPermissionGrantedRef.current = true;
+            }
+
+            await setAudioModeAsync({
+                allowsRecording: true,
+                playsInSilentMode: true,
+                shouldPlayInBackground: false,
+                shouldRouteThroughEarpiece: false,
+            });
+            await audioRecorder.prepareToRecordAsync();
+            audioRecorder.record();
+            recordRef.current = audioRecorder;
+        } catch (e: any) {
+            console.warn("[voice] start recording failed", {
+                message: e?.message,
+                data: e?.response?.data,
+            });
+            recordRef.current = null;
+            setIsRecording(false);
+            setRecordDurationMs(0);
+            showError(e?.message || "Failed to start recording.");
+            await setAudioModeAsync({
+                allowsRecording: false,
+                playsInSilentMode: true,
+                shouldPlayInBackground: false,
+                shouldRouteThroughEarpiece: false,
+            }).catch(() => {});
+        } finally {
+            recordingBusyRef.current = false;
+        }
     };
 
     const stopRecording = async (cancel = false) => {
+        if (recordingBusyRef.current) return;
         const rec = recordRef.current ?? audioRecorder;
-        if (!recorderState.isRecording) return;
-
-        await rec.stop();
-
-        const srcUri = rec.uri ?? undefined; // e.g. file:///.../recording-xxxx.m4a
-        recordRef.current = null;
+        if (!isRecording && !recorderState.isRecording) return;
+        recordingBusyRef.current = true;
+        const durationMs =
+            recorderState.durationMillis || recordDurationMs || 0;
         setIsRecording(false);
-
-        if (!cancel && srcUri) {
-            // 1) ensure a proper filename (with extension)
-            const name = `voice_${Date.now()}.m4a`;
-
-            // 2) copy to cache (just like your picker audio branch)
-            const dest = FileSystem.cacheDirectory + name;
-            try {
-                await FileSystem.copyAsync({ from: srcUri, to: dest });
-            } catch (e) {
-                console.warn(
-                    "[voice] copy failed, fallback to original uri",
-                    e,
-                );
-            }
-
-            // 3) use a widely-accepted MIME for m4a
-            // (server-side libs often prefer audio/mp4 for .m4a)
-            const type = "audio/mp4";
-
-            await sendVoiceNote({
-                uri: dest || srcUri,
-                name,
-                type,
-                durationMs: recorderState.durationMillis ?? 0,
-            });
-        }
-
         setRecordDurationMs(0);
+
+        try {
+            await rec.stop();
+
+            const srcUri = rec.uri ?? undefined; // e.g. file:///.../recording-xxxx.m4a
+            recordRef.current = null;
+            await setAudioModeAsync({
+                allowsRecording: false,
+                playsInSilentMode: true,
+                shouldPlayInBackground: false,
+                shouldRouteThroughEarpiece: false,
+            });
+
+            if (!cancel && srcUri && durationMs >= 700) {
+                const name = `voice_${Date.now()}.m4a`;
+                const dest = FileSystem.cacheDirectory + name;
+                let uploadUri = srcUri;
+                try {
+                    await FileSystem.copyAsync({ from: srcUri, to: dest });
+                    uploadUri = dest;
+                } catch (e) {
+                    console.warn(
+                        "[voice] copy failed, fallback to original uri",
+                        e,
+                    );
+                }
+
+                const type = "audio/mp4";
+
+                await sendVoiceNote({
+                    uri: uploadUri,
+                    name,
+                    type,
+                    durationMs,
+                });
+            } else if (!cancel && durationMs < 700) {
+                showError("Voice note is too short.");
+            }
+        } catch (e: any) {
+            console.warn("[voice] stop recording failed", {
+                message: e?.message,
+                data: e?.response?.data,
+            });
+            showError(e?.message || "Failed to stop recording.");
+        } finally {
+            await setAudioModeAsync({
+                allowsRecording: false,
+                playsInSilentMode: true,
+                shouldPlayInBackground: false,
+                shouldRouteThroughEarpiece: false,
+            }).catch(() => {});
+            recordRef.current = null;
+            setRecordDurationMs(0);
+            recordingBusyRef.current = false;
+        }
     };
 
     const handleMicPress = async () => {
-        if (recorderState.isRecording) await stopRecording(false);
+        if (isRecording || recorderState.isRecording)
+            await stopRecording(false);
         else await startRecording();
     };
 
@@ -591,45 +664,39 @@ export default function ChatScreen() {
                     const a = res.assets[0];
                     const name = a.name ?? `audio_${Date.now()}.m4a`;
                     const type = a.mimeType ?? "audio/m4a";
-                    const ext = ".m4a";
                     const dest = FileSystem.cacheDirectory + name; // ensure name includes .m4a
                     await FileSystem.copyAsync({ from: a.uri, to: dest });
-                    const form = new FormData();
-                    form.append("channelId", channelId);
-                    form.append("name", name);
-                    form.append("description", "Audio file shared in chat");
-                    form.append("mime", type);
-                    form.append("pdfUpload", {
-                        uri: dest,
-                        name,
-                        type,
-                    } as any);
 
-                    const resUpload = await api.post(
-                        "/channel/upload-resources",
-                        form,
-                        {
-                            headers: { Accept: "application/json" },
-                            transformRequest: (v) => v,
-                        },
-                    );
+                    const uploaded = await dispatch(
+                        uploadSingle({ uri: dest, name, type }),
+                    ).unwrap();
 
-                    const channel =
-                        (resUpload.data as any)?.channel ||
-                        (resUpload.data as any)?.data?.channel ||
-                        (resUpload.data as any)?.data;
-                    const resources = (channel?.resources as any[]) || [];
-                    const latest = resources[resources.length - 1];
-                    const url = latest?.resourceUpload;
+                    await dispatch(
+                        uploadChannelResources({
+                            channelId,
+                            resources: [
+                                {
+                                    name,
+                                    description: "Audio file shared in chat",
+                                    resourceUpload: uploaded.url,
+                                    publicId: uploaded.publicId ?? name,
+                                    resourceType: uploaded.resourceType,
+                                },
+                            ],
+                        }),
+                    ).unwrap();
 
-                    if (url) {
+                    if (uploaded.url) {
                         dispatch({
                             type: "chat/sendChannel",
                             payload: {
                                 meId,
                                 channelId,
                                 text: "Audio resource uploaded",
-                                attachment: { mediaUri: url, mimeType: type },
+                                attachment: {
+                                    mediaUri: uploaded.url,
+                                    mimeType: type,
+                                },
                             },
                         });
                         scrollToBottom();
@@ -937,55 +1004,84 @@ export default function ChatScreen() {
         }) => {
             if (!channelId) return;
             if (!voice.uri) return;
+            if (!meId) return;
+            const pendingId = `voice_upload_${Date.now().toString(36)}_${Math.random()
+                .toString(36)
+                .slice(2, 8)}`;
+            setPendingVoiceNotes((items) => [
+                ...items,
+                {
+                    id: pendingId,
+                    text: "Voice note",
+                    createdAt: Date.now(),
+                    senderId: String(meId),
+                    senderName: "You",
+                    status: "sending",
+                    mimeType: voice.type,
+                    durationMs: voice.durationMs,
+                },
+            ]);
+            scrollToBottom();
             try {
                 const secs = Math.max(1, Math.round(voice.durationMs / 1000));
-                const form = new FormData();
-                form.append("channelId", channelId);
-                form.append("name", voice.name);
-                form.append("description", `Voice note • ${secs}s`);
-                form.append("mime", voice.type);
-                form.append("pdfUpload", {
-                    uri: voice.uri,
-                    name: voice.name,
-                    type: voice.type,
-                } as any);
+                const uploaded = await dispatch(
+                    uploadSingle({
+                        uri: voice.uri,
+                        name: voice.name,
+                        type: voice.type,
+                    }),
+                ).unwrap();
 
-                const res = await api.post("/channel/upload-resources", form, {
-                    headers: { Accept: "application/json" },
-                    transformRequest: (v) => v,
-                });
-
-                const channel =
-                    (res.data as any)?.channel ||
-                    (res.data as any)?.data?.channel ||
-                    (res.data as any)?.data;
-                const resources = (channel?.resources as any[]) || [];
-                const latest = resources[resources.length - 1];
-                const url = latest?.resourceUpload;
-
-                if (url) {
-                    if (meId) {
-                        dispatch({
-                            type: "chat/sendChannel",
-                            payload: {
-                                meId,
-                                channelId,
-                                text: "Voice note",
-                                attachment: {
-                                    mediaUri: url,
-                                    mimeType: voice.type,
-                                    durationMs: voice.durationMs,
-                                },
+                await dispatch(
+                    uploadChannelResources({
+                        channelId,
+                        resources: [
+                            {
+                                name: voice.name,
+                                description: `Voice note - ${secs}s`,
+                                resourceUpload: uploaded.url,
+                                publicId: uploaded.publicId ?? voice.name,
+                                resourceType: uploaded.resourceType,
                             },
-                        });
-                    }
+                        ],
+                    }),
+                ).unwrap();
+
+                if (uploaded.url) {
+                    dispatch({
+                        type: "chat/sendChannel",
+                        payload: {
+                            meId,
+                            channelId,
+                            text: "Voice note",
+                            attachment: {
+                                mediaUri: uploaded.url,
+                                mimeType: voice.type,
+                                durationMs: voice.durationMs,
+                            },
+                        },
+                    });
                     scrollToBottom();
                 } else {
                     showError("Upload succeeded but no file URL returned.");
                 }
-            } catch (e) {
-                console.warn(e);
-                showError("Failed to send voice note.");
+            } catch (e: any) {
+                const message =
+                    typeof e === "string"
+                        ? e
+                        : e?.response?.data?.message ||
+                          e?.message ||
+                          "Failed to send voice note.";
+                console.warn("[voice] send failed", {
+                    message,
+                    status: e?.response?.status,
+                    data: e?.response?.data,
+                });
+                showError(message);
+            } finally {
+                setPendingVoiceNotes((items) =>
+                    items.filter((item) => item.id !== pendingId),
+                );
             }
         },
         [channelId, dispatch, meId, scrollToBottom],

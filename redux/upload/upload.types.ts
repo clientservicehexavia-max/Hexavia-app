@@ -11,6 +11,7 @@ export type UploadResult = {
   filename?: string | null;
   message?: string | null;
   publicId?: string | null;
+  resourceType?: string | null;
 };
 
 export type UploadState = {

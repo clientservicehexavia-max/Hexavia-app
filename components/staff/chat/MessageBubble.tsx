@@ -3,7 +3,11 @@ import { selectUser } from "@/redux/user/user.slice";
 import { useAppSelector } from "@/store/hooks";
 import type { Message } from "@/types/chat";
 import { formatTime } from "@/utils/format";
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import {
+    setAudioModeAsync,
+    useAudioPlayer,
+    useAudioPlayerStatus,
+} from "expo-audio";
 import * as Sharing from "expo-sharing";
 import * as WebBrowser from "expo-web-browser";
 import {
@@ -11,18 +15,25 @@ import {
     CheckCheck,
     FileText,
     Loader2,
-    PauseCircle,
-    PlayCircle,
+    Pause,
+    Play,
     Trash2,
     X,
 } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import {
     Alert,
     Dimensions,
     Image,
     Linking,
     Modal,
+    PanResponder,
     Pressable,
     Text,
     TouchableWithoutFeedback,
@@ -65,13 +76,17 @@ const hasExt = (uri: string, exts: string[]) =>
 
 const isImage = (m: Message) =>
     !!m.mediaUri &&
-    (m.mimeType?.startsWith("image/") ??
+    (m.mimeType?.startsWith("image/") ||
         hasExt(m.mediaUri, ["png", "jpg", "jpeg", "gif", "webp"]));
 
 const isAudio = (m: Message) =>
-    !!m.mediaUri &&
-    (m.mimeType?.startsWith("audio/") ??
-        hasExt(m.mediaUri, ["m4a", "aac", "mp3", "wav", "ogg"]));
+    (!!m.mediaUri &&
+        (m.mimeType?.startsWith("audio/") ||
+            hasExt(m.mediaUri, ["m4a", "aac", "mp3", "wav", "ogg"]) ||
+            /^voice note$/i.test(m.text))) ||
+    (m.status === "sending" &&
+        !m.mediaUri &&
+        (m.mimeType?.startsWith("audio/") || /^voice note$/i.test(m.text)));
 
 const isDocument = (m: Message) =>
     !!m.mediaUri &&
@@ -121,7 +136,7 @@ function ImagePreviewModal({
             transparent
             animationType="fade"
         >
-            <View className="flex-1 bg-black/95">
+            <View className="flex-1 bg-black">
                 <View className="absolute right-4 top-10 z-10 flex-row gap-3">
                     {onDelete ? (
                         <Pressable
@@ -142,10 +157,10 @@ function ImagePreviewModal({
                                     ],
                                 );
                             }}
-                            className="h-10 w-10 rounded-full bg-red-800/60 items-center justify-center"
+                            className="h-10 w-10 rounded-full items-center justify-center"
                             hitSlop={8}
                         >
-                            <Trash2 size={22} color="#fff" />
+                            <Trash2 size={22} color="#f00" />
                         </Pressable>
                     ) : null}
                     <Pressable
@@ -190,56 +205,260 @@ function DocumentPill({ msg }: { msg: Message }) {
     return (
         <Pressable
             onPress={() => msg.mediaUri && openDocument(msg.mediaUri)}
-            className="mb-2 px-3 py-2 rounded-xl bg-white/60 border border-white/40 flex-row items-center"
+            className="px-3 py-2 rounded-lg bg-white/60 border border-white/40 flex-row items-center"
+            style={{ width: 220, maxWidth: "100%" }}
         >
             <FileText size={18} color="#374151" />
-            <Text className="ml-2 text-[13px] text-gray-800" numberOfLines={1}>
+            <Text
+                className="ml-2 text-[13px] text-gray-800"
+                style={{ flex: 1, flexShrink: 1 }}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+            >
                 {name}
             </Text>
         </Pressable>
     );
 }
 
-function AudioPlayer({ msg }: { msg: Message }) {
+let activeAudio: { id: string; pause: () => void } | null = null;
+
+function AudioLoadingPlayer({ msg, isMe }: { msg: Message; isMe: boolean }) {
+    const bubbleColor = isMe ? "#C9CEEA" : "#E5E7EB";
+    const railColor = isMe ? "#AEB6DF" : "#CBD5E1";
+    const dur = msg.durationMs ? msg.durationMs / 1000 : 0;
+    const fmtClock = (s = 0) => {
+        const total = Math.max(0, Math.round(s));
+        const mm = Math.floor(total / 60);
+        const ss = total % 60;
+        return `${mm}:${String(ss).padStart(2, "0")}`;
+    };
+
+    return (
+        <View
+            className="rounded-xl px-3 py-2"
+            style={{
+                width: isMe ? 220 : 260,
+                maxWidth: "100%",
+                backgroundColor: bubbleColor,
+            }}
+        >
+            <View className="flex-row items-center">
+                <View className="h-9 w-9 items-center justify-center opacity-80">
+                    <Loader2
+                        className="animate-spin"
+                        size={23}
+                        color="#374151"
+                    />
+                </View>
+                <View className="ml-2 flex-1 h-7 justify-center">
+                    <View
+                        className="h-1.5 rounded-full"
+                        style={{ backgroundColor: railColor }}
+                    />
+                </View>
+            </View>
+
+            <View
+                className="mt-1 flex-row items-center justify-between"
+                style={{ marginLeft: isMe ? 45 : 92 }}
+            >
+                <Text className="text-[11px] text-gray-600 font-kumbh">
+                    {dur ? fmtClock(dur) : "Sending"}
+                </Text>
+                <View className="flex-row items-center">
+                    <Text className="text-[11px] text-gray-500 font-kumbh mr-1">
+                        Sending
+                    </Text>
+                    {isMe ? <StatusTicks status="sending" /> : null}
+                </View>
+            </View>
+        </View>
+    );
+}
+
+function AudioPlayer({
+    msg,
+    isMe,
+    avatar,
+    initials,
+}: {
+    msg: Message;
+    isMe: boolean;
+    avatar?: string | null;
+    initials?: string;
+}) {
     const player = useAudioPlayer(msg.mediaUri!, { updateInterval: 200 });
     const status = useAudioPlayerStatus(player);
+    const [barWidth, setBarWidth] = useState(0);
+    const dragStartXRef = useRef(0);
 
-    const toggle = () => {
+    const toggle = async () => {
         if (!status.isLoaded) return;
-        if (status.playing) player.pause();
-        else player.play();
+        if (status.playing) {
+            player.pause();
+            if (activeAudio?.id === msg.id) activeAudio = null;
+        } else {
+            if (activeAudio && activeAudio.id !== msg.id) {
+                activeAudio.pause();
+            }
+            await setAudioModeAsync({
+                allowsRecording: false,
+                playsInSilentMode: true,
+                shouldPlayInBackground: false,
+                shouldRouteThroughEarpiece: false,
+            });
+            activeAudio = {
+                id: msg.id,
+                pause: () => player.pause(),
+            };
+            player.play();
+        }
     };
 
     const fmtClock = (s = 0) => {
         const total = Math.max(0, Math.round(s));
         const mm = Math.floor(total / 60);
         const ss = total % 60;
-        return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+        return `${mm}:${String(ss).padStart(2, "0")}`;
     };
 
     const pos = status.currentTime ?? 0;
     const dur = status.duration ?? (msg.durationMs ? msg.durationMs / 1000 : 0);
+    const displaySeconds = status.playing ? pos : dur;
     const pct = dur > 0 ? Math.min(1, pos / dur) : 0;
+    const progressWidth = barWidth * pct;
+    const bubbleColor = isMe ? "#C9CEEA" : "#E5E7EB";
+    const railColor = isMe ? "#AEB6DF" : "#CBD5E1";
+    const activeColor = "#4C5FAB";
+
+    const seekTo = useCallback(
+        (ratio: number) => {
+            if (!status.isLoaded || !dur) return;
+            const clamped = Math.max(0, Math.min(1, ratio));
+            void player.seekTo(dur * clamped);
+        },
+        [dur, player, status.isLoaded],
+    );
+
+    const seekToX = useCallback(
+        (x: number) => {
+            if (!barWidth) return;
+            seekTo(x / barWidth);
+        },
+        [barWidth, seekTo],
+    );
+
+    const seekResponder = useMemo(
+        () =>
+            PanResponder.create({
+                onStartShouldSetPanResponder: () => true,
+                onMoveShouldSetPanResponder: () => true,
+                onPanResponderTerminationRequest: () => false,
+                onPanResponderGrant: (e) => {
+                    dragStartXRef.current = e.nativeEvent.locationX;
+                    seekToX(dragStartXRef.current);
+                },
+                onPanResponderMove: (_e, gestureState) => {
+                    seekToX(dragStartXRef.current + gestureState.dx);
+                },
+                onPanResponderRelease: (_e, gestureState) => {
+                    seekToX(dragStartXRef.current + gestureState.dx);
+                },
+                onPanResponderTerminate: (_e, gestureState) => {
+                    seekToX(dragStartXRef.current + gestureState.dx);
+                },
+            }),
+        [seekToX],
+    );
+
+    useEffect(() => {
+        if (!status.didJustFinish) return;
+        player.pause();
+        if (activeAudio?.id === msg.id) activeAudio = null;
+        void player.seekTo(0);
+    }, [msg.id, player, status.didJustFinish]);
+
+    useEffect(() => {
+        return () => {
+            if (activeAudio?.id === msg.id) activeAudio = null;
+        };
+    }, [msg.id]);
 
     return (
-        <View className="mb-2 px-3 py-2 rounded-xl bg-white/60 border border-white/40">
+        <View
+            className="rounded-xl px-3 py-2"
+            style={{
+                width: isMe ? 220 : 260,
+                maxWidth: "100%",
+                backgroundColor: bubbleColor,
+            }}
+        >
             <View className="flex-row items-center">
-                <Pressable onPress={toggle} className="mr-2">
+                <Pressable
+                    onPress={toggle}
+                    disabled={!status.isLoaded}
+                    className="h-9 w-9 items-center justify-center"
+                    style={{ opacity: status.isLoaded ? 1 : 0.55 }}
+                    hitSlop={8}
+                >
                     {status.playing ? (
-                        <PauseCircle size={22} color="#374151" />
+                        <Pause size={25} color="#374151" fill="#374151" />
                     ) : (
-                        <PlayCircle size={22} color="#374151" />
+                        <Play size={28} color="#374151" fill="#374151" />
                     )}
                 </Pressable>
-                <Text className="text-[13px] text-gray-800 font-kumbh">
-                    {fmtClock(pos)} / {fmtClock(dur)}
-                </Text>
+
+                <View className="ml-2 flex-1">
+                    <View
+                        onLayout={(e) =>
+                            setBarWidth(e.nativeEvent.layout.width)
+                        }
+                        className="h-7 justify-center"
+                        {...seekResponder.panHandlers}
+                    >
+                        <View
+                            className="h-1.5 rounded-full overflow-hidden"
+                            style={{ backgroundColor: railColor }}
+                        >
+                            <View
+                                className="h-full rounded-full"
+                                style={{
+                                    width: progressWidth,
+                                    backgroundColor: activeColor,
+                                }}
+                            />
+                        </View>
+                        <View
+                            className="absolute h-3.5 w-3.5 rounded-full"
+                            style={{
+                                top: 7,
+                                backgroundColor: activeColor,
+                                left: Math.max(
+                                    0,
+                                    Math.min(barWidth - 14, progressWidth - 7),
+                                ),
+                            }}
+                        />
+                    </View>
+                </View>
             </View>
-            <View className="mt-2 h-1.5 rounded-full bg-white/70 overflow-hidden">
-                <View
-                    style={{ width: `${pct * 100}%` }}
-                    className="h-full bg-gray-500"
-                />
+
+            <View
+                className="mt-1 flex-row items-center justify-between"
+                style={{ marginLeft: isMe ? 45 : 92 }}
+            >
+                <Text className="text-[11px] text-gray-600 font-kumbh">
+                    {status.isLoaded || dur
+                        ? fmtClock(displaySeconds)
+                        : "Loading"}
+                </Text>
+                <View className="flex-row items-center">
+                    <Text className="text-[11px] text-gray-500 font-kumbh mr-1">
+                        {formatTime(msg.createdAt)}
+                    </Text>
+                    {isMe ? <StatusTicks status={msg.status} /> : null}
+                </View>
             </View>
         </View>
     );
@@ -445,14 +664,23 @@ export default function MessageBubble({
                     ) : null}
                 </>
             ) : isAudio(msg) ? (
-                <AudioPlayer msg={msg} />
+                msg.mediaUri ? (
+                    <AudioPlayer
+                        msg={msg}
+                        isMe={isMe}
+                        avatar={avatar}
+                        initials={initials}
+                    />
+                ) : (
+                    <AudioLoadingPlayer msg={msg} isMe={isMe} />
+                )
             ) : isDocument(msg) ? (
                 <DocumentPill msg={msg} />
             ) : null}
 
             {!isMe && (
                 <Text
-                    className="text-[11px] text-gray-500 mb-1"
+                    className="text-[11px] text-gray-500 mt-1"
                     numberOfLines={1}
                 >
                     {displayName}
@@ -461,6 +689,8 @@ export default function MessageBubble({
 
             {!!msg.text &&
                 msg.text !== "Image resource uploaded" &&
+                !isAudio(msg) &&
+                !isDocument(msg) &&
                 renderTextWithMentionsAndLinks(
                     msg.text,
                     // Normalize keys to lowercase for O(1) lookup
@@ -483,21 +713,28 @@ export default function MessageBubble({
                     className="max-w-[75%]"
                 >
                     <View
-                        className="bg-[#C9CEEA] rounded-xl"
+                        className={
+                            isAudio(msg) ? "" : "bg-[#C9CEEA] rounded-xl"
+                        }
                         style={{
-                            padding: isImage(msg) ? 5 : 10,
+                            padding:
+                                isImage(msg) || isAudio(msg) || isDocument(msg)
+                                    ? 5
+                                    : 10,
                         }}
                     >
                         {BubbleCore}
                     </View>
                 </Pressable>
 
-                <View className="flex-row items-center mt-1">
-                    <Text className="text-[11px] text-gray-400 mr-1">
-                        {formatTime(msg.createdAt)}
-                    </Text>
-                    <StatusTicks status={msg.status} />
-                </View>
+                {!isAudio(msg) ? (
+                    <View className="flex-row items-center mt-1">
+                        <Text className="text-[11px] text-gray-400 mr-1">
+                            {formatTime(msg.createdAt)}
+                        </Text>
+                        <StatusTicks status={msg.status} />
+                    </View>
+                ) : null}
 
                 {msg.status === "failed" && onRetry ? (
                     <Pressable
@@ -542,14 +779,18 @@ export default function MessageBubble({
                     style={{ maxWidth: "75%", flexShrink: 1 }}
                 >
                     <View
-                        className="bg-gray-200 rounded-xl p-3"
+                        className={
+                            isAudio(msg) ? "" : "bg-gray-200 rounded-xl p-3"
+                        }
                         style={{ flexShrink: 1 }}
                     >
                         {BubbleCore}
                     </View>
-                    <Text className="text-[11px] text-gray-400 mt-1">
-                        {formatTime(msg.createdAt)}
-                    </Text>
+                    {!isAudio(msg) ? (
+                        <Text className="text-[11px] text-gray-400 mt-1">
+                            {formatTime(msg.createdAt)}
+                        </Text>
+                    ) : null}
                 </Pressable>
             </View>
         </View>

@@ -206,6 +206,7 @@ export interface UploadResourcesBody {
     description?: string | null;
     resourceUpload: string;
     publicId: string;
+    resourceType?: string | null;
   }>;
 }
 export interface GetChannelByCodeResponse {

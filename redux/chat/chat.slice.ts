@@ -228,6 +228,7 @@ export const chatSlice = createSlice({
                             mimeType:
                                 d.attachment?.mimeType ??
                                 (isImg ? "image/jpeg" : undefined),
+                            durationMs: d.attachment?.durationMs,
                         };
                     }
                     if (!thr.messages.includes(id)) {
