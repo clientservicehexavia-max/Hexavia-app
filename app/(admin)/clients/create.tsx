@@ -7,13 +7,11 @@ import React, { useCallback, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
     ActivityIndicator,
-    Keyboard,
     KeyboardAvoidingView,
     Platform,
     Pressable,
     ScrollView,
     Text,
-    TouchableWithoutFeedback,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -252,7 +250,7 @@ export default function CreateClient() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-white"
         >
             {/* Header */}
 
@@ -286,453 +284,442 @@ export default function CreateClient() {
                     android: "height",
                 })}
                 keyboardVerticalOffset={
-                    Platform.select({ ios: 8, android: 0 }) as number
+                    Platform.select({ ios: 70, android: 0 }) as number
                 }
             >
-                <TouchableWithoutFeedback
-                    onPress={Keyboard.dismiss}
-                    accessible={false}
+                <ScrollView
+                    className="flex-1"
+                    contentContainerClassName="pb-10 px-4"
+                    keyboardShouldPersistTaps="handled"
                 >
-                    <ScrollView
-                        className="flex-1"
-                        contentContainerClassName=" pb-10"
-                        keyboardShouldPersistTaps="handled"
-                    >
-                        {/* Name */}
-                        <Field label="Name">
-                            <Controller
-                                control={control}
-                                name="name"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        placeholder="Enter Name"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.name?.message ? (
-                            <ErrorText msg={errors.name.message} />
-                        ) : null}
+                    {/* Name */}
+                    <Field label="Name">
+                        <Controller
+                            control={control}
+                            name="name"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    placeholder="Enter Name"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.name?.message ? (
+                        <ErrorText msg={errors.name.message} />
+                    ) : null}
 
-                        {/* Project Name */}
-                        <Field label="Project Name">
-                            <Controller
-                                control={control}
-                                name="projectName"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        placeholder="Enter Project Name"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.projectName?.message ? (
-                            <ErrorText msg={errors.projectName.message} />
-                        ) : null}
+                    {/* Project Name */}
+                    <Field label="Project Name">
+                        <Controller
+                            control={control}
+                            name="projectName"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    placeholder="Enter Project Name"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.projectName?.message ? (
+                        <ErrorText msg={errors.projectName.message} />
+                    ) : null}
 
-                        {/* Email */}
-                        <Field label="Email Address">
-                            <Controller
-                                control={control}
-                                name="email"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        placeholder="Enter Email"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.email?.message ? (
-                            <ErrorText msg={errors.email.message} />
-                        ) : null}
+                    {/* Email */}
+                    <Field label="Email Address">
+                        <Controller
+                            control={control}
+                            name="email"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    placeholder="Enter Email"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.email?.message ? (
+                        <ErrorText msg={errors.email.message} />
+                    ) : null}
 
-                        {/* phoneNumber */}
-                        <Field label="Phone Number">
-                            <Controller
-                                control={control}
-                                name="phoneNumber"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        placeholder="Enter Phone Number"
-                                        keyboardType="numeric"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.phoneNumber?.message ? (
-                            <ErrorText msg={errors.phoneNumber.message} />
-                        ) : null}
+                    {/* phoneNumber */}
+                    <Field label="Phone Number">
+                        <Controller
+                            control={control}
+                            name="phoneNumber"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    placeholder="Enter Phone Number"
+                                    keyboardType="numeric"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.phoneNumber?.message ? (
+                        <ErrorText msg={errors.phoneNumber.message} />
+                    ) : null}
 
-                        {/* Industry + Staff size */}
-                        <View className="flex-row gap-3">
-                            <View className="flex-1">
-                                <Field label="Industry">
-                                    <Controller
-                                        control={control}
-                                        name="industry"
-                                        render={({
-                                            field: { value, onChange },
-                                        }) => (
-                                            <Pressable
-                                                disabled={loading}
-                                                onPress={() =>
-                                                    setShowIndustrySheet(true)
-                                                }
-                                                className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
-                                            >
-                                                <Text className="text-gray-700 font-kumbh">
-                                                    {value || "Select Industry"}
-                                                </Text>
-                                                <ChevronDown
-                                                    size={18}
-                                                    color="#111827"
-                                                />
-                                            </Pressable>
-                                        )}
-                                    />
-                                </Field>
-                                {errors.industry?.message ? (
-                                    <ErrorText msg={errors.industry.message} />
-                                ) : null}
-                            </View>
-
-                            <View className="flex-1">
-                                <Field label="Staff Size">
-                                    <Controller
-                                        control={control}
-                                        name="staffSize"
-                                        render={({
-                                            field: { value, onChange },
-                                        }) => (
-                                            <Pressable
-                                                disabled={loading}
-                                                onPress={() =>
-                                                    setShowStaffSizeSheet(true)
-                                                }
-                                                className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
-                                            >
-                                                <Text className="text-gray-700 font-kumbh">
-                                                    {value
-                                                        ? STAFF_SIZE_OPTIONS.find(
-                                                              (opt) =>
-                                                                  opt.value ===
-                                                                  Number(value),
-                                                          )?.label
-                                                        : "Select Staff Size"}
-                                                </Text>
-                                                <ChevronDown
-                                                    size={18}
-                                                    color="#111827"
-                                                />
-                                            </Pressable>
-                                        )}
-                                    />
-                                </Field>
-                                {errors.staffSize?.message ? (
-                                    <ErrorText msg={errors.staffSize.message} />
-                                ) : null}
-                            </View>
-                        </View>
-                        {watch("industry") === "Other" ? (
-                            <View className="mt-3">
-                                <Field label="Other Industry">
-                                    <Controller
-                                        control={control}
-                                        name="industryOther"
-                                        render={({
-                                            field: { value, onChange },
-                                        }) => (
-                                            <Input
-                                                placeholder="Enter Industry"
-                                                value={value}
-                                                onChangeText={onChange}
+                    {/* Industry + Staff size */}
+                    <View className="flex-row gap-3">
+                        <View className="flex-1">
+                            <Field label="Industry">
+                                <Controller
+                                    control={control}
+                                    name="industry"
+                                    render={({
+                                        field: { value, onChange },
+                                    }) => (
+                                        <Pressable
+                                            disabled={loading}
+                                            onPress={() =>
+                                                setShowIndustrySheet(true)
+                                            }
+                                            className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
+                                        >
+                                            <Text className="text-gray-700 font-kumbh">
+                                                {value || "Select Industry"}
+                                            </Text>
+                                            <ChevronDown
+                                                size={18}
+                                                color="#111827"
                                             />
-                                        )}
-                                    />
-                                </Field>
-                                {errors.industryOther?.message ? (
-                                    <ErrorText
-                                        msg={errors.industryOther.message}
-                                    />
-                                ) : null}
-                            </View>
-                        ) : null}
-
-                        {/* Description */}
-                        <Field label="Description">
-                            <Controller
-                                control={control}
-                                name="description"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        multiline
-                                        placeholder="Enter Description"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.description?.message ? (
-                            <ErrorText msg={errors.description.message} />
-                        ) : null}
-
-                        {/* Problems */}
-                        <Field label="Problems Faced">
-                            <Controller
-                                control={control}
-                                name="problems"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        multiline
-                                        placeholder="Enter Problems"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.problems?.message ? (
-                            <ErrorText msg={errors.problems.message} />
-                        ) : null}
-
-                        {/* Strength */}
-                        <Field label="Strengths">
-                            <Controller
-                                control={control}
-                                name="strength"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        multiline
-                                        placeholder="Enter Strengths"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.strength?.message ? (
-                            <ErrorText msg={errors.strength.message} />
-                        ) : null}
-
-                        {/* Weakness */}
-                        <Field label="Weaknesses">
-                            <Controller
-                                control={control}
-                                name="weakness"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        multiline
-                                        placeholder="Enter Weaknesses"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.weakness?.message ? (
-                            <ErrorText msg={errors.weakness.message} />
-                        ) : null}
-
-                        {/* Opportunities */}
-                        <Field label="Opportunities">
-                            <Controller
-                                control={control}
-                                name="opportunities"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        multiline
-                                        placeholder="Enter Opportunities"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.opportunities?.message ? (
-                            <ErrorText msg={errors.opportunities.message} />
-                        ) : null}
-
-                        {/* Threats */}
-                        <Field label="Threats">
-                            <Controller
-                                control={control}
-                                name="threats"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        multiline
-                                        placeholder="Enter Threats"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.threats?.message ? (
-                            <ErrorText msg={errors.threats.message} />
-                        ) : null}
-
-                        {/* Engagement */}
-                        <Field label="Engagement Offered">
-                            <Controller
-                                control={control}
-                                name="engagement"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        placeholder='e.g. "Full-time", "Part-time"'
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.engagement?.message ? (
-                            <ErrorText msg={errors.engagement.message} />
-                        ) : null}
-
-                        {/* Deliverables */}
-                        <Field label="Deliverables">
-                            <Controller
-                                control={control}
-                                name="deliverables"
-                                render={({ field: { value, onChange } }) => (
-                                    <Input
-                                        multiline
-                                        placeholder="Enter Deliverables"
-                                        value={value}
-                                        onChangeText={onChange}
-                                    />
-                                )}
-                            />
-                        </Field>
-                        {errors.deliverables?.message ? (
-                            <ErrorText msg={errors.deliverables.message} />
-                        ) : null}
-
-                        {/* Document upload */}
-                        <Field label="Supporting Document (optional)">
-                            <View className="flex-row items-center gap-3">
-                                <Pressable
-                                    disabled={loading || uploadingDocument}
-                                    onPress={handleAttachDocument}
-                                    className={clsx(
-                                        "flex-row items-center gap-2 rounded-2xl px-4 py-3",
-                                        loading || uploadingDocument
-                                            ? "bg-gray-300"
-                                            : "bg-primary-500",
+                                        </Pressable>
                                     )}
-                                >
-                                    {uploadingDocument ? (
-                                        <ActivityIndicator
-                                            size="small"
-                                            color="#fff"
-                                        />
-                                    ) : (
-                                        <Text className="text-white font-kumbh">
-                                            {documentFile
-                                                ? "Replace document"
-                                                : "Upload document"}
-                                        </Text>
-                                    )}
-                                </Pressable>
-                                {documentFile ? (
-                                    <Pressable
-                                        onPress={handleRemoveDocument}
-                                        className="rounded-full border border-gray-200 px-3 py-2"
-                                    >
-                                        <Text className="text-xs text-gray-600 font-kumbh">
-                                            Remove
-                                        </Text>
-                                    </Pressable>
-                                ) : null}
-                            </View>
-                            <Text className="text-xs text-gray-500 mt-1 font-kumbh">
-                                {documentName
-                                    ? `Uploaded: ${documentName}`
-                                    : "Attach a PDF document (optional)."}
-                            </Text>
-                        </Field>
-
-                        {/* Amount + Status */}
-                        <View className="flex-row gap-3">
-                            <View className="flex-1">
-                                <Field label="Receivable Amount">
-                                    <Controller
-                                        control={control}
-                                        name="payableAmount"
-                                        render={({
-                                            field: { value, onChange },
-                                        }) => {
-                                            const raw = onlyDigits(value ?? "");
-                                            const display =
-                                                formatWithCommas(raw);
-
-                                            return (
-                                                <Input
-                                                    placeholder="Enter Amount"
-                                                    value={display}
-                                                    keyboardType="numeric"
-                                                    onChangeText={(text) => {
-                                                        // strip commas/spaces/etc then store digits only
-                                                        onChange(
-                                                            onlyDigits(text),
-                                                        );
-                                                    }}
-                                                />
-                                            );
-                                        }}
-                                    />
-                                </Field>
-
-                                {errors.payableAmount?.message ? (
-                                    <ErrorText
-                                        msg={errors.payableAmount.message}
-                                    />
-                                ) : null}
-                            </View>
-
-                            <View className="flex-1">
-                                <Field label="Status">
-                                    <Controller
-                                        control={control}
-                                        name="status"
-                                        render={({
-                                            field: { value, onChange },
-                                        }) => (
-                                            <Pressable
-                                                disabled={loading}
-                                                onPress={() =>
-                                                    setShowStatusMenu(true)
-                                                }
-                                                className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
-                                            >
-                                                <Text className="text-gray-700 font-kumbh">
-                                                    {capitalize(value)}
-                                                </Text>
-                                                <ChevronDown
-                                                    size={18}
-                                                    color="#111827"
-                                                />
-                                            </Pressable>
-                                        )}
-                                    />
-                                </Field>
-                                {errors.status?.message ? (
-                                    <ErrorText msg={errors.status.message} />
-                                ) : null}
-                            </View>
+                                />
+                            </Field>
+                            {errors.industry?.message ? (
+                                <ErrorText msg={errors.industry.message} />
+                            ) : null}
                         </View>
 
-                        {/* Bottom actions – left as requested (disabled while loading) */}
-                        {/* <View className="mt-8">
+                        <View className="flex-1">
+                            <Field label="Staff Size">
+                                <Controller
+                                    control={control}
+                                    name="staffSize"
+                                    render={({
+                                        field: { value, onChange },
+                                    }) => (
+                                        <Pressable
+                                            disabled={loading}
+                                            onPress={() =>
+                                                setShowStaffSizeSheet(true)
+                                            }
+                                            className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
+                                        >
+                                            <Text className="text-gray-700 font-kumbh">
+                                                {value
+                                                    ? STAFF_SIZE_OPTIONS.find(
+                                                          (opt) =>
+                                                              opt.value ===
+                                                              Number(value),
+                                                      )?.label
+                                                    : "Select Staff Size"}
+                                            </Text>
+                                            <ChevronDown
+                                                size={18}
+                                                color="#111827"
+                                            />
+                                        </Pressable>
+                                    )}
+                                />
+                            </Field>
+                            {errors.staffSize?.message ? (
+                                <ErrorText msg={errors.staffSize.message} />
+                            ) : null}
+                        </View>
+                    </View>
+                    {watch("industry") === "Other" ? (
+                        <View className="mt-3">
+                            <Field label="Other Industry">
+                                <Controller
+                                    control={control}
+                                    name="industryOther"
+                                    render={({
+                                        field: { value, onChange },
+                                    }) => (
+                                        <Input
+                                            placeholder="Enter Industry"
+                                            value={value}
+                                            onChangeText={onChange}
+                                        />
+                                    )}
+                                />
+                            </Field>
+                            {errors.industryOther?.message ? (
+                                <ErrorText msg={errors.industryOther.message} />
+                            ) : null}
+                        </View>
+                    ) : null}
+
+                    {/* Description */}
+                    <Field label="Description">
+                        <Controller
+                            control={control}
+                            name="description"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    multiline
+                                    placeholder="Enter Description"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.description?.message ? (
+                        <ErrorText msg={errors.description.message} />
+                    ) : null}
+
+                    {/* Problems */}
+                    <Field label="Problems Faced">
+                        <Controller
+                            control={control}
+                            name="problems"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    multiline
+                                    placeholder="Enter Problems"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.problems?.message ? (
+                        <ErrorText msg={errors.problems.message} />
+                    ) : null}
+
+                    {/* Strength */}
+                    <Field label="Strengths">
+                        <Controller
+                            control={control}
+                            name="strength"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    multiline
+                                    placeholder="Enter Strengths"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.strength?.message ? (
+                        <ErrorText msg={errors.strength.message} />
+                    ) : null}
+
+                    {/* Weakness */}
+                    <Field label="Weaknesses">
+                        <Controller
+                            control={control}
+                            name="weakness"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    multiline
+                                    placeholder="Enter Weaknesses"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.weakness?.message ? (
+                        <ErrorText msg={errors.weakness.message} />
+                    ) : null}
+
+                    {/* Opportunities */}
+                    <Field label="Opportunities">
+                        <Controller
+                            control={control}
+                            name="opportunities"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    multiline
+                                    placeholder="Enter Opportunities"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.opportunities?.message ? (
+                        <ErrorText msg={errors.opportunities.message} />
+                    ) : null}
+
+                    {/* Threats */}
+                    <Field label="Threats">
+                        <Controller
+                            control={control}
+                            name="threats"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    multiline
+                                    placeholder="Enter Threats"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.threats?.message ? (
+                        <ErrorText msg={errors.threats.message} />
+                    ) : null}
+
+                    {/* Engagement */}
+                    <Field label="Engagement Offered">
+                        <Controller
+                            control={control}
+                            name="engagement"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    placeholder='e.g. "Full-time", "Part-time"'
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.engagement?.message ? (
+                        <ErrorText msg={errors.engagement.message} />
+                    ) : null}
+
+                    {/* Deliverables */}
+                    <Field label="Deliverables">
+                        <Controller
+                            control={control}
+                            name="deliverables"
+                            render={({ field: { value, onChange } }) => (
+                                <Input
+                                    multiline
+                                    placeholder="Enter Deliverables"
+                                    value={value}
+                                    onChangeText={onChange}
+                                />
+                            )}
+                        />
+                    </Field>
+                    {errors.deliverables?.message ? (
+                        <ErrorText msg={errors.deliverables.message} />
+                    ) : null}
+
+                    {/* Document upload */}
+                    <Field label="Supporting Document (optional)">
+                        <View className="flex-row items-center gap-3">
+                            <Pressable
+                                disabled={loading || uploadingDocument}
+                                onPress={handleAttachDocument}
+                                className={clsx(
+                                    "flex-row items-center gap-2 rounded-2xl px-4 py-3",
+                                    loading || uploadingDocument
+                                        ? "bg-gray-300"
+                                        : "bg-primary-500",
+                                )}
+                            >
+                                {uploadingDocument ? (
+                                    <ActivityIndicator
+                                        size="small"
+                                        color="#fff"
+                                    />
+                                ) : (
+                                    <Text className="text-white font-kumbh">
+                                        {documentFile
+                                            ? "Replace document"
+                                            : "Upload document"}
+                                    </Text>
+                                )}
+                            </Pressable>
+                            {documentFile ? (
+                                <Pressable
+                                    onPress={handleRemoveDocument}
+                                    className="rounded-full border border-gray-200 px-3 py-2"
+                                >
+                                    <Text className="text-xs text-gray-600 font-kumbh">
+                                        Remove
+                                    </Text>
+                                </Pressable>
+                            ) : null}
+                        </View>
+                        <Text className="text-xs text-gray-500 mt-1 font-kumbh">
+                            {documentName
+                                ? `Uploaded: ${documentName}`
+                                : "Attach a PDF document (optional)."}
+                        </Text>
+                    </Field>
+
+                    {/* Amount + Status */}
+                    <View className="flex-row gap-3">
+                        <View className="flex-1">
+                            <Field label="Receivable Amount">
+                                <Controller
+                                    control={control}
+                                    name="payableAmount"
+                                    render={({
+                                        field: { value, onChange },
+                                    }) => {
+                                        const raw = onlyDigits(value ?? "");
+                                        const display = formatWithCommas(raw);
+
+                                        return (
+                                            <Input
+                                                placeholder="Enter Amount"
+                                                value={display}
+                                                keyboardType="numeric"
+                                                onChangeText={(text) => {
+                                                    // strip commas/spaces/etc then store digits only
+                                                    onChange(onlyDigits(text));
+                                                }}
+                                            />
+                                        );
+                                    }}
+                                />
+                            </Field>
+
+                            {errors.payableAmount?.message ? (
+                                <ErrorText msg={errors.payableAmount.message} />
+                            ) : null}
+                        </View>
+
+                        <View className="flex-1">
+                            <Field label="Status">
+                                <Controller
+                                    control={control}
+                                    name="status"
+                                    render={({
+                                        field: { value, onChange },
+                                    }) => (
+                                        <Pressable
+                                            disabled={loading}
+                                            onPress={() =>
+                                                setShowStatusMenu(true)
+                                            }
+                                            className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
+                                        >
+                                            <Text className="text-gray-700 font-kumbh">
+                                                {capitalize(value)}
+                                            </Text>
+                                            <ChevronDown
+                                                size={18}
+                                                color="#111827"
+                                            />
+                                        </Pressable>
+                                    )}
+                                />
+                            </Field>
+                            {errors.status?.message ? (
+                                <ErrorText msg={errors.status.message} />
+                            ) : null}
+                        </View>
+                    </View>
+
+                    {/* Bottom actions – left as requested (disabled while loading) */}
+                    {/* <View className="mt-8">
               <Pressable
                 disabled={loading}
                 className={clsx(
@@ -764,8 +751,7 @@ export default function CreateClient() {
                 </Text>
               </Pressable>
             </View> */}
-                    </ScrollView>
-                </TouchableWithoutFeedback>
+                </ScrollView>
             </KeyboardAvoidingView>
 
             <OptionSheet

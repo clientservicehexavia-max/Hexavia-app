@@ -86,7 +86,9 @@ export default function Profile() {
 
     const logoutHandler = useCallback(async () => {
         try {
-            await dispatch(updateProfile({ expoPushToken: null, silent: true }));
+            await dispatch(
+                updateProfile({ expoPushToken: null, silent: true }),
+            );
         } catch {}
         dispatch(logout());
         clearToken();
@@ -336,7 +338,9 @@ export default function Profile() {
                 <KeyboardAvoidingView
                     className="flex-1"
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    keyboardVerticalOffset={24}
+                    keyboardVerticalOffset={
+                        Platform.select({ ios: 70, android: 0 }) as number
+                    }
                 >
                     <ScrollView
                         className="flex-1 bg-black/40"

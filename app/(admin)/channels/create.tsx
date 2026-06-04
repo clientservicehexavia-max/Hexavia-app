@@ -95,7 +95,7 @@ export default function CreateChannel() {
                     android: "height",
                 })}
                 keyboardVerticalOffset={
-                    Platform.select({ ios: 8, android: 0 }) as number
+                    Platform.select({ ios: 70, android: 0 }) as number
                 }
             >
                 <ScrollView

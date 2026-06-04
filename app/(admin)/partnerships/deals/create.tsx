@@ -213,6 +213,9 @@ export default function CreateDealScreen() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 className="flex-1"
+                keyboardVerticalOffset={
+                    Platform.select({ ios: 70, android: 0 }) as number
+                }
             >
                 <View className="flex-1 px-4">
                     <PlatformAdaptiveHeader
