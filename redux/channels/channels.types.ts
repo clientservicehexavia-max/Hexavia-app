@@ -153,6 +153,15 @@ export interface CreateTaskResponse {
   channel: Channel;
 }
 
+export interface ImportTasksBody {
+  channelId: string;
+  tasks: {
+    name: string;
+    description?: string | null;
+    status?: string;
+  }[];
+}
+
 export interface UpdateTaskBody {
   channelId: string | undefined;
   taskId: string;

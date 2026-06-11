@@ -121,7 +121,7 @@ export const SwipeableTabBar = React.memo(function SwipeableTabBar({
     };
 
     // Calculate input range for animation
-    const inputRange = useMemo(() => routes.map((_, i) => i), [routes.length]);
+    const inputRange = useMemo(() => routes.map((_, i) => i), [routes]);
 
     // Calculate indicator translateX position based on actual tab width
     // Each tab occupies tabsWidth / routes.length pixels
@@ -132,7 +132,7 @@ export const SwipeableTabBar = React.memo(function SwipeableTabBar({
                 inputRange,
                 outputRange: inputRange.map((i) => i * tabWidth),
             }),
-        [routes.length, position, tabWidth],
+        [inputRange, position, tabWidth],
     );
 
     const handleTabPress = (route: Route, tabIndex: number) => {
@@ -195,12 +195,15 @@ export const SwipeableTabBar = React.memo(function SwipeableTabBar({
                                     style={[
                                         styles.tab,
                                         styles.tabScrollable,
+                                        styles.tabChip,
                                         tabStyle,
                                         {
                                             backgroundColor: isActive
                                                 ? activeColor
-                                                : undefined,
-                                            borderRadius: 4,
+                                                : "#FFFFFF",
+                                            borderColor: isActive
+                                                ? activeColor
+                                                : "#E5E7EB",
                                         },
                                     ]}
                                 >
@@ -301,6 +304,7 @@ export const SwipeableTabBar = React.memo(function SwipeableTabBar({
 const styles = StyleSheet.create({
     tabBarContainer: {
         backgroundColor: "#fff",
+        paddingBottom: 5,
     },
     tabsWrapper: {
         flexDirection: "row",
@@ -309,9 +313,11 @@ const styles = StyleSheet.create({
     },
     tabsWrapperScrollable: {
         justifyContent: "flex-start",
+        gap: 8,
     },
     scrollContent: {
         flexGrow: 1,
+        alignItems: "center",
     },
     tab: {
         flex: 1,
@@ -322,7 +328,13 @@ const styles = StyleSheet.create({
     },
     tabScrollable: {
         flex: 0,
-        minWidth: 80,
+        minWidth: 0,
+    },
+    tabChip: {
+        borderRadius: 999,
+        borderWidth: 1,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
     },
     tabLabel: {
         fontSize: 15,

@@ -22,6 +22,7 @@ import type {
   GetChannelByIdResponse,
   GetChannelsResponse,
   GetChannelTasksResponse,
+  ImportTasksBody,
   JoinChannelResponse,
   RemoveMemberBody,
   RemoveMemberResponse,
@@ -284,6 +285,47 @@ export const createChannelTask = createAsyncThunk<
     );
     // console.log(res.data)
     return res.data.channel as Channel;
+  } catch (err) {
+    const msg = extractErrorMessage(err);
+    showError(msg);
+    return rejectWithValue(msg);
+  }
+});
+
+export const importChannelTasks = createAsyncThunk<
+  Channel,
+  ImportTasksBody,
+  { rejectValue: string }
+>("channels/importTasks", async (body, { rejectWithValue }) => {
+  try {
+    const res = await showPromise(
+      (async () => {
+        let latestChannel: Channel | null = null;
+
+        for (const task of body.tasks) {
+          const taskRes = await api.post<CreateTaskResponse>(
+            "/channel/create-task",
+            {
+              channelId: body.channelId,
+              name: task.name,
+              description: task.description || "Imported from spreadsheet",
+              status: task.status ?? "not-started",
+            },
+          );
+          latestChannel = taskRes.data.channel as Channel;
+        }
+
+        if (!latestChannel) {
+          throw new Error("No tasks to import.");
+        }
+
+        return latestChannel;
+      })(),
+      `Importing ${body.tasks.length} task${body.tasks.length === 1 ? "" : "s"}...`,
+      `Imported ${body.tasks.length} task${body.tasks.length === 1 ? "" : "s"}`,
+    );
+
+    return res;
   } catch (err) {
     const msg = extractErrorMessage(err);
     showError(msg);
