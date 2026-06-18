@@ -189,25 +189,8 @@ export default function FinanceDetail() {
             {/* Bottom buttons */}
             <View className="px-5 pb-6 flex-row flex-wrap items-center justify-between gap-3">
                 <Pressable
-                    onPress={() =>
-                        router.push({
-                            pathname: "/(admin)/finance/form",
-                            params: { recordId: id },
-                        })
-                    }
-                    className="min-w-[48%] flex-1 h-12 rounded-2xl border border-[#4C5FAB] items-center justify-center flex-row"
-                >
-                    <View className="w-6 h-6 rounded-full bg-[#4C5FAB]/10 items-center justify-center mr-2">
-                        <Edit2 size={16} color="#4C5FAB" />
-                    </View>
-                    <Text className="text-[#4C5FAB] font-kumbhBold">
-                        Edit Expense
-                    </Text>
-                </Pressable>
-
-                <Pressable
                     onPress={() => router.replace("/(admin)")}
-                    className="min-w-[48%] flex-1 h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center"
+                    className="flex-1 h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center"
                 >
                     <Text className="text-white font-kumbhBold">
                         Back to Home

@@ -396,7 +396,7 @@ export default function TaskDetailModal({
                                 value={name}
                                 onChangeText={setName}
                                 placeholder="Enter task name"
-                                className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-2xl px-4 py-3"
+                                className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
                             />
 
                             <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
@@ -409,7 +409,7 @@ export default function TaskDetailModal({
                                 numberOfLines={4}
                                 textAlignVertical="top"
                                 placeholder="Add a short description"
-                                className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-2xl px-4 py-3"
+                                className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
                                 style={{ minHeight: 120 }}
                             />
 
@@ -426,7 +426,7 @@ export default function TaskDetailModal({
                                         <Pressable
                                             key={s}
                                             onPress={() => setPending(s)}
-                                            className="rounded-full px-4 py-2"
+                                            className="rounded-full py-[6px]"
                                             style={{
                                                 backgroundColor: selected
                                                     ? "#111827"
@@ -434,7 +434,7 @@ export default function TaskDetailModal({
                                             }}
                                         >
                                             <Text
-                                                className="font-kumbh text-[12px]"
+                                                className="font-kumbh text-[12px] capitalize px-3"
                                                 style={{
                                                     color: selected
                                                         ? "#fff"

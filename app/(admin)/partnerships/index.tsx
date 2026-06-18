@@ -127,11 +127,13 @@ function SummaryCard({
     value,
     sub,
     tone = "blue",
+    onPress,
 }: {
     label: string;
     value: string;
     sub?: string;
     tone?: "blue" | "emerald" | "amber" | "violet" | "rose" | "slate";
+    onPress?: () => void;
 }) {
     const toneClass = {
         blue: "border-blue-100 bg-blue-50",
@@ -143,7 +145,11 @@ function SummaryCard({
     }[tone];
 
     return (
-        <View className={`w-[48%] rounded-xl border p-3 ${toneClass}`}>
+        <Pressable
+            onPress={onPress}
+            disabled={!onPress}
+            className={`w-[48%] rounded-xl border p-3 active:opacity-80 ${toneClass}`}
+        >
             <Text className="text-xs font-kumbh text-gray-500">{label}</Text>
             <Text className="mt-2 text-xl font-kumbhBold text-gray-900">
                 {value}
@@ -153,7 +159,7 @@ function SummaryCard({
                     {sub}
                 </Text>
             ) : null}
-        </View>
+        </Pressable>
     );
 }
 
@@ -435,33 +441,67 @@ export default function PartnershipDashboard() {
                                 label="Total Partners"
                                 value={String(partners.length)}
                                 tone="blue"
+                                onPress={() =>
+                                    router.push(
+                                        "/(admin)/partnerships/partners",
+                                    )
+                                }
                             />
                             <SummaryCard
                                 label="Total Deals"
                                 value={String(deals.length)}
                                 tone="violet"
+                                onPress={() =>
+                                    router.push("/(admin)/partnerships/deals")
+                                }
                             />
                             <SummaryCard
                                 label="Closed Won Deals"
                                 value={String(dashboard.closedWon.length)}
                                 tone="emerald"
+                                onPress={() =>
+                                    router.push({
+                                        pathname: "/(admin)/partnerships/deals",
+                                        params: { stage: "Closed Won" },
+                                    })
+                                }
                             />
                             <SummaryCard
                                 label="Open Opportunities"
                                 value={String(dashboard.openDeals.length)}
                                 tone="amber"
+                                onPress={() =>
+                                    router.push({
+                                        pathname: "/(admin)/partnerships/deals",
+                                        params: { dashboardView: "open" },
+                                    })
+                                }
                             />
                             <SummaryCard
                                 label="Total Deal Value"
                                 value={formatAmount(dashboard.totalDealValue)}
                                 tone="slate"
+                                onPress={() =>
+                                    router.push({
+                                        pathname: "/(admin)/partnerships/deals",
+                                        params: { dashboardView: "dealValue" },
+                                    })
+                                }
                             />
                             <SummaryCard
-                                label="Commissions Due"
+                                label="Total Commissions"
                                 value={formatAmount(
                                     dashboard.totalCommissionsDue,
                                 )}
                                 tone="violet"
+                                onPress={() =>
+                                    router.push({
+                                        pathname: "/(admin)/partnerships/deals",
+                                        params: {
+                                            dashboardView: "commissionsDue",
+                                        },
+                                    })
+                                }
                             />
                             <SummaryCard
                                 label="Commissions Paid"
@@ -469,6 +509,14 @@ export default function PartnershipDashboard() {
                                     dashboard.totalCommissionsPaid,
                                 )}
                                 tone="emerald"
+                                onPress={() =>
+                                    router.push({
+                                        pathname: "/(admin)/partnerships/deals",
+                                        params: {
+                                            dashboardView: "commissionsPaid",
+                                        },
+                                    })
+                                }
                             />
                             <SummaryCard
                                 label="Outstanding Balance"
@@ -476,6 +524,14 @@ export default function PartnershipDashboard() {
                                     dashboard.outstandingBalance,
                                 )}
                                 tone="rose"
+                                onPress={() =>
+                                    router.push({
+                                        pathname: "/(admin)/partnerships/deals",
+                                        params: {
+                                            dashboardView: "outstanding",
+                                        },
+                                    })
+                                }
                             />
                         </View>
                     </Section>

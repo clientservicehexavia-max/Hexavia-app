@@ -91,11 +91,11 @@ export default function BoardCard({
             }
             {...(onPress ? { onPress } : {})}
         >
-            <View className="flex-row justify-between items-center">
+            <View className="flex-row justify-between items-center gap-3">
                 <Text
-                    className="font-kumbhBold text-[18px] leading-7"
+                    className="font-kumbhBold text-[16px] leading-7 flex-1"
                     style={{ color: titleColor }}
-                    numberOfLines={2}
+                    numberOfLines={1}
                 >
                     {title}
                 </Text>
@@ -109,7 +109,7 @@ export default function BoardCard({
             </View>
 
             <View
-                className="h-[1px] my-1"
+                className="h-[1px] my-[1px]"
                 style={{ backgroundColor: hairline }}
             />
 

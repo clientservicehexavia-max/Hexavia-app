@@ -40,6 +40,23 @@ function fmtDMY(d: Date) {
     return `${dd}/${mm}/${yyyy}`;
 }
 
+function toISODate(dmy: string) {
+    const m = dmy.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return dmy;
+    const dd = m[1];
+    const mm = m[2];
+    const yyyy = m[3];
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function toCreatedAt(dmy: string) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    return `${toISODate(dmy)}T${hh}:${mm}:${ss}`;
+}
+
 export default function ReceivableForm() {
     const router = useRouter();
     const dispatch = useAppDispatch();
@@ -108,6 +125,8 @@ export default function ReceivableForm() {
             return showError("Select a BWE attendance type.");
 
         try {
+            const createdAt = toCreatedAt(date);
+
             if (isEditing && clientId) {
                 await dispatch(
                     updateClient({
@@ -120,15 +139,17 @@ export default function ReceivableForm() {
                             isExternal: true,
                             description: desc.trim() || undefined,
                             status: "current",
+                            createdAt,
                         },
                     }),
                 ).unwrap();
 
                 showSuccess("External client updated.");
-                router.replace({
-                    pathname: "/(admin)/clients/installments",
-                    params: { clientId: clientId! },
-                });
+                // router.replace({
+                //     pathname: "/(admin)/clients/installments",
+                //     params: { clientId: clientId! },
+                // });
+                router.back();
                 return;
             }
 
@@ -141,6 +162,7 @@ export default function ReceivableForm() {
                     isExternal: true,
                     description: desc.trim() || undefined,
                     status: "current",
+                    createdAt,
                 }),
             ).unwrap();
 

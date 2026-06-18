@@ -74,6 +74,13 @@ type PickedSpreadsheet = {
 
 type ImportedTaskDraft = {
     name: string;
+    description: string;
+    alreadyExists: boolean;
+    status: ChannelStatusKey;
+};
+
+type SheetTaskDraft = {
+    description: string;
     status: ChannelStatusKey;
 };
 
@@ -87,8 +94,82 @@ type SheetOption = {
     value: string;
 };
 
-const compactTaskRows = (rows: unknown[][]) =>
-    rows.map((row) => String(row?.[0] ?? "").trim()).filter(Boolean);
+const generateTaskTitle = (description: string, index: number) => {
+    const normalized = description
+        .replace(/\s+/g, " ")
+        .replace(/^([-*]|\d+[.)])\s*/, "")
+        .trim();
+    const firstClause = normalized.split(/[.;:]/)[0]?.trim() || normalized;
+    const words = firstClause.split(" ").filter(Boolean);
+    const title = words.slice(0, 8).join(" ").trim();
+
+    if (!title) return `Task ${index + 1}`;
+    return words.length > 8 ? `${title}...` : title;
+};
+
+const taskIdentityKey = (title?: string | null, description?: string | null) =>
+    `${String(title ?? "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLowerCase()}::${String(description ?? "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLowerCase()}`;
+
+const indexedExcelColors: Record<number, string> = {
+    3: "FF0000",
+    4: "00FF00",
+    6: "FFFF00",
+    10: "FF0000",
+    11: "00FF00",
+    13: "FFFF00",
+    17: "00FF00",
+    50: "00FF00",
+};
+
+const normalizeRgb = (value?: string | number | null) => {
+    if (value === undefined || value === null) return null;
+    const raw = String(value).replace(/[^a-fA-F0-9]/g, "");
+    if (raw.length < 6) return null;
+    return raw.slice(-6).toUpperCase();
+};
+
+const statusFromRgb = (rgb?: string | null): ChannelStatusKey => {
+    const normalized = normalizeRgb(rgb);
+    if (!normalized) return "not-started";
+
+    const r = Number.parseInt(normalized.slice(0, 2), 16);
+    const g = Number.parseInt(normalized.slice(2, 4), 16);
+    const b = Number.parseInt(normalized.slice(4, 6), 16);
+
+    if (r >= 130 && r - g >= 25 && r - b >= 25) return "not-started";
+    if (r >= 130 && g >= 120 && r - b >= 35 && g - b >= 35) {
+        return "in-progress";
+    }
+    if (g >= 110 && g - r >= 20 && g - b >= 20) return "completed";
+
+    return "not-started";
+};
+
+const getCellFillDebug = (cell: any) => {
+    const style = cell?.s;
+    const fill = style?.fill ?? style;
+    const fgColor = fill?.fgColor ?? fill?.foregroundColor;
+    const bgColor = fill?.bgColor ?? fill?.backgroundColor;
+    const color = fgColor ?? bgColor;
+
+    return {
+        fill,
+        fgColor,
+        bgColor,
+        selectedColor: color,
+        normalizedRgb:
+            normalizeRgb(color?.rgb) ??
+            (typeof color?.indexed === "number"
+                ? (indexedExcelColors[color.indexed] ?? null)
+                : null),
+    };
+};
 
 const readSpreadsheetWorkbook = async (file: PickedSpreadsheet) => {
     const name = file.name ?? "spreadsheet";
@@ -99,6 +180,7 @@ const readSpreadsheetWorkbook = async (file: PickedSpreadsheet) => {
         return XLSX.read(buffer, {
             type: "array",
             raw: false,
+            cellStyles: true,
         });
     }
 
@@ -109,6 +191,7 @@ const readSpreadsheetWorkbook = async (file: PickedSpreadsheet) => {
         return XLSX.read(csv, {
             type: "string",
             raw: false,
+            cellStyles: true,
         });
     }
 
@@ -118,25 +201,48 @@ const readSpreadsheetWorkbook = async (file: PickedSpreadsheet) => {
     return XLSX.read(base64, {
         type: "base64",
         raw: false,
+        cellStyles: true,
     });
 };
 
-const getSheetTaskNames = (workbook: XLSX.WorkBook, sheetName: string) => {
+const getSheetTaskDrafts = (
+    workbook: XLSX.WorkBook,
+    sheetName: string,
+): SheetTaskDraft[] => {
     const sheet = workbook.Sheets[sheetName];
     if (!sheet) return [];
 
-    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-        header: 1,
-        blankrows: false,
-        raw: false,
-    });
+    const range = sheet["!ref"] ? XLSX.utils.decode_range(sheet["!ref"]) : null;
+    if (!range) return [];
 
-    return compactTaskRows(rows);
+    const drafts: SheetTaskDraft[] = [];
+    for (let row = range.s.r; row <= range.e.r; row += 1) {
+        const cell = sheet[XLSX.utils.encode_cell({ r: row, c: 0 })];
+        const description = String(cell?.w ?? cell?.v ?? "").trim();
+        if (!description) continue;
+        const fillDebug = getCellFillDebug(cell);
+        const status = statusFromRgb(fillDebug.normalizedRgb);
+
+        console.log("[task-import] detected cell color", {
+            sheetName,
+            cell: XLSX.utils.encode_cell({ r: row, c: 0 }),
+            value: description,
+            ...fillDebug,
+            mappedStatus: status,
+        });
+
+        drafts.push({
+            description,
+            status,
+        });
+    }
+
+    return drafts;
 };
 
 const buildSheetOptions = (workbook: XLSX.WorkBook): SheetOption[] =>
     workbook.SheetNames.map((sheetName) => {
-        const count = getSheetTaskNames(workbook, sheetName).length;
+        const count = getSheetTaskDrafts(workbook, sheetName).length;
         const suffix = count === 1 ? "task" : "tasks";
         return {
             label: `${sheetName} (${count} ${suffix})`,
@@ -203,7 +309,6 @@ export default function StatusScreen() {
     );
 
     const allChannelTasks = useAppSelector(selectAllChannelTasks);
-    // console.log("All channel tasks:", allChannelTasks);
     const list = useAppSelector(selectChannelTasksByStatus);
     const channel = useAppSelector(selectChannelById(channelId ?? ""));
 
@@ -325,17 +430,33 @@ export default function StatusScreen() {
     }, [resetImport]);
 
     const openImportPreview = useCallback(
-        (fileName: string, sheetName: string, names: string[]) => {
+        (fileName: string, sheetName: string, drafts: SheetTaskDraft[]) => {
+            const seenTaskKeys = new Set(
+                allChannelTasks.map((task) =>
+                    taskIdentityKey(task.title, task.description),
+                ),
+            );
+
             setPickedFileName(`${fileName} • ${sheetName}`);
             setImportedTasks(
-                names.map((name) => ({
-                    name,
-                    status: "not-started",
-                })),
+                drafts.map((draft, index) => {
+                    const { description } = draft;
+                    const name = generateTaskTitle(description, index);
+                    const key = taskIdentityKey(name, description);
+                    const alreadyExists = seenTaskKeys.has(key);
+                    seenTaskKeys.add(key);
+
+                    return {
+                        name,
+                        description,
+                        alreadyExists,
+                        status: draft.status,
+                    };
+                }),
             );
             setShowImport(true);
         },
-        [],
+        [allChannelTasks],
     );
 
     const closeSheetPicker = useCallback(() => {
@@ -381,16 +502,16 @@ export default function StatusScreen() {
             }
 
             const sheetName = workbook.SheetNames[0];
-            const names = sheetName
-                ? getSheetTaskNames(workbook, sheetName)
+            const drafts = sheetName
+                ? getSheetTaskDrafts(workbook, sheetName)
                 : [];
 
-            if (!names.length) {
+            if (!drafts.length) {
                 showError("No tasks found in column A.");
                 return;
             }
 
-            openImportPreview(fileName, sheetName ?? "Sheet 1", names);
+            openImportPreview(fileName, sheetName ?? "Sheet 1", drafts);
         } catch (err: any) {
             showError(
                 "Could not import spreadsheet.",
@@ -406,14 +527,14 @@ export default function StatusScreen() {
             if (!pendingWorkbook || !pendingFileName) return;
 
             const sheetName = String(value);
-            const names = getSheetTaskNames(pendingWorkbook, sheetName);
+            const drafts = getSheetTaskDrafts(pendingWorkbook, sheetName);
 
-            if (!names.length) {
+            if (!drafts.length) {
                 showError(`No tasks found in column A on ${sheetName}.`);
                 return;
             }
 
-            openImportPreview(pendingFileName, sheetName, names);
+            openImportPreview(pendingFileName, sheetName, drafts);
         },
         [openImportPreview, pendingFileName, pendingWorkbook],
     );
@@ -431,12 +552,29 @@ export default function StatusScreen() {
 
         try {
             setImportingTasks(true);
+            const existingTaskKeys = new Set(
+                allChannelTasks.map((task) =>
+                    taskIdentityKey(task.title, task.description),
+                ),
+            );
+            const tasksToImport = importedTasks.filter((task) => {
+                const key = taskIdentityKey(task.name, task.description);
+                if (existingTaskKeys.has(key)) return false;
+                existingTaskKeys.add(key);
+                return true;
+            });
+
+            if (!tasksToImport.length) {
+                showError("All selected tasks already exist.");
+                return;
+            }
+
             await dispatch(
                 importChannelTasks({
                     channelId: String(channelId),
-                    tasks: importedTasks.map((task) => ({
+                    tasks: tasksToImport.map((task) => ({
                         name: task.name,
-                        description: "Imported from spreadsheet",
+                        description: task.description,
                         status: task.status,
                     })),
                 }),
@@ -444,9 +582,9 @@ export default function StatusScreen() {
             await dispatch(fetchChannelTasks(String(channelId))).unwrap();
             finishImport();
             const nextStatus =
-                importedTasks.find((task) => task.status === "not-started")
+                tasksToImport.find((task) => task.status === "not-started")
                     ?.status ??
-                importedTasks[0]?.status ??
+                tasksToImport[0]?.status ??
                 "not-started";
             router.setParams({
                 status: nextStatus,
@@ -457,7 +595,7 @@ export default function StatusScreen() {
         } finally {
             setImportingTasks(false);
         }
-    }, [channelId, dispatch, finishImport, importedTasks]);
+    }, [allChannelTasks, channelId, dispatch, finishImport, importedTasks]);
 
     const handleImportedTaskStatusSelect = useCallback(
         (value: ChannelStatusKey) => {
@@ -722,8 +860,9 @@ export default function StatusScreen() {
                                 {importedTasks.length === 1 ? "" : "s"} found
                             </Text>
                             <Text className="mt-1 font-kumbh text-[12px] text-[#6B7280]">
-                                Every task starts as "Not Started" unless you
-                                change it below.
+                                {
+                                    'Every task starts as "Not Started" unless you change it below.'
+                                }
                             </Text>
                         </View>
 
@@ -736,7 +875,11 @@ export default function StatusScreen() {
                             {importedTasks.map((task, index) => (
                                 <View
                                     key={`${task.name}-${index}`}
-                                    className="mb-2 rounded-xl border border-gray-100 bg-white p-3"
+                                    className={`mb-2 rounded-xl border p-3 ${
+                                        task.alreadyExists
+                                            ? "border-amber-200 bg-amber-50"
+                                            : "border-gray-100 bg-white"
+                                    }`}
                                 >
                                     <View
                                         className="flex-row items-start justify-between"
@@ -745,6 +888,13 @@ export default function StatusScreen() {
                                         <Text className="flex-1 font-kumbh text-[#111827]">
                                             {index + 1}. {task.name}
                                         </Text>
+                                        {task.alreadyExists ? (
+                                            <View className="rounded-full bg-amber-100 px-2 py-1">
+                                                <Text className="font-kumbhBold text-[10px] text-amber-700">
+                                                    Already exists
+                                                </Text>
+                                            </View>
+                                        ) : null}
                                         <Pressable
                                             disabled={importingTasks}
                                             onPress={() =>
@@ -758,6 +908,9 @@ export default function StatusScreen() {
                                             <X size={18} color="#f00" />
                                         </Pressable>
                                     </View>
+                                    <Text className="mt-1 font-kumbh text-[12px] text-[#6B7280]">
+                                        {task.description}
+                                    </Text>
                                     <Pressable
                                         disabled={importingTasks}
                                         onPress={() =>

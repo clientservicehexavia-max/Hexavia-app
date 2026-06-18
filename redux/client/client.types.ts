@@ -87,6 +87,7 @@ export interface ClientCreateInput {
     documentUrl?: string;
     documentFile?: { uri: string; name: string; type?: string };
     status?: ClientStatus;
+    createdAt?: string;
 }
 
 export type ClientUpdateInput = Partial<ClientCreateInput>;
