@@ -47,7 +47,6 @@ type Txn = {
     id: string;
     title: string;
     amount: number;
-    time: string;
     status: "Successful" | "Pending";
     description: string;
     projectName?: string;
@@ -58,8 +57,18 @@ type Txn = {
     isExternal?: boolean;
     isFullyPaid?: boolean;
     dir: "up" | "down";
+    isoDate: string;
     dateKey: string;
+    monthKey: string;
+    monthLabel: string;
     kind: "expense" | "clientReceivable";
+};
+
+type TxnSection = {
+    title: string;
+    monthTotal: number;
+    sortValue: number;
+    data: Txn[];
 };
 
 const NGN = (n: number) =>
@@ -132,10 +141,14 @@ function buildFilteredReceivables(clients: any[]) {
         );
 }
 
-function formatTime(iso: string) {
+function formatDateLabel(iso: string) {
     try {
         const d = new Date(iso);
-        return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        return d.toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+        });
     } catch {
         return "";
     }
@@ -158,6 +171,23 @@ function dateBucket(iso?: string) {
     return d.toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
+        year: "numeric",
+    });
+}
+
+function monthKey(iso?: string) {
+    const d = new Date(iso || "");
+    if (Number.isNaN(d.getTime())) return "unknown";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+}
+
+function monthLabel(iso?: string) {
+    const d = new Date(iso || "");
+    if (Number.isNaN(d.getTime())) return "Unknown month";
+    return d.toLocaleDateString(undefined, {
+        month: "long",
         year: "numeric",
     });
 }
@@ -285,13 +315,43 @@ export default function FinanceIndex() {
     }, [summary, tab, filteredReceivables, records]);
 
     /* Section builder */
-    const sections = useMemo(() => {
+    const sections = useMemo<TxnSection[]>(() => {
+        const buildMonthlySections = (txns: Txn[]) => {
+            const map = new Map<string, TxnSection>();
+
+            txns.forEach((txn) => {
+                const key = txn.monthKey || "unknown";
+                if (!map.has(key)) {
+                    map.set(key, {
+                        title: txn.monthLabel || "Unknown month",
+                        monthTotal: 0,
+                        sortValue: 0,
+                        data: [],
+                    });
+                }
+
+                const section = map.get(key)!;
+                section.data.push(txn);
+                section.monthTotal += Number(txn.amount || 0);
+
+                const txDate = new Date(txn.isoDate || "");
+                const fallbackDate = new Date();
+                const parsed = Number.isNaN(txDate.getTime())
+                    ? fallbackDate.getTime()
+                    : txDate.getTime();
+                section.sortValue = Math.max(section.sortValue, parsed);
+            });
+
+            return Array.from(map.values()).sort(
+                (a, b) => b.sortValue - a.sortValue,
+            );
+        };
+
         if (tab === "Receivables") {
             const clientTxns: Txn[] = (clients || []).map((c: any) => ({
                 id: c._id,
                 title: c?.isExternal ? c?.engagement || "External" : "Receive",
                 amount: getTotalPaid(c),
-                time: formatTime(c?.createdAt || ""),
                 description: `${c?.projectName || "Unnamed project"}\n${c?.name || "Unnamed client"}`,
                 projectName: c?.projectName || "Unnamed project",
                 clientName: c?.name || "Unnamed client",
@@ -300,23 +360,14 @@ export default function FinanceIndex() {
                 isFullyPaid: getOutstandingReceivable(c) === 0,
                 status: "Pending",
                 dir: "down",
+                isoDate: c?.createdAt || "",
                 dateKey: dateBucket(c?.createdAt || ""),
+                monthKey: monthKey(c?.createdAt || ""),
+                monthLabel: monthLabel(c?.createdAt || ""),
                 kind: "clientReceivable",
             }));
 
-            const txns: Txn[] = [...clientTxns];
-
-            const map = new Map<string, Txn[]>();
-            txns.forEach((t) => {
-                const key = t.dateKey || "—";
-                if (!map.has(key)) map.set(key, []);
-                map.get(key)!.push(t);
-            });
-
-            return Array.from(map.entries()).map(([title, data]) => ({
-                title,
-                data,
-            }));
+            return buildMonthlySections(clientTxns);
         }
 
         // Expenses
@@ -330,24 +381,17 @@ export default function FinanceIndex() {
                 id: r._id,
                 title: "Expense",
                 amount: r.amount,
-                time: formatTime(r.date),
                 description: String(r.description ?? ""), // <- force string
                 status: "Successful",
                 dir: "up",
+                isoDate: r.date,
                 dateKey: dateBucket(r.date),
+                monthKey: monthKey(r.date),
+                monthLabel: monthLabel(r.date),
                 kind: "expense", // <- new
             }));
 
-        const map = new Map<string, Txn[]>();
-        txns.forEach((t) => {
-            if (!map.has(t.dateKey)) map.set(t.dateKey, []);
-            map.get(t.dateKey)!.push(t);
-        });
-
-        return Array.from(map.entries()).map(([title, data]) => ({
-            title,
-            data,
-        }));
+        return buildMonthlySections(txns);
     }, [tab, clients, records]);
 
     const fetchAndPaginateReceivables = useCallback(
@@ -668,7 +712,7 @@ export default function FinanceIndex() {
                 }
                 renderScene={() => (
                     <View className="flex-1 pt-2">
-                        <SectionList
+                        <SectionList<Txn, TxnSection>
                             sections={sections}
                             keyExtractor={(item) => item.id}
                             contentContainerStyle={{ paddingBottom: 24 }}
@@ -681,11 +725,16 @@ export default function FinanceIndex() {
                             }
                             onEndReachedThreshold={0.2}
                             onEndReached={loadMore}
-                            renderSectionHeader={({ section: { title } }) => (
+                            renderSectionHeader={({ section }) => (
                                 <View className="bg-white">
-                                    <Text className="px-5 py-1.5 text-gray-500 font-kumbh">
-                                        {title}
-                                    </Text>
+                                    <View className="px-5 py-4 flex-row items-center justify-between">
+                                        <Text className="text-gray-500 font-kumbhBold">
+                                            {section.title}
+                                        </Text>
+                                        <Text className="text-[#111827] font-kumbhBold">
+                                            Total: {NGN(section.monthTotal)}
+                                        </Text>
+                                    </View>
                                 </View>
                             )}
                             ItemSeparatorComponent={() => (
@@ -1021,7 +1070,7 @@ function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
                     {NGN(item.amount)}
                 </Text>
                 <Text className="text-sm text-gray-500 font-kumbh mt-1">
-                    {item.time}
+                    {formatDateLabel(item.isoDate)}
                 </Text>
             </View>
         </Pressable>
