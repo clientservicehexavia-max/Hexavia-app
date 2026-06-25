@@ -25,6 +25,7 @@ import type { AttachmentKind, Message, ReplyMeta } from "@/types/chat";
 import type { ChatTaggedUser } from "@/types/chat-model";
 import { formatDateLabel, getDateKey } from "@/utils/format";
 import { buildMentionables, type Mentionable } from "@/utils/handles";
+import { isAdminLikeRole } from "@/utils/roles";
 import {
     AudioModule,
     RecordingPresets,
@@ -678,7 +679,7 @@ export default function ChatScreen() {
               ? "/(staff)/channels/[channelId]/tasks"
               : "/(admin)/channels/[channelId]/tasks";
 
-    const isAdmin = me?.role === "admin" || me?.role === "super-admin";
+    const isAdmin = isAdminLikeRole(me?.role);
 
     // Ensure we have user details for mentions
     const handleOpenResources = () => {

@@ -3,6 +3,7 @@ import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { selectUser } from "@/redux/user/user.slice";
 import { getToken as getStoredToken } from "@/storage/auth";
 import { useAppSelector } from "@/store/hooks";
+import { isAdminLikeRole } from "@/utils/roles";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -236,7 +237,7 @@ export default function ReportViewerScreen() {
 
     const user = useAppSelector(selectUser);
     const authToken = useAppSelector((s: any) => s.user.token as string | null);
-    const isAdmin = user?.role === "admin";
+    const isAdmin = isAdminLikeRole(user?.role);
 
     const summaries = useMemo(
         () => channel?.summaries ?? [],

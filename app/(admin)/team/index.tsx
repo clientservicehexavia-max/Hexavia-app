@@ -42,6 +42,7 @@ export default function TeamIndex() {
     const team = useAppSelector(selectAdminUsers).filter(
         (u) =>
             u.role === "staff" ||
+            u.role === "supervisor" ||
             u.role === "admin" ||
             u.role === "super-admin",
     );

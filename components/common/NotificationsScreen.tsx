@@ -38,6 +38,7 @@ import {
 } from "@/redux/notifications/notifications.thunks";
 import { selectUser } from "@/redux/user/user.slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { isAdminLikeRole } from "@/utils/roles";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import PlatformAdaptiveHeader from "./PlatformAdaptiveHeader";
@@ -356,7 +357,7 @@ export default function NotificationsScreen() {
         dispatch(sendMassNotification({ title, message }));
     };
 
-    const isAdmin = user?.role === "admin" || user?.role === "super-admin";
+    const isAdmin = isAdminLikeRole(user?.role);
 
     return (
         <SafeAreaView

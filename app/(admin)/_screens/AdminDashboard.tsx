@@ -23,14 +23,25 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import SectionCard from "@/components/admin/SectionCard";
 import Tile from "@/components/admin/Tile";
 import BotpressFab from "@/components/common/BotpressFab";
+import { selectUser } from "@/redux/user/user.slice";
 import { fetchProfile } from "@/redux/user/user.thunks";
-import { useAppDispatch } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+    canAccessFinanceManagement,
+    canAccessTeamManagement,
+    normalizeRole,
+} from "@/utils/roles";
 
 export default function AdminDashboard() {
     const router = useRouter();
     const dispatch = useAppDispatch();
+    const user = useAppSelector(selectUser);
     const isIOS = Platform.OS === "ios";
     const [refreshing, setRefreshing] = useState(false);
+    const showTeam = canAccessTeamManagement(user?.role);
+    const showFinance = canAccessFinanceManagement(user?.role);
+    const subtitleBadge =
+        normalizeRole(user?.role) === "supervisor" ? "Supervisor" : "Admin";
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -58,7 +69,7 @@ export default function AdminDashboard() {
             >
                 <AdminHeader
                     title="Hi Hexavia!"
-                    subtitleBadge="Admin"
+                    subtitleBadge={subtitleBadge}
                     rightIcon={<Bell size={20} color="#111827" />}
                     onRightPress={() => router.push("/(admin)/notifications")}
                 />
@@ -81,18 +92,30 @@ export default function AdminDashboard() {
                             }
                         />
                     </View>
-                    <View className="flex-row gap-2">
-                        <Tile
-                            title="Team"
-                            icon={<FolderKanban size={22} color="white" />}
-                            onPress={() => router.push("/(admin)/(tabs)/team")}
-                        />
-                        <Tile
-                            title="Finance"
-                            icon={<BarChart3 size={22} color="white" />}
-                            onPress={() => router.push("/(admin)/finance")}
-                        />
-                    </View>
+                    {(showTeam || showFinance) && (
+                        <View className="flex-row gap-2">
+                            {showTeam && (
+                                <Tile
+                                    title="Team"
+                                    icon={
+                                        <FolderKanban size={22} color="white" />
+                                    }
+                                    onPress={() =>
+                                        router.push("/(admin)/(tabs)/team")
+                                    }
+                                />
+                            )}
+                            {showFinance && (
+                                <Tile
+                                    title="Finance"
+                                    icon={<BarChart3 size={22} color="white" />}
+                                    onPress={() =>
+                                        router.push("/(admin)/finance")
+                                    }
+                                />
+                            )}
+                        </View>
+                    )}
                     <View className="flex-row gap-2">
                         <Tile
                             title="Prospects"
