@@ -354,6 +354,32 @@ export default function PartnerDetailScreen() {
                             label="Address"
                             value={partner.address}
                         />
+                        <ContactRow
+                            icon={<Mail size={18} color="#4C5FAB" />}
+                            label="Alternate Email"
+                            value={partner.alternateContactEmail}
+                            onPress={
+                                partner.alternateContactEmail
+                                    ? () =>
+                                          openEmail(
+                                              partner.alternateContactEmail!,
+                                          )
+                                    : undefined
+                            }
+                        />
+                        <ContactRow
+                            icon={<Phone size={18} color="#4C5FAB" />}
+                            label="Alternate Phone"
+                            value={partner.alternateContactPhone}
+                            onPress={
+                                partner.alternateContactPhone
+                                    ? () =>
+                                          dialPhone(
+                                              partner.alternateContactPhone!,
+                                          )
+                                    : undefined
+                            }
+                        />
                     </Section>
 
                     {partner.engagementTags?.length ? (

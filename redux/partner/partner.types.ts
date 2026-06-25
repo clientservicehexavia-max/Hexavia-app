@@ -5,6 +5,8 @@ export type Partner = {
     description?: string;
     contactEmail?: string;
     contactPhone?: string;
+    alternateContactEmail?: string;
+    alternateContactPhone?: string;
     address?: string;
     partnerType?: "individual" | "company" | "investor" | "vendor" | "other";
     industry?: string;
