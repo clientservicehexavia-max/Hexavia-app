@@ -9,6 +9,12 @@ export type ClientStatus =
     | string;
 
 export interface Client {
+    notes?: Array<{
+        title: string;
+        description: string;
+        createdAt?: string;
+        updatedAt?: string;
+    }>;
     phoneNumber?: string;
     _id: string;
     name: string;
@@ -88,6 +94,12 @@ export interface ClientCreateInput {
     documentFile?: { uri: string; name: string; type?: string };
     status?: ClientStatus;
     createdAt?: string;
+    notes?: Array<{
+        title: string;
+        description: string;
+        createdAt?: string;
+        updatedAt?: string;
+    }>;
 }
 
 export type ClientUpdateInput = Partial<ClientCreateInput>;

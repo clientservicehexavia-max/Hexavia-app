@@ -7,7 +7,10 @@ import {
     Check,
     ChevronDown,
     ClipboardCheck,
+    Pencil,
+    Plus,
     Share2,
+    Trash2,
 } from "lucide-react-native";
 import React, {
     useCallback,
@@ -21,6 +24,7 @@ import {
     Alert,
     KeyboardAvoidingView,
     Linking,
+    Modal,
     Platform,
     Pressable,
     ScrollView,
@@ -29,6 +33,7 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as XLSX from "xlsx";
 
 import DatePickerModal from "@/components/admin/DatePickerModal";
 import OptionSheet from "@/components/common/OptionSheet";
@@ -82,6 +87,7 @@ type AdminUser = {
 
 type ApiStatus = "active" | "pending" | "closed";
 type BaseUser = AdminUser & { statusApi: ApiStatus };
+type ClientNote = NonNullable<Client["notes"]>[number];
 
 const BG_INPUT = "#F7F9FC";
 const BORDER = "#E5E7EB";
@@ -475,6 +481,18 @@ export default function ClientDetails() {
     const [uploadingDocument, setUploadingDocument] = useState(false);
     const [documentRemoved, setDocumentRemoved] = useState(false);
     const [showJoinedDatePicker, setShowJoinedDatePicker] = useState(false);
+    const [activeTab, setActiveTab] = useState<"details" | "notes">("details");
+    const [clientNotes, setClientNotes] = useState<ClientNote[]>(
+        clientFromStore?.notes ?? [],
+    );
+    const [noteTitle, setNoteTitle] = useState("");
+    const [noteDescription, setNoteDescription] = useState("");
+    const [savingNote, setSavingNote] = useState(false);
+    const [exportingNotes, setExportingNotes] = useState(false);
+    const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(
+        null,
+    );
+    const [showNoteModal, setShowNoteModal] = useState(false);
     const effectiveIndustry =
         industry === "Other" ? industryOther.trim() : industry.trim();
     const documentLabel =
@@ -951,8 +969,203 @@ export default function ClientDetails() {
         setDocumentFile(null);
         setDocumentName("");
         setDocumentRemoved(false);
+        setClientNotes(clientFromStore?.notes ?? []);
+        setNoteTitle("");
+        setNoteDescription("");
+        setEditingNoteIndex(null);
+        setShowNoteModal(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [baseUser._id]);
+
+    const handleAddNote = useCallback(async () => {
+        if (!id) return;
+        const title = noteTitle.trim();
+        const description = noteDescription.trim();
+
+        if (!title || !description) {
+            Alert.alert(
+                "Missing fields",
+                "Please enter note title and description.",
+            );
+            return;
+        }
+
+        const now = new Date().toISOString();
+        const nextNotes: ClientNote[] =
+            editingNoteIndex === null
+                ? [
+                      {
+                          title,
+                          description,
+                          createdAt: now,
+                          updatedAt: now,
+                      },
+                      ...(clientNotes || []),
+                  ]
+                : (clientNotes || []).map((note, idx) =>
+                      idx === editingNoteIndex
+                          ? {
+                                ...note,
+                                title,
+                                description,
+                                updatedAt: now,
+                            }
+                          : note,
+                  );
+
+        setSavingNote(true);
+        try {
+            const updated = await dispatch(
+                updateClient({
+                    id: String(id),
+                    body: { notes: nextNotes },
+                }),
+            ).unwrap();
+
+            setClientNotes((updated as Client).notes ?? nextNotes);
+            setNoteTitle("");
+            setNoteDescription("");
+            setEditingNoteIndex(null);
+            setShowNoteModal(false);
+        } catch (err: any) {
+            Alert.alert(
+                "Unable to save note",
+                err?.message || "Please try again.",
+            );
+        } finally {
+            setSavingNote(false);
+        }
+    }, [
+        id,
+        noteTitle,
+        noteDescription,
+        clientNotes,
+        editingNoteIndex,
+        dispatch,
+    ]);
+
+    const handleEditNote = useCallback((note: ClientNote, index: number) => {
+        setEditingNoteIndex(index);
+        setNoteTitle(note.title || "");
+        setNoteDescription(note.description || "");
+        setShowNoteModal(true);
+    }, []);
+
+    const handleDeleteNote = useCallback(
+        (index: number) => {
+            if (!id) return;
+
+            Alert.alert(
+                "Delete Note",
+                "Are you sure you want to delete this note?",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: async () => {
+                            const nextNotes = (clientNotes || []).filter(
+                                (_, idx) => idx !== index,
+                            );
+
+                            setSavingNote(true);
+                            try {
+                                const updated = await dispatch(
+                                    updateClient({
+                                        id: String(id),
+                                        body: { notes: nextNotes },
+                                    }),
+                                ).unwrap();
+
+                                setClientNotes(
+                                    (updated as Client).notes ?? nextNotes,
+                                );
+
+                                if (editingNoteIndex === index) {
+                                    setEditingNoteIndex(null);
+                                    setNoteTitle("");
+                                    setNoteDescription("");
+                                } else if (
+                                    editingNoteIndex !== null &&
+                                    editingNoteIndex > index
+                                ) {
+                                    setEditingNoteIndex(editingNoteIndex - 1);
+                                }
+                            } catch (err: any) {
+                                Alert.alert(
+                                    "Unable to delete note",
+                                    err?.message || "Please try again.",
+                                );
+                            } finally {
+                                setSavingNote(false);
+                            }
+                        },
+                    },
+                ],
+            );
+        },
+        [id, clientNotes, editingNoteIndex, dispatch],
+    );
+
+    const handleExportNotes = useCallback(async () => {
+        if (!clientNotes.length) {
+            Alert.alert("No notes", "Add at least one note before exporting.");
+            return;
+        }
+
+        setExportingNotes(true);
+        try {
+            const rows = clientNotes.map((note, idx) => ({
+                S_N: idx + 1,
+                Title: note.title,
+                Description: note.description,
+                Created_At: formatDate(note.createdAt),
+                Updated_At: formatDate(note.updatedAt),
+            }));
+
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Client Notes");
+
+            const fileName = `client-notes-${String(id)}-${Date.now()}.xlsx`;
+
+            if (Platform.OS === "web") {
+                XLSX.writeFile(workbook, fileName);
+                return;
+            }
+
+            const base64 = XLSX.write(workbook, {
+                type: "base64",
+                bookType: "xlsx",
+            });
+            const destination = `${FileSystem.cacheDirectory}${fileName}`;
+
+            await FileSystem.writeAsStringAsync(destination, base64, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(destination, {
+                    mimeType:
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    UTI: "org.openxmlformats.spreadsheetml.sheet",
+                    dialogTitle: "Export Client Notes",
+                });
+            } else {
+                Alert.alert(
+                    "Sharing unavailable",
+                    "Exported file is ready, but sharing is not supported on this device.",
+                );
+            }
+        } catch (err: any) {
+            Alert.alert(
+                "Export failed",
+                err?.message || "Unable to export notes right now.",
+            );
+        } finally {
+            setExportingNotes(false);
+        }
+    }, [clientNotes, id]);
 
     const onSave = async () => {
         if (!id || !dirty) return;
@@ -1003,7 +1216,7 @@ export default function ClientDetails() {
         }
     };
 
-    const saveDisabled = !dirty || mutationLoading;
+    const saveDisabled = activeTab !== "details" || !dirty || mutationLoading;
 
     const onDelete = () => {
         if (!id) return;
@@ -1043,25 +1256,59 @@ export default function ClientDetails() {
             {/* Header */}
             <PlatformAdaptiveHeader
                 title="Client Details"
-                headerRight={({ tintColor }) => (
-                    <Pressable
-                        disabled={saveDisabled}
-                        onPress={onSave}
-                        className="w-10 h-10 rounded-full items-center justify-center"
-                        // style={{
-                        //     marginLeft: mutationLoading ? 8 : 4,
-                        // }}
-                    >
-                        {mutationLoading ? (
-                            <ActivityIndicator size="small" color={tintColor} />
-                        ) : (
-                            <Check
-                                size={28}
-                                color={saveDisabled ? "#9CA3AF" : tintColor}
-                            />
-                        )}
-                    </Pressable>
-                )}
+                headerRight={({ tintColor }) =>
+                    activeTab === "notes" ? (
+                        <View
+                            className="flex-row items-center"
+                            style={{ gap: 8 }}
+                        >
+                            <Pressable
+                                onPress={handleExportNotes}
+                                disabled={exportingNotes}
+                                className="w-10 h-10 rounded-full items-center justify-center"
+                                style={{ opacity: exportingNotes ? 0.6 : 1 }}
+                            >
+                                {exportingNotes ? (
+                                    <ActivityIndicator
+                                        size="small"
+                                        color={tintColor}
+                                    />
+                                ) : (
+                                    <Share2 size={22} color={tintColor} />
+                                )}
+                            </Pressable>
+                            <Pressable
+                                onPress={() => {
+                                    setEditingNoteIndex(null);
+                                    setNoteTitle("");
+                                    setNoteDescription("");
+                                    setShowNoteModal(true);
+                                }}
+                                className="w-10 h-10 bg-primary rounded-full items-center justify-center"
+                            >
+                                <Plus size={28} color="#FFFFFF" />
+                            </Pressable>
+                        </View>
+                    ) : (
+                        <Pressable
+                            disabled={saveDisabled}
+                            onPress={onSave}
+                            className="w-10 h-10 rounded-full items-center justify-center"
+                        >
+                            {mutationLoading ? (
+                                <ActivityIndicator
+                                    size="small"
+                                    color={tintColor}
+                                />
+                            ) : (
+                                <Check
+                                    size={28}
+                                    color={saveDisabled ? "#9CA3AF" : tintColor}
+                                />
+                            )}
+                        </Pressable>
+                    )
+                }
             />
             {detailLoading && !clientFromStore ? (
                 <View className="flex-1 items-center justify-center">
@@ -1072,6 +1319,61 @@ export default function ClientDetails() {
                 </View>
             ) : (
                 <>
+                    <View className="px-4 mt-2 mb-1">
+                        <View
+                            className="rounded-2xl p-1 flex-row border"
+                            style={{
+                                backgroundColor: "#F8FAFC",
+                                borderColor: "#E2E8F0",
+                            }}
+                        >
+                            <Pressable
+                                onPress={() => setActiveTab("details")}
+                                className="flex-1 rounded-xl py-2.5 items-center"
+                                style={{
+                                    backgroundColor:
+                                        activeTab === "details"
+                                            ? "#4C5FAB"
+                                            : "transparent",
+                                }}
+                            >
+                                <Text
+                                    className="font-kumbhBold"
+                                    style={{
+                                        color:
+                                            activeTab === "details"
+                                                ? "#FFFFFF"
+                                                : "#374151",
+                                    }}
+                                >
+                                    Details
+                                </Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={() => setActiveTab("notes")}
+                                className="flex-1 rounded-xl py-2.5 items-center"
+                                style={{
+                                    backgroundColor:
+                                        activeTab === "notes"
+                                            ? "#4C5FAB"
+                                            : "transparent",
+                                }}
+                            >
+                                <Text
+                                    className="font-kumbhBold"
+                                    style={{
+                                        color:
+                                            activeTab === "notes"
+                                                ? "#FFFFFF"
+                                                : "#374151",
+                                    }}
+                                >
+                                    Notes
+                                </Text>
+                            </Pressable>
+                        </View>
+                    </View>
+
                     <KeyboardAvoidingWidget>
                         <ScrollView
                             contentContainerStyle={{
@@ -1079,306 +1381,389 @@ export default function ClientDetails() {
                                 paddingHorizontal: 14,
                             }}
                         >
-                            <View className="mt-3">
-                                {/* Name */}
-                                <FieldLabel>Name</FieldLabel>
-                                <Input value={name} onChangeText={setName} />
-
-                                {/* Project Name */}
-                                <View className="mt-4">
-                                    <FieldLabel>Project Name</FieldLabel>
+                            {activeTab === "details" ? (
+                                <View className="mt-3">
+                                    {/* Name */}
+                                    <FieldLabel>Name</FieldLabel>
                                     <Input
-                                        value={projectName}
-                                        onChangeText={setProjectName}
+                                        value={name}
+                                        onChangeText={setName}
                                     />
-                                </View>
 
-                                {/* Email */}
-                                <View className="mt-4">
-                                    <FieldLabel>Email</FieldLabel>
-                                    <Input
-                                        value={email}
-                                        onChangeText={setEmail}
-                                        placeholder="example@domain.com"
-                                    />
-                                </View>
-
-                                {/* Phone Number */}
-                                <View className="mt-4">
-                                    <FieldLabel>Phone Number</FieldLabel>
-                                    <Input
-                                        value={phoneNumber}
-                                        onChangeText={setPhoneNumber}
-                                        placeholder="080..."
-                                        keyboardType="numeric"
-                                    />
-                                </View>
-
-                                {/* Industry | Staff Size */}
-                                <View className="mt-4">
-                                    <TwoCol>
-                                        <View style={{ flex: 1 }}>
-                                            <FieldLabel>Industry</FieldLabel>
-                                            <Pressable
-                                                onPress={() =>
-                                                    setShowIndustrySheet(true)
-                                                }
-                                                className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
-                                                style={{
-                                                    backgroundColor: BG_INPUT,
-                                                    borderColor: BORDER,
-                                                }}
-                                            >
-                                                <Text className="font-kumbh text-[#111827]">
-                                                    {industry
-                                                        ? industry
-                                                        : "Select Industry"}
-                                                </Text>
-                                                <ChevronDown
-                                                    size={18}
-                                                    color="#111827"
-                                                />
-                                            </Pressable>
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <FieldLabel>Staff Size</FieldLabel>
-                                            <Pressable
-                                                onPress={() =>
-                                                    setShowStaffSizeSheet(true)
-                                                }
-                                                className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
-                                                style={{
-                                                    backgroundColor: BG_INPUT,
-                                                    borderColor: BORDER,
-                                                }}
-                                            >
-                                                <Text className="font-kumbh text-[#111827]">
-                                                    {staffSize
-                                                        ? (STAFF_SIZE_OPTIONS.find(
-                                                              (opt) =>
-                                                                  opt.value ===
-                                                                  Number(
-                                                                      staffSize,
-                                                                  ),
-                                                          )?.label ?? staffSize)
-                                                        : "Select Staff Size"}
-                                                </Text>
-                                                <ChevronDown
-                                                    size={18}
-                                                    color="#111827"
-                                                />
-                                            </Pressable>
-                                        </View>
-                                    </TwoCol>
-                                </View>
-                                {industry === "Other" ? (
+                                    {/* Project Name */}
                                     <View className="mt-4">
-                                        <FieldLabel>Other Industry</FieldLabel>
+                                        <FieldLabel>Project Name</FieldLabel>
                                         <Input
-                                            value={industryOther}
-                                            onChangeText={setIndustryOther}
-                                            placeholder="Enter industry"
+                                            value={projectName}
+                                            onChangeText={setProjectName}
                                         />
                                     </View>
-                                ) : null}
 
-                                {/* Description */}
-                                <View className="mt-4">
-                                    <FieldLabel>Description</FieldLabel>
-                                    <Input
-                                        value={description}
-                                        onChangeText={setDescription}
-                                        multiline
-                                    />
-                                </View>
+                                    {/* Email */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Email</FieldLabel>
+                                        <Input
+                                            value={email}
+                                            onChangeText={setEmail}
+                                            placeholder="example@domain.com"
+                                        />
+                                    </View>
 
-                                {/* Problems Faced */}
-                                <View className="mt-4">
-                                    <FieldLabel>Problems Faced</FieldLabel>
-                                    <Input
-                                        value={problems}
-                                        onChangeText={setProblems}
-                                        multiline
-                                    />
-                                </View>
+                                    {/* Phone Number */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Phone Number</FieldLabel>
+                                        <Input
+                                            value={phoneNumber}
+                                            onChangeText={setPhoneNumber}
+                                            placeholder="080..."
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
 
-                                {/* Strengths */}
-                                <View className="mt-4">
-                                    <FieldLabel>Strengths</FieldLabel>
-                                    <Input
-                                        value={strength}
-                                        onChangeText={setStrength}
-                                        multiline
-                                    />
-                                </View>
-
-                                {/* Weakness */}
-                                <View className="mt-4">
-                                    <FieldLabel>Weakness</FieldLabel>
-                                    <Input
-                                        value={weakness}
-                                        onChangeText={setWeakness}
-                                        multiline
-                                    />
-                                </View>
-
-                                {/* Opportunities */}
-                                <View className="mt-4">
-                                    <FieldLabel>Opportunities</FieldLabel>
-                                    <Input
-                                        value={opportunities}
-                                        onChangeText={setOpportunities}
-                                        multiline
-                                    />
-                                </View>
-
-                                {/* Threats */}
-                                <View className="mt-4">
-                                    <FieldLabel>Threats</FieldLabel>
-                                    <Input
-                                        value={threats}
-                                        onChangeText={setThreats}
-                                        multiline
-                                    />
-                                </View>
-
-                                {/* Engagement Offered */}
-                                <View className="mt-4">
-                                    <FieldLabel>Engagement Offered</FieldLabel>
-                                    <Input
-                                        value={engagement}
-                                        onChangeText={setEngagement}
-                                    />
-                                </View>
-
-                                {/* Deliverables */}
-                                <View className="mt-4">
-                                    <FieldLabel>Deliverables</FieldLabel>
-                                    <Input
-                                        value={deliverables}
-                                        onChangeText={setDeliverables}
-                                    />
-                                </View>
-
-                                {/* Payable Amount | Status */}
-                                <View className="mt-4">
-                                    <TwoCol>
-                                        <View style={{ flex: 1 }}>
+                                    {/* Industry | Staff Size */}
+                                    <View className="mt-4">
+                                        <TwoCol>
+                                            <View style={{ flex: 1 }}>
+                                                <FieldLabel>
+                                                    Industry
+                                                </FieldLabel>
+                                                <Pressable
+                                                    onPress={() =>
+                                                        setShowIndustrySheet(
+                                                            true,
+                                                        )
+                                                    }
+                                                    className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
+                                                    style={{
+                                                        backgroundColor:
+                                                            BG_INPUT,
+                                                        borderColor: BORDER,
+                                                    }}
+                                                >
+                                                    <Text className="font-kumbh text-[#111827]">
+                                                        {industry
+                                                            ? industry
+                                                            : "Select Industry"}
+                                                    </Text>
+                                                    <ChevronDown
+                                                        size={18}
+                                                        color="#111827"
+                                                    />
+                                                </Pressable>
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <FieldLabel>
+                                                    Staff Size
+                                                </FieldLabel>
+                                                <Pressable
+                                                    onPress={() =>
+                                                        setShowStaffSizeSheet(
+                                                            true,
+                                                        )
+                                                    }
+                                                    className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
+                                                    style={{
+                                                        backgroundColor:
+                                                            BG_INPUT,
+                                                        borderColor: BORDER,
+                                                    }}
+                                                >
+                                                    <Text className="font-kumbh text-[#111827]">
+                                                        {staffSize
+                                                            ? (STAFF_SIZE_OPTIONS.find(
+                                                                  (opt) =>
+                                                                      opt.value ===
+                                                                      Number(
+                                                                          staffSize,
+                                                                      ),
+                                                              )?.label ??
+                                                              staffSize)
+                                                            : "Select Staff Size"}
+                                                    </Text>
+                                                    <ChevronDown
+                                                        size={18}
+                                                        color="#111827"
+                                                    />
+                                                </Pressable>
+                                            </View>
+                                        </TwoCol>
+                                    </View>
+                                    {industry === "Other" ? (
+                                        <View className="mt-4">
                                             <FieldLabel>
-                                                Payable Amount
+                                                Other Industry
                                             </FieldLabel>
                                             <Input
-                                                value={
-                                                    payableFocused
-                                                        ? parseMoney(payable)
-                                                        : formatGroupedMoneyInput(
-                                                              payable,
-                                                          )
-                                                }
-                                                onChangeText={(t) =>
-                                                    setPayable(
-                                                        sanitizeMoneyInput(t),
-                                                    )
-                                                }
-                                                onFocus={() =>
-                                                    setPayableFocused(true)
-                                                }
-                                                onBlur={() => {
-                                                    setPayable(
-                                                        moneyToInput(
-                                                            parseMoney(payable),
-                                                        ),
-                                                    );
-                                                    setPayableFocused(false);
-                                                }}
-                                                keyboardType={
-                                                    Platform.OS === "ios"
-                                                        ? "decimal-pad"
-                                                        : "numeric"
-                                                }
+                                                value={industryOther}
+                                                onChangeText={setIndustryOther}
+                                                placeholder="Enter industry"
                                             />
                                         </View>
+                                    ) : null}
 
-                                        <View style={{ flex: 1 }}>
-                                            <FieldLabel>Status</FieldLabel>
-                                            <Pressable
-                                                onPress={() =>
-                                                    setStatusOpen(true)
-                                                }
-                                                className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
-                                                style={{
-                                                    backgroundColor: BG_INPUT,
-                                                    borderColor: BORDER,
-                                                }}
-                                            >
-                                                <Text className="font-kumbh text-[#111827]">
-                                                    {toUiLabel(statusApi)}
-                                                </Text>
-                                                <ChevronDown
-                                                    size={18}
-                                                    color="#111827"
+                                    {/* Description */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Description</FieldLabel>
+                                        <Input
+                                            value={description}
+                                            onChangeText={setDescription}
+                                            multiline
+                                        />
+                                    </View>
+
+                                    {/* Problems Faced */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Problems Faced</FieldLabel>
+                                        <Input
+                                            value={problems}
+                                            onChangeText={setProblems}
+                                            multiline
+                                        />
+                                    </View>
+
+                                    {/* Strengths */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Strengths</FieldLabel>
+                                        <Input
+                                            value={strength}
+                                            onChangeText={setStrength}
+                                            multiline
+                                        />
+                                    </View>
+
+                                    {/* Weakness */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Weakness</FieldLabel>
+                                        <Input
+                                            value={weakness}
+                                            onChangeText={setWeakness}
+                                            multiline
+                                        />
+                                    </View>
+
+                                    {/* Opportunities */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Opportunities</FieldLabel>
+                                        <Input
+                                            value={opportunities}
+                                            onChangeText={setOpportunities}
+                                            multiline
+                                        />
+                                    </View>
+
+                                    {/* Threats */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Threats</FieldLabel>
+                                        <Input
+                                            value={threats}
+                                            onChangeText={setThreats}
+                                            multiline
+                                        />
+                                    </View>
+
+                                    {/* Engagement Offered */}
+                                    <View className="mt-4">
+                                        <FieldLabel>
+                                            Engagement Offered
+                                        </FieldLabel>
+                                        <Input
+                                            value={engagement}
+                                            onChangeText={setEngagement}
+                                        />
+                                    </View>
+
+                                    {/* Deliverables */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Deliverables</FieldLabel>
+                                        <Input
+                                            value={deliverables}
+                                            onChangeText={setDeliverables}
+                                        />
+                                    </View>
+
+                                    {/* Payable Amount | Status */}
+                                    <View className="mt-4">
+                                        <TwoCol>
+                                            <View style={{ flex: 1 }}>
+                                                <FieldLabel>
+                                                    Payable Amount
+                                                </FieldLabel>
+                                                <Input
+                                                    value={
+                                                        payableFocused
+                                                            ? parseMoney(
+                                                                  payable,
+                                                              )
+                                                            : formatGroupedMoneyInput(
+                                                                  payable,
+                                                              )
+                                                    }
+                                                    onChangeText={(t) =>
+                                                        setPayable(
+                                                            sanitizeMoneyInput(
+                                                                t,
+                                                            ),
+                                                        )
+                                                    }
+                                                    onFocus={() =>
+                                                        setPayableFocused(true)
+                                                    }
+                                                    onBlur={() => {
+                                                        setPayable(
+                                                            moneyToInput(
+                                                                parseMoney(
+                                                                    payable,
+                                                                ),
+                                                            ),
+                                                        );
+                                                        setPayableFocused(
+                                                            false,
+                                                        );
+                                                    }}
+                                                    keyboardType={
+                                                        Platform.OS === "ios"
+                                                            ? "decimal-pad"
+                                                            : "numeric"
+                                                    }
                                                 />
-                                            </Pressable>
-                                        </View>
-                                    </TwoCol>
-                                </View>
+                                            </View>
 
-                                {/* tiny footer note */}
-                                {/* <View className="items-center mt-3">
+                                            <View style={{ flex: 1 }}>
+                                                <FieldLabel>Status</FieldLabel>
+                                                <Pressable
+                                                    onPress={() =>
+                                                        setStatusOpen(true)
+                                                    }
+                                                    className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
+                                                    style={{
+                                                        backgroundColor:
+                                                            BG_INPUT,
+                                                        borderColor: BORDER,
+                                                    }}
+                                                >
+                                                    <Text className="font-kumbh text-[#111827]">
+                                                        {toUiLabel(statusApi)}
+                                                    </Text>
+                                                    <ChevronDown
+                                                        size={18}
+                                                        color="#111827"
+                                                    />
+                                                </Pressable>
+                                            </View>
+                                        </TwoCol>
+                                    </View>
+
+                                    {/* tiny footer note */}
+                                    {/* <View className="items-center mt-3">
                   <Text className="text-[12px] text-[#6B7280] font-kumbh">
                     Generate Invoice
                   </Text>
                 </View> */}
 
-                                {/* Joined (read-only) */}
-                                <View className="mt-6">
-                                    <FieldLabel>Joined</FieldLabel>
-                                    <Pressable
-                                        onPress={() => {
-                                            setJoinedPickerDate(
-                                                parseDateOrNow(joined),
-                                            );
-                                            setShowJoinedDatePicker(true);
-                                        }}
-                                        className="rounded-2xl px-4 py-3"
-                                        style={{
-                                            backgroundColor: BG_INPUT,
-                                            borderColor: BORDER,
-                                        }}
-                                    >
-                                        <Text className="font-kumbh text-[#111827]">
-                                            {formatDate(
-                                                toIsoDateOrUndefined(joined),
-                                            )}
-                                        </Text>
-                                    </Pressable>
-                                </View>
-
-                                {/* Client Document */}
-                                <View className="mt-6">
-                                    <FieldLabel>
-                                        Client Document (PDF)
-                                    </FieldLabel>
-                                    <View
-                                        className="rounded-2xl border border-gray-200 p-4"
-                                        style={{ backgroundColor: BG_INPUT }}
-                                    >
-                                        <Text className="font-kumbh text-[#111827]">
-                                            {documentLabel}
-                                        </Text>
-                                        <View
-                                            className="mt-3 flex-row"
-                                            style={{ gap: 10 }}
+                                    {/* Joined (read-only) */}
+                                    <View className="mt-6">
+                                        <FieldLabel>Joined</FieldLabel>
+                                        <Pressable
+                                            onPress={() => {
+                                                setJoinedPickerDate(
+                                                    parseDateOrNow(joined),
+                                                );
+                                                setShowJoinedDatePicker(true);
+                                            }}
+                                            className="rounded-2xl px-4 py-3"
+                                            style={{
+                                                backgroundColor: BG_INPUT,
+                                                borderColor: BORDER,
+                                            }}
                                         >
+                                            <Text className="font-kumbh text-[#111827]">
+                                                {formatDate(
+                                                    toIsoDateOrUndefined(
+                                                        joined,
+                                                    ),
+                                                )}
+                                            </Text>
+                                        </Pressable>
+                                    </View>
+
+                                    {/* Client Document */}
+                                    <View className="mt-6">
+                                        <FieldLabel>
+                                            Client Document (PDF)
+                                        </FieldLabel>
+                                        <View
+                                            className="rounded-2xl border border-gray-200 p-4"
+                                            style={{
+                                                backgroundColor: BG_INPUT,
+                                            }}
+                                        >
+                                            <Text className="font-kumbh text-[#111827]">
+                                                {documentLabel}
+                                            </Text>
+                                            <View
+                                                className="mt-3 flex-row"
+                                                style={{ gap: 10 }}
+                                            >
+                                                <Pressable
+                                                    onPress={handleSaveDocument}
+                                                    disabled={
+                                                        !documentLink &&
+                                                        !documentFile
+                                                    }
+                                                    className="flex-1 rounded-2xl px-3 py-3 items-center"
+                                                    style={{
+                                                        backgroundColor:
+                                                            PRIMARY,
+                                                        opacity:
+                                                            !documentLink &&
+                                                            !documentFile
+                                                                ? 0.5
+                                                                : 1,
+                                                    }}
+                                                >
+                                                    <Text className="font-kumbhBold text-white">
+                                                        Save PDF
+                                                    </Text>
+                                                </Pressable>
+                                                <Pressable
+                                                    onPress={
+                                                        handleAttachDocument
+                                                    }
+                                                    disabled={uploadingDocument}
+                                                    className="flex-1 rounded-2xl px-3 py-3 items-center border"
+                                                    style={{
+                                                        borderColor: PRIMARY,
+                                                        backgroundColor:
+                                                            "transparent",
+                                                        opacity:
+                                                            uploadingDocument
+                                                                ? 0.6
+                                                                : 1,
+                                                    }}
+                                                >
+                                                    <Text
+                                                        className="font-kumbhBold"
+                                                        style={{
+                                                            color: PRIMARY,
+                                                        }}
+                                                    >
+                                                        {documentFile
+                                                            ? "Replace"
+                                                            : "Upload"}
+                                                    </Text>
+                                                </Pressable>
+                                            </View>
                                             <Pressable
-                                                onPress={handleSaveDocument}
+                                                onPress={handleRemoveDocument}
                                                 disabled={
                                                     !documentLink &&
                                                     !documentFile
                                                 }
-                                                className="flex-1 rounded-2xl px-3 py-3 items-center"
+                                                className="mt-3 rounded-2xl px-3 py-3 items-center border"
                                                 style={{
-                                                    backgroundColor: PRIMARY,
+                                                    borderColor: "#DC2626",
+                                                    backgroundColor:
+                                                        "transparent",
                                                     opacity:
                                                         !documentLink &&
                                                         !documentFile
@@ -1386,137 +1771,211 @@ export default function ClientDetails() {
                                                             : 1,
                                                 }}
                                             >
-                                                <Text className="font-kumbhBold text-white">
-                                                    Save PDF
-                                                </Text>
-                                            </Pressable>
-                                            <Pressable
-                                                onPress={handleAttachDocument}
-                                                disabled={uploadingDocument}
-                                                className="flex-1 rounded-2xl px-3 py-3 items-center border"
-                                                style={{
-                                                    borderColor: PRIMARY,
-                                                    backgroundColor:
-                                                        "transparent",
-                                                    opacity: uploadingDocument
-                                                        ? 0.6
-                                                        : 1,
-                                                }}
-                                            >
                                                 <Text
                                                     className="font-kumbhBold"
-                                                    style={{ color: PRIMARY }}
+                                                    style={{ color: "#DC2626" }}
                                                 >
-                                                    {documentFile
-                                                        ? "Replace"
-                                                        : "Upload"}
+                                                    Remove Document
                                                 </Text>
                                             </Pressable>
                                         </View>
-                                        <Pressable
-                                            onPress={handleRemoveDocument}
-                                            disabled={
-                                                !documentLink && !documentFile
+                                    </View>
+
+                                    {/* Buttons row */}
+                                    <View
+                                        className="mt-6 flex-row"
+                                        style={{ gap: 12 }}
+                                    >
+                                        <View style={{ flex: 1 }}>
+                                            <PillButton
+                                                variant="primary"
+                                                icon={
+                                                    <ClipboardCheck
+                                                        size={16}
+                                                        color="#fff"
+                                                    />
+                                                }
+                                                label="Client Installment"
+                                                onPress={() => {
+                                                    router.push({
+                                                        pathname:
+                                                            "/(admin)/clients/installments",
+                                                        params: {
+                                                            clientId: id,
+                                                        },
+                                                    });
+                                                }}
+                                            />
+                                        </View>
+                                    </View>
+                                    <View className="mt-3">
+                                        <PillButton
+                                            variant="outline"
+                                            icon={
+                                                isGeneratingPdf ? (
+                                                    <ActivityIndicator
+                                                        size="small"
+                                                        color={PRIMARY}
+                                                    />
+                                                ) : (
+                                                    <Share2
+                                                        size={16}
+                                                        color={PRIMARY}
+                                                    />
+                                                )
                                             }
-                                            className="mt-3 rounded-2xl px-3 py-3 items-center border"
+                                            label={
+                                                isGeneratingPdf
+                                                    ? "Generating..."
+                                                    : "Share Client PDF"
+                                            }
+                                            disabled={isGeneratingPdf}
+                                            onPress={handleShareClientPdf}
+                                        />
+                                    </View>
+
+                                    {/* Delete */}
+                                    <View className="mt-6">
+                                        <Pressable
+                                            disabled={mutationLoading}
+                                            onPress={onDelete}
+                                            className="rounded-2xl py-4 items-center border"
                                             style={{
-                                                borderColor: "#DC2626",
-                                                backgroundColor: "transparent",
-                                                opacity:
-                                                    !documentLink &&
-                                                    !documentFile
-                                                        ? 0.5
-                                                        : 1,
+                                                borderColor: mutationLoading
+                                                    ? "#FCA5A5"
+                                                    : "#DC2626",
+                                                backgroundColor: mutationLoading
+                                                    ? "#FEE2E2"
+                                                    : "#FEE2E2",
+                                                opacity: mutationLoading
+                                                    ? 0.7
+                                                    : 1,
                                             }}
                                         >
                                             <Text
                                                 className="font-kumbhBold"
-                                                style={{ color: "#DC2626" }}
+                                                style={{ color: "#B91C1C" }}
                                             >
-                                                Remove Document
+                                                {mutationLoading
+                                                    ? "Processing..."
+                                                    : "Delete Client"}
                                             </Text>
                                         </Pressable>
                                     </View>
                                 </View>
+                            ) : (
+                                <View className="mt-3">
+                                    <View>
+                                        <View className="flex-row items-center justify-between mb-2">
+                                            <Text className="font-kumbhBold text-[#0F172A] text-base">
+                                                Saved Notes
+                                            </Text>
 
-                                {/* Buttons row */}
-                                <View
-                                    className="mt-6 flex-row"
-                                    style={{ gap: 12 }}
-                                >
-                                    <View style={{ flex: 1 }}>
-                                        <PillButton
-                                            variant="primary"
-                                            icon={
-                                                <ClipboardCheck
-                                                    size={16}
-                                                    color="#fff"
-                                                />
-                                            }
-                                            label="Client Installment"
-                                            onPress={() => {
-                                                router.push({
-                                                    pathname:
-                                                        "/(admin)/clients/installments",
-                                                    params: { clientId: id },
-                                                });
-                                            }}
-                                        />
+                                            <Text className="font-kumbh text-[#64748B] mb-3">
+                                                {clientNotes.length} total
+                                            </Text>
+                                        </View>
+
+                                        <View style={{ gap: 10 }}>
+                                            {clientNotes.length === 0 ? (
+                                                <View
+                                                    className="rounded-2xl p-5 border"
+                                                    style={{
+                                                        backgroundColor:
+                                                            "#F9FAFB",
+                                                        borderColor: "#E5E7EB",
+                                                    }}
+                                                >
+                                                    <Text className="font-kumbhBold text-[#334155] text-sm">
+                                                        No Notes Yet
+                                                    </Text>
+                                                    <Text className="font-kumbh text-gray-500 mt-1">
+                                                        No notes added yet for
+                                                        this client.
+                                                    </Text>
+                                                </View>
+                                            ) : (
+                                                clientNotes.map(
+                                                    (note, index) => (
+                                                        <View
+                                                            key={`${note.createdAt || "note"}-${index}`}
+                                                            className="rounded-2xl p-4 border"
+                                                            style={{
+                                                                borderColor:
+                                                                    "#E2E8F0",
+                                                                backgroundColor:
+                                                                    "#FFFFFF",
+                                                            }}
+                                                        >
+                                                            <View className="flex-row items-center justify-between">
+                                                                <Text className="font-kumbhBold text-[#111827] text-base flex-1 pr-3">
+                                                                    {note.title}
+                                                                </Text>
+                                                                <View
+                                                                    className="flex-row items-center"
+                                                                    style={{
+                                                                        gap: 8,
+                                                                    }}
+                                                                >
+                                                                    <Pressable
+                                                                        onPress={() =>
+                                                                            handleEditNote(
+                                                                                note,
+                                                                                index,
+                                                                            )
+                                                                        }
+                                                                        className="w-9 h-9 rounded-full items-center justify-center"
+                                                                        style={{
+                                                                            backgroundColor:
+                                                                                "#EEF2FF",
+                                                                        }}
+                                                                    >
+                                                                        <Pencil
+                                                                            size={
+                                                                                16
+                                                                            }
+                                                                            color="#4338CA"
+                                                                        />
+                                                                    </Pressable>
+                                                                    <Pressable
+                                                                        onPress={() =>
+                                                                            handleDeleteNote(
+                                                                                index,
+                                                                            )
+                                                                        }
+                                                                        className="w-9 h-9 rounded-full items-center justify-center"
+                                                                        style={{
+                                                                            backgroundColor:
+                                                                                "#FEE2E2",
+                                                                        }}
+                                                                    >
+                                                                        <Trash2
+                                                                            size={
+                                                                                16
+                                                                            }
+                                                                            color="#B91C1C"
+                                                                        />
+                                                                    </Pressable>
+                                                                </View>
+                                                            </View>
+                                                            <Text className="mt-2 font-kumbh text-gray-700">
+                                                                {
+                                                                    note.description
+                                                                }
+                                                            </Text>
+                                                            <Text className="mt-3 font-kumbh text-xs text-gray-500">
+                                                                {formatDate(
+                                                                    note.createdAt,
+                                                                )}
+                                                            </Text>
+                                                        </View>
+                                                    ),
+                                                )
+                                            )}
+                                        </View>
                                     </View>
                                 </View>
-                                <View className="mt-3">
-                                    <PillButton
-                                        variant="outline"
-                                        icon={
-                                            isGeneratingPdf ? (
-                                                <ActivityIndicator
-                                                    size="small"
-                                                    color={PRIMARY}
-                                                />
-                                            ) : (
-                                                <Share2
-                                                    size={16}
-                                                    color={PRIMARY}
-                                                />
-                                            )
-                                        }
-                                        label={
-                                            isGeneratingPdf
-                                                ? "Generating..."
-                                                : "Share Client PDF"
-                                        }
-                                        disabled={isGeneratingPdf}
-                                        onPress={handleShareClientPdf}
-                                    />
-                                </View>
-
-                                {/* Delete */}
-                                <View className="mt-6">
-                                    <Pressable
-                                        disabled={mutationLoading}
-                                        onPress={onDelete}
-                                        className="rounded-2xl py-4 items-center border"
-                                        style={{
-                                            borderColor: mutationLoading
-                                                ? "#FCA5A5"
-                                                : "#DC2626",
-                                            backgroundColor: mutationLoading
-                                                ? "#FEE2E2"
-                                                : "#FEE2E2",
-                                            opacity: mutationLoading ? 0.7 : 1,
-                                        }}
-                                    >
-                                        <Text
-                                            className="font-kumbhBold"
-                                            style={{ color: "#B91C1C" }}
-                                        >
-                                            {mutationLoading
-                                                ? "Processing..."
-                                                : "Delete Client"}
-                                        </Text>
-                                    </Pressable>
-                                </View>
-                            </View>
+                            )}
                         </ScrollView>
                     </KeyboardAvoidingWidget>
 
@@ -1571,6 +2030,96 @@ export default function ClientDetails() {
                             setJoined(toIsoDateInput(d.toISOString()));
                         }}
                     />
+
+                    <Modal
+                        visible={showNoteModal}
+                        transparent
+                        animationType="slide"
+                        onRequestClose={() => setShowNoteModal(false)}
+                    >
+                        <View className="flex-1 bg-black/40 justify-end">
+                            <KeyboardAvoidingView
+                                behavior={
+                                    Platform.OS === "ios"
+                                        ? "padding"
+                                        : undefined
+                                }
+                            >
+                                <View className="bg-white rounded-t-3xl px-5 pt-5 pb-6">
+                                    <View className="items-center mb-3">
+                                        <View className="w-14 h-1.5 rounded-full bg-gray-300" />
+                                    </View>
+
+                                    <Text className="font-kumbhBold text-[#111827] text-lg">
+                                        {editingNoteIndex === null
+                                            ? "Add Note"
+                                            : "Edit Note"}
+                                    </Text>
+                                    <Text className="font-kumbh text-xs text-[#64748B] mt-1 mb-4">
+                                        Capture important context for this
+                                        client.
+                                    </Text>
+
+                                    <FieldLabel>Title</FieldLabel>
+                                    <Input
+                                        value={noteTitle}
+                                        onChangeText={setNoteTitle}
+                                        placeholder="Enter note title"
+                                    />
+
+                                    <View className="mt-4">
+                                        <FieldLabel>Description</FieldLabel>
+                                        <Input
+                                            value={noteDescription}
+                                            onChangeText={setNoteDescription}
+                                            placeholder="Enter note details"
+                                            multiline
+                                        />
+                                    </View>
+
+                                    <View
+                                        className="flex-row mt-5"
+                                        style={{ gap: 10 }}
+                                    >
+                                        <Pressable
+                                            onPress={() => {
+                                                setShowNoteModal(false);
+                                                setEditingNoteIndex(null);
+                                                setNoteTitle("");
+                                                setNoteDescription("");
+                                            }}
+                                            className="flex-1 rounded-2xl py-3.5 items-center border"
+                                            style={{
+                                                borderColor: "#CBD5E1",
+                                                backgroundColor: "#FFFFFF",
+                                            }}
+                                        >
+                                            <Text className="font-kumbhBold text-[#334155]">
+                                                Cancel
+                                            </Text>
+                                        </Pressable>
+                                        <Pressable
+                                            onPress={handleAddNote}
+                                            disabled={savingNote}
+                                            className="flex-1 rounded-2xl py-3.5 items-center"
+                                            style={{
+                                                backgroundColor: PRIMARY,
+                                                opacity: savingNote ? 0.7 : 1,
+                                            }}
+                                        >
+                                            <Text className="font-kumbhBold text-white">
+                                                {savingNote
+                                                    ? "Saving..."
+                                                    : editingNoteIndex === null
+                                                      ? "Add Note"
+                                                      : "Save Changes"}
+                                            </Text>
+                                        </Pressable>
+                                    </View>
+                                </View>
+                            </KeyboardAvoidingView>
+                        </View>
+                    </Modal>
                 </>
             )}
         </SafeAreaView>
