@@ -673,7 +673,23 @@ export default function FinanceIndex() {
             )}
 
             {/* Header */}
-            <PlatformAdaptiveHeader title="Finance" />
+            <PlatformAdaptiveHeader
+                title="Finance"
+                headerRight={({ tintColor }) => (
+                    <Pressable
+                        onPress={() => {
+                            if (tab === "Receivables") {
+                                router.push("/(admin)/finance/receivable");
+                            } else {
+                                router.push("/(admin)/finance/form");
+                            }
+                        }}
+                        className="w-10 h-10 rounded-full items-center justify-center"
+                    >
+                        <Plus size={28} color={tintColor} />
+                    </Pressable>
+                )}
+            />
 
             {/* Total card */}
             <View className="px-5 mt-2">
@@ -732,7 +748,7 @@ export default function FinanceIndex() {
                                             {section.title}
                                         </Text>
                                         <Text className="text-[#111827] font-kumbhBold">
-                                            Total: {NGN(section.monthTotal)}
+                                            {NGN(section.monthTotal)}
                                         </Text>
                                     </View>
                                 </View>
@@ -774,28 +790,6 @@ export default function FinanceIndex() {
                     inactiveColor: "#6B7280",
                 }}
             />
-
-            {/* Floating button */}
-            <Pressable
-                onPress={() => {
-                    if (tab === "Receivables") {
-                        router.push("/(admin)/finance/receivable");
-                    } else {
-                        router.push("/(admin)/finance/form");
-                    }
-                }}
-                className="absolute right-5 bottom-10 px-4 h-12 rounded-2xl bg-[#4C5FAB] flex-row items-center"
-                style={{ paddingHorizontal: 16 }}
-            >
-                <View className="w-6 h-6 rounded-full bg-white/15 items-center justify-center mr-2">
-                    <Plus size={16} color="#fff" />
-                </View>
-                <Text className="text-white font-kumbhBold">
-                    {tab === "Expenses"
-                        ? "Record Expense"
-                        : "Record Receivable"}
-                </Text>
-            </Pressable>
 
             {/* ───────── Client Picker Modal ───────── */}
             <Modal

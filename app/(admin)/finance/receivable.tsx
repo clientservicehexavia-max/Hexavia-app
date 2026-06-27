@@ -204,10 +204,7 @@ export default function ReceivableForm() {
                     contentContainerClassName="px-5 pb-10 pt-2"
                     keyboardShouldPersistTaps="handled"
                 >
-                    <Text className="android:text-xl ios:text-2xl font-kumbhBold text-[#111827]">
-                        {isEditing ? "Edit Receivable" : "Record Receivable"}
-                    </Text>
-                    <Text className="text-[14px] text-gray-500 font-kumbh mb-6">
+                    <Text className="text-[14px] text-gray-500 font-kumbh my-6">
                         {isEditing
                             ? "Update this external receivable"
                             : "Add a manual receivable for an external client"}

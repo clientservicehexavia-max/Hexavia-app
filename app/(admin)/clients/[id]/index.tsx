@@ -1871,7 +1871,7 @@ export default function ClientDetails() {
                                                 Saved Notes
                                             </Text>
 
-                                            <Text className="font-kumbh text-[#64748B] mb-3">
+                                            <Text className="font-kumbh text-[#64748B]">
                                                 {clientNotes.length} total
                                             </Text>
                                         </View>
