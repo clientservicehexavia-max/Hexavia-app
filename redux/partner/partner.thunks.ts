@@ -3,7 +3,7 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import type { Partner, PartnerListResponse } from "./partner.types";
 
 export const fetchPartners = createAsyncThunk<
-    PartnerListResponse["data"]["partners"],
+    PartnerListResponse["data"],
     {
         status?: string;
         search?: string;
@@ -29,7 +29,7 @@ export const fetchPartners = createAsyncThunk<
                 },
             },
         );
-        return data.data.partners;
+        return data.data;
     } catch (err: any) {
         return rejectWithValue({
             message:

@@ -9,6 +9,7 @@ import { fetchDeals } from "@/redux/deal/deal.thunks";
 import type { Deal } from "@/redux/deal/deal.types";
 import {
     selectAllPartners,
+    selectPartnerCount,
     selectPartnerError,
     selectPartnerLoading,
 } from "@/redux/partner/partner.selectors";
@@ -202,6 +203,7 @@ export default function PartnershipDashboard() {
 
     const deals = useAppSelector(selectAllDeals);
     const partners = useAppSelector(selectAllPartners);
+    const partnerCount = useAppSelector(selectPartnerCount);
     const dealsLoading = useAppSelector(selectDealLoading);
     const partnersLoading = useAppSelector(selectPartnerLoading);
     const dealError = useAppSelector(selectDealError);
@@ -331,7 +333,11 @@ export default function PartnershipDashboard() {
         };
     }, [deals, partners]);
 
-    const loading = (dealsLoading || partnersLoading) && !refreshing;
+    const loading =
+        (dealsLoading || partnersLoading) &&
+        !refreshing &&
+        deals.length === 0 &&
+        partners.length === 0;
 
     const openReportPicker = (type: "deal" | "partner") => {
         if (type === "deal" && deals.length === 0) {
@@ -439,7 +445,7 @@ export default function PartnershipDashboard() {
                         <View className="flex-row flex-wrap gap-3">
                             <SummaryCard
                                 label="Total Partners"
-                                value={String(partners.length)}
+                                value={String(partnerCount)}
                                 tone="blue"
                                 onPress={() =>
                                     router.push(
