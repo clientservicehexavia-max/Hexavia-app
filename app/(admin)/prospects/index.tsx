@@ -42,6 +42,13 @@ import { clsx } from "clsx";
 import { useRouter } from "expo-router";
 
 const SORTBY_OPTS = ["createdAt", "updatedAt", "payableAmount"] as const;
+const SOURCE_OPTS = [
+    "Lujo heights",
+    "Boing",
+    "Moses Okoh",
+    "TMI",
+    "Private jet",
+] as const;
 const ORDER_OPTS = ["desc", "asc"] as const;
 const LIMIT_OPTS = [10, 20, 50, 100] as const;
 
@@ -95,6 +102,7 @@ export default function ProspectsIndex() {
         status: "pending",
         industry: undefined,
         engagement: undefined,
+        source: undefined,
         sortBy: "createdAt",
         sortOrder: "desc",
         limit: 10,
@@ -106,6 +114,7 @@ export default function ProspectsIndex() {
             status: filters.status,
             industry: filters.industry,
             engagement: filters.engagement,
+            source: filters.source,
             sortBy: (filters.sortBy as any) ?? "createdAt",
             sortOrder: filters.sortOrder ?? "desc",
             limit: filters.limit ?? 10,
@@ -154,6 +163,13 @@ export default function ProspectsIndex() {
             );
         }
 
+        if (filters.source) {
+            const source = String(filters.source).toLowerCase();
+            base = base.filter(
+                (c: any) => String(c.source ?? "").toLowerCase() === source,
+            );
+        }
+
         const sortBy = filters.sortBy ?? "createdAt";
         const sortOrder = filters.sortOrder ?? "desc";
         base = [...base].sort((a: any, b: any) => {
@@ -187,6 +203,7 @@ export default function ProspectsIndex() {
                 c.projectName,
                 c.email,
                 c.industry,
+                c.source,
                 c.status,
                 String(c.payableAmount ?? ""),
             ]
@@ -199,6 +216,7 @@ export default function ProspectsIndex() {
         debouncedQuery,
         filters.engagement,
         filters.industry,
+        filters.source,
         filters.sortBy,
         filters.sortOrder,
         activeStatus,
@@ -238,6 +256,15 @@ export default function ProspectsIndex() {
         return arr;
     }, [clients]);
 
+    const dynamicSourceOpts = useMemo(() => {
+        const set = new Set<string>();
+        clients.forEach((c: any) => {
+            if (c.source) set.add(String(c.source).trim());
+        });
+        const arr = Array.from(set).filter(Boolean);
+        return arr.length > 0 ? arr : [...SOURCE_OPTS];
+    }, [clients]);
+
     function normalizeEngagement(val: string): string {
         return val
             .trim()
@@ -266,6 +293,7 @@ export default function ProspectsIndex() {
             [
                 filters.industry,
                 filters.engagement,
+                filters.source,
                 filters.sortBy && filters.sortBy !== "createdAt"
                     ? filters.sortBy
                     : undefined,
@@ -279,6 +307,7 @@ export default function ProspectsIndex() {
         [
             filters.engagement,
             filters.industry,
+            filters.source,
             filters.limit,
             filters.sortBy,
             filters.sortOrder,
@@ -296,6 +325,7 @@ export default function ProspectsIndex() {
             status: "pending",
             industry: undefined,
             engagement: undefined,
+            source: undefined,
         };
         if (JSON.stringify(cleared) !== JSON.stringify(filters)) {
             dispatch(setClientFilters(cleared));
@@ -495,6 +525,7 @@ export default function ProspectsIndex() {
                 form={form}
                 industryOptions={dynamicIndustryOpts}
                 engagementOptions={dynamicEngagementOpts}
+                sourceOptions={dynamicSourceOpts}
                 onClose={() => setShowFilters(false)}
                 onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
                 onApply={() => {
@@ -581,6 +612,7 @@ function ClientRow({
             />
 
             <Row label="Industry" value={item.industry ?? "—"} />
+            <Row label="Source" value={item.source ?? "—"} />
             <Row label="Engagement" value={item.engagement ?? "—"} />
             <Row label="Receivable" value={formatMoney(item.payableAmount)} />
             <Row label="Created At" value={formatDateTime(createdAt)} />
@@ -668,6 +700,7 @@ function FilterModal({
     form,
     industryOptions,
     engagementOptions,
+    sourceOptions,
     onClose,
     onChange,
     onApply,
@@ -677,6 +710,7 @@ function FilterModal({
     form: ClientFilters;
     industryOptions: string[];
     engagementOptions: string[];
+    sourceOptions: string[];
     onClose: () => void;
     onChange: (patch: Partial<ClientFilters>) => void;
     onApply: () => void;
@@ -685,6 +719,7 @@ function FilterModal({
     const activeCount = [
         form.industry,
         form.engagement,
+        form.source,
         form.sortBy && form.sortBy !== "createdAt" ? form.sortBy : undefined,
         form.sortOrder && form.sortOrder !== "desc"
             ? form.sortOrder
@@ -738,6 +773,19 @@ function FilterModal({
                     onChange={(v) =>
                         onChange({
                             engagement: v === "Any" ? undefined : v,
+                        })
+                    }
+                    scrollable
+                />
+            </Field>
+
+            <Field label="Source">
+                <PillGroup
+                    options={["Any", ...sourceOptions]}
+                    value={form.source ?? "Any"}
+                    onChange={(v) =>
+                        onChange({
+                            source: v === "Any" ? undefined : v,
                         })
                     }
                     scrollable
@@ -915,6 +963,9 @@ function filterLabel(value: string) {
         createdAt: "Created",
         updatedAt: "Updated",
         payableAmount: "Receivable",
+        prospect: "Prospect",
+        clients: "Clients",
+        partnership: "Partnership",
         desc: "Descending",
         asc: "Ascending",
     };

@@ -20,6 +20,13 @@ export interface Client {
     name: string;
     projectName?: string;
     email?: string;
+    source?:
+        | "Lujo heights"
+        | "Boing"
+        | "Moses Okoh"
+        | "TMI"
+        | "Private jet"
+        | string;
     engagement?: string;
     industry?: string;
     staffSize?: number;
@@ -48,6 +55,7 @@ export interface ClientFilters {
     status?: string;
     industry?: string;
     engagement?: string;
+    source?: string;
     page?: number;
     limit?: number;
     sortBy?: string;
@@ -77,6 +85,7 @@ export interface ClientCreateInput {
     projectName?: string;
     phoneNumber?: string;
     email?: string;
+    source?: "Lujo heights" | "Boing" | "Moses Okoh" | "TMI" | "Private jet";
     engagement?: string;
     industry?: string;
     staffSize?: number;

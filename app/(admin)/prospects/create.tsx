@@ -31,6 +31,13 @@ type FormValues = {
     projectName?: string;
     phoneNumber?: string;
     email?: string;
+    source?:
+        | "Lujo heights"
+        | "Boing"
+        | "Moses Okoh"
+        | "TMI"
+        | "Private jet"
+        | "";
     industry?: string;
     industryOther?: string;
     staffSize?: string;
@@ -51,6 +58,17 @@ const schema: yup.ObjectSchema<FormValues> = yup.object({
     projectName: yup.string().trim().optional(),
     email: yup.string().trim().optional(),
     phoneNumber: yup.string().trim().optional(),
+    source: yup
+        .string()
+        .oneOf([
+            "",
+            "Lujo heights",
+            "Boing",
+            "Moses Okoh",
+            "TMI",
+            "Private jet",
+        ])
+        .optional(),
     industry: yup.string().trim().optional(),
     industryOther: yup
         .string()
@@ -86,6 +104,17 @@ const STATUS_OPTIONS: Array<FormValues["status"]> = [
     "pending",
     "current",
     "completed",
+];
+
+const SOURCE_OPTIONS: Array<{
+    label: string;
+    value: NonNullable<FormValues["source"]>;
+}> = [
+    { label: "Lujo heights", value: "Lujo heights" },
+    { label: "Boing", value: "Boing" },
+    { label: "Moses Okoh", value: "Moses Okoh" },
+    { label: "TMI", value: "TMI" },
+    { label: "Private jet", value: "Private jet" },
 ];
 
 const STAFF_SIZE_OPTIONS = [
@@ -131,6 +160,7 @@ export default function CreateClient() {
     const [showStatusMenu, setShowStatusMenu] = useState(false);
     const [showStaffSizeSheet, setShowStaffSizeSheet] = useState(false);
     const [showIndustrySheet, setShowIndustrySheet] = useState(false);
+    const [showSourceSheet, setShowSourceSheet] = useState(false);
     const [documentName, setDocumentName] = useState("");
     const [documentFile, setDocumentFile] = useState<{
         uri: string;
@@ -184,6 +214,7 @@ export default function CreateClient() {
             projectName: "",
             email: "",
             phoneNumber: "",
+            source: "",
             industry: "",
             industryOther: "",
             staffSize: "",
@@ -208,6 +239,7 @@ export default function CreateClient() {
             projectName: values.projectName?.trim() || "",
             phoneNumber: values.phoneNumber?.trim() || undefined,
             email: values.email?.trim() || undefined,
+            source: values.source || undefined,
             engagement: values.engagement?.trim() || undefined,
             industry:
                 industryValue === "Other"
@@ -378,6 +410,29 @@ export default function CreateClient() {
                     </Field>
                     {errors.phoneNumber?.message ? (
                         <ErrorText msg={errors.phoneNumber.message} />
+                    ) : null}
+
+                    {/* Source */}
+                    <Field label="Source (optional)">
+                        <Controller
+                            control={control}
+                            name="source"
+                            render={({ field: { value } }) => (
+                                <Pressable
+                                    disabled={loading}
+                                    onPress={() => setShowSourceSheet(true)}
+                                    className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
+                                >
+                                    <Text className="text-gray-700 font-kumbh capitalize flex-1">
+                                        {value || "Select Source"}
+                                    </Text>
+                                    <ChevronDown size={18} color="#111827" />
+                                </Pressable>
+                            )}
+                        />
+                    </Field>
+                    {errors.source?.message ? (
+                        <ErrorText msg={errors.source.message} />
                     ) : null}
 
                     {/* Industry + Staff size */}
@@ -816,6 +871,21 @@ export default function CreateClient() {
                     value: opt,
                 }))}
                 selectedValue={control._getWatch("status")}
+            />
+
+            <OptionSheet
+                visible={showSourceSheet}
+                onClose={() => setShowSourceSheet(false)}
+                onSelect={(value) => {
+                    setValue(
+                        "source",
+                        value as NonNullable<FormValues["source"]>,
+                    );
+                    setShowSourceSheet(false);
+                }}
+                title="Select Source"
+                options={SOURCE_OPTIONS}
+                selectedValue={control._getWatch("source")}
             />
         </SafeAreaView>
     );

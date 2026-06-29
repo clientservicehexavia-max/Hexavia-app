@@ -57,6 +57,13 @@ import type { Client } from "@/redux/client/client.types";
 type AdminUser = {
     _id: string;
     email: string;
+    source?:
+        | "Lujo heights"
+        | "Boing"
+        | "Moses Okoh"
+        | "TMI"
+        | "Private jet"
+        | string;
     phoneNumber?: string;
     fullname?: string;
     username?: string;
@@ -119,6 +126,30 @@ const STAFF_SIZE_OPTIONS = [
     { label: "100-150", value: 150 },
     { label: "150+", value: 151 },
 ];
+
+const SOURCE_OPTIONS = [
+    { label: "Lujo heights", value: "Lujo heights" },
+    { label: "Boing", value: "Boing" },
+    { label: "Moses Okoh", value: "Moses Okoh" },
+    { label: "TMI", value: "TMI" },
+    { label: "Private jet", value: "Private jet" },
+] as const;
+
+type SourceType = (typeof SOURCE_OPTIONS)[number]["value"] | "";
+
+const normalizeSource = (value?: unknown): SourceType => {
+    const normalized = String(value ?? "")
+        .toLowerCase()
+        .trim();
+    if (
+        normalized === "prospect" ||
+        normalized === "clients" ||
+        normalized === "partnership"
+    ) {
+        return normalized;
+    }
+    return "";
+};
 
 const INDUSTRY_OPTIONS = [
     { label: "Technology", value: "Technology" },
@@ -381,6 +412,7 @@ export default function ClientDetails() {
         isSuspended: false,
         createdAt: new Date().toISOString(),
         projectName: "Ogba  Milk App",
+        source: "",
         industry: "Food",
         staffSize: 12,
         description: "All good",
@@ -408,6 +440,7 @@ export default function ClientDetails() {
                 isSuspended: false,
                 createdAt: clientFromStore.createdAt,
                 projectName: clientFromStore.projectName,
+                source: normalizeSource((clientFromStore as any).source),
                 industry: clientFromStore.industry,
                 staffSize: clientFromStore.staffSize,
                 description: clientFromStore.description,
@@ -446,6 +479,9 @@ export default function ClientDetails() {
     const [phoneNumber, setPhoneNumber] = useState(baseUser.phoneNumber ?? "");
 
     const [projectName, setProjectName] = useState(baseUser.projectName ?? "");
+    const [source, setSource] = useState<SourceType>(
+        normalizeSource(baseUser.source),
+    );
     const [industry, setIndustry] = useState(resolvedIndustry.selection);
     const [industryOther, setIndustryOther] = useState(resolvedIndustry.other);
     const [staffSize, setstaffSize] = useState(
@@ -470,6 +506,7 @@ export default function ClientDetails() {
     const [statusApi, setStatusApi] = useState<ApiStatus>(baseUser.statusApi);
     const [statusOpen, setStatusOpen] = useState(false);
     const [showIndustrySheet, setShowIndustrySheet] = useState(false);
+    const [showSourceSheet, setShowSourceSheet] = useState(false);
     const [showStaffSizeSheet, setShowStaffSizeSheet] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const [documentName, setDocumentName] = useState("");
@@ -898,6 +935,7 @@ export default function ClientDetails() {
             baseUser.fullname || baseUser.username || baseUser.email || "";
         const baseEmail = baseUser.email ?? "";
         const basePhone = baseUser.phoneNumber ?? "";
+        const baseSource = normalizeSource(baseUser.source);
         const baseIndustry = (baseUser.industry ?? "").trim();
         const baseJoined = toIsoDateInput(baseUser.createdAt);
 
@@ -905,6 +943,7 @@ export default function ClientDetails() {
             name !== baseName ||
             email !== baseEmail ||
             phoneNumber !== basePhone ||
+            source !== baseSource ||
             projectName !== (baseUser.projectName ?? "") ||
             effectiveIndustry !== baseIndustry ||
             staffSize !== String(baseUser.staffSize ?? "") ||
@@ -927,6 +966,7 @@ export default function ClientDetails() {
         name,
         email,
         phoneNumber,
+        source,
         projectName,
         effectiveIndustry,
         staffSize,
@@ -950,6 +990,7 @@ export default function ClientDetails() {
         setProjectName(baseUser.projectName ?? "");
         setEmail(baseUser.email ?? "");
         setPhoneNumber(baseUser.phoneNumber ?? "");
+        setSource(normalizeSource(baseUser.source));
         setIndustry(resolvedIndustry.selection);
         setIndustryOther(resolvedIndustry.other);
         setstaffSize(String(baseUser.staffSize ?? ""));
@@ -1188,6 +1229,7 @@ export default function ClientDetails() {
             projectName: toNullableText(projectName),
             email: toNullableText(email),
             phoneNumber: toNullableText(phoneNumber),
+            source: toNullableText(source),
             industry: toNullableText(effectiveIndustry),
             staffSize: hasStaffSize ? parsedStaffSize : null,
             description: toNullableText(description),
@@ -1418,6 +1460,29 @@ export default function ClientDetails() {
                                             placeholder="080..."
                                             keyboardType="numeric"
                                         />
+                                    </View>
+
+                                    {/* Source */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Source</FieldLabel>
+                                        <Pressable
+                                            onPress={() =>
+                                                setShowSourceSheet(true)
+                                            }
+                                            className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
+                                            style={{
+                                                backgroundColor: BG_INPUT,
+                                                borderColor: BORDER,
+                                            }}
+                                        >
+                                            <Text className="font-kumbh text-[#111827] capitalize flex-1">
+                                                {source || "Select Source"}
+                                            </Text>
+                                            <ChevronDown
+                                                size={18}
+                                                color="#111827"
+                                            />
+                                        </Pressable>
                                     </View>
 
                                     {/* Industry | Staff Size */}
@@ -2006,6 +2071,23 @@ export default function ClientDetails() {
                         title="Select Industry"
                         options={INDUSTRY_OPTIONS}
                         selectedValue={industry}
+                    />
+
+                    <OptionSheet
+                        visible={showSourceSheet}
+                        onClose={() => setShowSourceSheet(false)}
+                        onSelect={(value) => {
+                            setSource(value as SourceType);
+                            setShowSourceSheet(false);
+                        }}
+                        title="Select Source"
+                        options={
+                            SOURCE_OPTIONS as unknown as Array<{
+                                label: string;
+                                value: string;
+                            }>
+                        }
+                        selectedValue={source}
                     />
 
                     <OptionSheet
