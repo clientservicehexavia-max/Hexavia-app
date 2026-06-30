@@ -1245,10 +1245,8 @@ export default function ClientInstallments() {
                 value={pickerDate}
                 onCancel={() => setDateIdx(null)}
                 onDone={() => {
-                    const now = new Date();
                     if (dateIdx !== null) {
-                        setPickerDate(now);
-                        updateRow(dateIdx, { due: fmtDMY(now) });
+                        updateRow(dateIdx, { due: fmtDMY(pickerDate) });
                     }
                     setDateIdx(null);
                 }}

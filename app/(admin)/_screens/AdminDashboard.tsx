@@ -41,7 +41,7 @@ export default function AdminDashboard() {
     const showTeam = canAccessTeamManagement(user?.role);
     const showFinance = canAccessFinanceManagement(user?.role);
     const subtitleBadge =
-        normalizeRole(user?.role) === "supervisor" ? "Supervisor" : "Admin";
+        normalizeRole(user?.role) === "clientservice" ? "Clientservice" : "Admin";
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);

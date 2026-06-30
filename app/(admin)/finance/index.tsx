@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import clsx from "clsx";
 import { useRouter } from "expo-router";
-import { ArrowDown, ArrowUp, Eye, Plus } from "lucide-react-native";
+import { ArrowDown, ArrowUp, Eye, Filter, Plus } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     FlatList,
@@ -42,6 +42,7 @@ import { selectClientFilters } from "@/redux/client/client.selectors";
 import { fetchClients } from "@/redux/client/client.thunks";
 
 type Flow = "Receivables" | "Expenses";
+type GroupingMode = "daily" | "monthly";
 
 type Txn = {
     id: string;
@@ -66,7 +67,7 @@ type Txn = {
 
 type TxnSection = {
     title: string;
-    monthTotal: number;
+    bucketTotal: number;
     sortValue: number;
     data: Txn[];
 };
@@ -292,7 +293,9 @@ export default function FinanceIndex() {
     const [clientsRefreshing, setClientsRefreshing] = useState(false);
 
     const [tab, setTab] = useState<Flow>("Receivables");
+    const [groupingMode, setGroupingMode] = useState<GroupingMode>("monthly");
     const [hidden, setHidden] = useState(false);
+    const [showGroupingPicker, setShowGroupingPicker] = useState(false);
 
     // client picker modal
     const [showClientPicker, setShowClientPicker] = useState(false);
@@ -316,15 +319,23 @@ export default function FinanceIndex() {
 
     /* Section builder */
     const sections = useMemo<TxnSection[]>(() => {
-        const buildMonthlySections = (txns: Txn[]) => {
+        const buildSections = (txns: Txn[], mode: GroupingMode) => {
             const map = new Map<string, TxnSection>();
 
             txns.forEach((txn) => {
-                const key = txn.monthKey || "unknown";
+                const key =
+                    mode === "daily"
+                        ? txn.dateKey || "—"
+                        : txn.monthKey || "unknown";
+                const title =
+                    mode === "daily"
+                        ? txn.dateKey || "—"
+                        : txn.monthLabel || "Unknown month";
+
                 if (!map.has(key)) {
                     map.set(key, {
-                        title: txn.monthLabel || "Unknown month",
-                        monthTotal: 0,
+                        title,
+                        bucketTotal: 0,
                         sortValue: 0,
                         data: [],
                     });
@@ -332,7 +343,7 @@ export default function FinanceIndex() {
 
                 const section = map.get(key)!;
                 section.data.push(txn);
-                section.monthTotal += Number(txn.amount || 0);
+                section.bucketTotal += Number(txn.amount || 0);
 
                 const txDate = new Date(txn.isoDate || "");
                 const fallbackDate = new Date();
@@ -367,7 +378,7 @@ export default function FinanceIndex() {
                 kind: "clientReceivable",
             }));
 
-            return buildMonthlySections(clientTxns);
+            return buildSections(clientTxns, groupingMode);
         }
 
         // Expenses
@@ -391,8 +402,8 @@ export default function FinanceIndex() {
                 kind: "expense", // <- new
             }));
 
-        return buildMonthlySections(txns);
-    }, [tab, clients, records]);
+        return buildSections(txns, groupingMode);
+    }, [tab, clients, records, groupingMode]);
 
     const fetchAndPaginateReceivables = useCallback(
         async (asRefresh = false) => {
@@ -676,18 +687,27 @@ export default function FinanceIndex() {
             <PlatformAdaptiveHeader
                 title="Finance"
                 headerRight={({ tintColor }) => (
-                    <Pressable
-                        onPress={() => {
-                            if (tab === "Receivables") {
-                                router.push("/(admin)/finance/receivable");
-                            } else {
-                                router.push("/(admin)/finance/form");
-                            }
-                        }}
-                        className="w-10 h-10 rounded-full items-center justify-center"
-                    >
-                        <Plus size={28} color={tintColor} />
-                    </Pressable>
+                    <View className="flex-row items-center" style={{ gap: 6 }}>
+                        <Pressable
+                            onPress={() => setShowGroupingPicker(true)}
+                            className="w-10 h-10 rounded-full items-center justify-center"
+                        >
+                            <Filter size={21} color={tintColor} />
+                        </Pressable>
+
+                        <Pressable
+                            onPress={() => {
+                                if (tab === "Receivables") {
+                                    router.push("/(admin)/finance/receivable");
+                                } else {
+                                    router.push("/(admin)/finance/form");
+                                }
+                            }}
+                            className="w-10 h-10 rounded-full items-center justify-center"
+                        >
+                            <Plus size={28} color={tintColor} />
+                        </Pressable>
+                    </View>
                 )}
             />
 
@@ -748,7 +768,7 @@ export default function FinanceIndex() {
                                             {section.title}
                                         </Text>
                                         <Text className="text-[#111827] font-kumbhBold">
-                                            {NGN(section.monthTotal)}
+                                            {NGN(section.bucketTotal)}
                                         </Text>
                                     </View>
                                 </View>
@@ -790,6 +810,60 @@ export default function FinanceIndex() {
                     inactiveColor: "#6B7280",
                 }}
             />
+
+            <Modal
+                visible={showGroupingPicker}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowGroupingPicker(false)}
+            >
+                <Pressable
+                    className="flex-1 bg-black/30 justify-end"
+                    onPress={() => setShowGroupingPicker(false)}
+                >
+                    <Pressable className="bg-white rounded-t-3xl px-5 pt-5 pb-8">
+                        <Text className="text-lg font-kumbhBold text-[#111827] mb-3">
+                            Sectioning
+                        </Text>
+
+                        {(
+                            [
+                                ["daily", "Daily"],
+                                ["monthly", "Monthly"],
+                            ] as const
+                        ).map(([value, label]) => {
+                            const active = groupingMode === value;
+                            return (
+                                <Pressable
+                                    key={value}
+                                    onPress={() => {
+                                        setGroupingMode(value);
+                                        setShowGroupingPicker(false);
+                                    }}
+                                    className={clsx(
+                                        "h-12 rounded-xl px-4 mb-2 flex-row items-center justify-between",
+                                        active ? "bg-[#EEF1FF]" : "bg-gray-100",
+                                    )}
+                                >
+                                    <Text
+                                        className={clsx(
+                                            "font-kumbhBold",
+                                            active
+                                                ? "text-[#4C5FAB]"
+                                                : "text-[#111827]",
+                                        )}
+                                    >
+                                        {label}
+                                    </Text>
+                                    {active ? (
+                                        <View className="w-2.5 h-2.5 rounded-full bg-[#4C5FAB]" />
+                                    ) : null}
+                                </Pressable>
+                            );
+                        })}
+                    </Pressable>
+                </Pressable>
+            </Modal>
 
             {/* ───────── Client Picker Modal ───────── */}
             <Modal

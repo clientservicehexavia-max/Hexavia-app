@@ -29,9 +29,23 @@ type ManualReceivableSource =
     | "Inner Circle"
     | "Consulting"
     | "Partnerships"
-    | "Retreat";
+    | "Retreat"
+    | "Books"
+    | "Internal Transfer"
+    | "Others";
 type AttendanceType = "physical" | "virtual";
 type TableType = "individual" | "corporate";
+
+const RECEIVABLE_SOURCE_OPTIONS: ManualReceivableSource[] = [
+    "BWE",
+    "Inner Circle",
+    "Consulting",
+    "Partnerships",
+    "Retreat",
+    "Books",
+    "Internal Transfer",
+    "Others",
+];
 
 function fmtDMY(d: Date) {
     const dd = String(d.getDate()).padStart(2, "0");
@@ -279,21 +293,13 @@ export default function ReceivableForm() {
                             Source
                         </Text>
                         <View className="flex-row flex-wrap gap-2">
-                            {[
-                                "BWE",
-                                "Inner Circle",
-                                "Consulting",
-                                "Partnerships",
-                                "Retreat",
-                            ].map((item) => {
+                            {RECEIVABLE_SOURCE_OPTIONS.map((item) => {
                                 const active = source === item;
                                 return (
                                     <Pressable
                                         key={item}
                                         onPress={() => {
-                                            setSource(
-                                                item as ManualReceivableSource,
-                                            );
+                                            setSource(item);
                                             if (item === "Inner Circle")
                                                 setAttendance("virtual");
                                         }}

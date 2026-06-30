@@ -58,6 +58,7 @@ export default function CreateTaskModal({
     const allowPersonalByRole = [
         "staff",
         "supervisor",
+        "clientservice",
         "admin",
         "super-admin",
         "client",

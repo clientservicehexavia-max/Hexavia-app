@@ -67,7 +67,13 @@ type AdminUser = {
     phoneNumber?: string;
     fullname?: string;
     username?: string;
-    role: "client" | "staff" | "supervisor" | "admin" | "super-admin";
+    role:
+        | "client"
+        | "staff"
+        | "supervisor"
+        | "clientservice"
+        | "admin"
+        | "super-admin";
     isSuspended?: boolean;
     createdAt?: string;
     projectName?: string;

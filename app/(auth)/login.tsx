@@ -61,12 +61,19 @@ export default function LoginScreen() {
         defaultValues: { email: "", password: "" },
     });
 
-    type Role = "staff" | "client" | "supervisor" | "admin" | "super-admin";
+    type Role =
+        | "staff"
+        | "client"
+        | "supervisor"
+        | "clientservice"
+        | "admin"
+        | "super-admin";
 
     const pathByRole: Record<Role, string> = {
         staff: "/(staff)/(tabs)",
         client: "/(client)/(tabs)",
         supervisor: "/(admin)/(tabs)",
+        clientservice: "/(admin)/(tabs)",
         admin: "/(admin)/(tabs)",
         "super-admin": "/(admin)/(tabs)",
     };

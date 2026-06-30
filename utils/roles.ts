@@ -1,7 +1,7 @@
 export const ROLE_HIERARCHY = [
     "client",
     "staff",
-    "supervisor",
+    "clientservice",
     "admin",
 ] as const;
 
@@ -13,6 +13,7 @@ export const normalizeRole = (role?: string | null): AppRole | null => {
         .trim()
         .toLowerCase();
     if (!value) return null;
+    if (value === "supervisor") return "clientservice";
     if (value === "super-admin") return "super-admin";
     if ((ROLE_HIERARCHY as readonly string[]).includes(value)) {
         return value as CoreRole;
@@ -25,7 +26,7 @@ export const isAdminLikeRole = (role?: string | null): boolean => {
     return (
         normalized === "admin" ||
         normalized === "super-admin" ||
-        normalized === "supervisor"
+        normalized === "clientservice"
     );
 };
 
@@ -48,10 +49,10 @@ export const roleHomePath = (role?: string | null): string => {
 
 export const getRoleChangeTargets = (role?: string | null): CoreRole[] => {
     const normalized = normalizeRole(role);
-    if (normalized === "staff") return ["supervisor", "admin"];
-    if (normalized === "supervisor") return ["staff", "admin"];
+    if (normalized === "staff") return ["clientservice", "admin"];
+    if (normalized === "clientservice") return ["staff", "admin"];
     if (normalized === "admin" || normalized === "super-admin") {
-        return ["supervisor", "staff"];
+        return ["clientservice", "staff"];
     }
     return [];
 };

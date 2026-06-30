@@ -838,6 +838,7 @@ function RowMember({
         "admin",
         "super-admin",
         "supervisor",
+        "clientservice",
         "owner",
     ].includes(String(item.role || "").toLowerCase());
 
