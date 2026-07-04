@@ -444,7 +444,7 @@ export default function ClientsIndex() {
             {/* Header */}
             <View className="pb-4 px-4">
                 <PlatformAdaptiveHeader
-                    title="Hexavia Clients"
+                    title="Clients"
                     headerRight={({ tintColor }) => (
                         <Pressable
                             onPress={() => setShowFilters(true)}
