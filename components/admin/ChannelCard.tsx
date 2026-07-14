@@ -2,7 +2,7 @@ import { Channel } from "@/redux/channels/channels.types";
 import * as Clipboard from "expo-clipboard";
 import { Copy } from "lucide-react-native";
 import React from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { showSuccess } from "../ui/toast";
 
 type Props = {
@@ -11,6 +11,7 @@ type Props = {
     onPress?: () => void;
     onDelete?: () => void;
     onLongPress?: () => void;
+    onCopyCode?: () => void;
 };
 
 export default function ChannelCard({
@@ -19,10 +20,33 @@ export default function ChannelCard({
     onPress,
     onDelete,
     onLongPress,
+    onCopyCode,
 }: Props) {
     const title = item.name ?? "";
     const code = item.code ?? "";
     const description = item.description ?? undefined;
+    const memberCount = item.members?.length ?? 0;
+
+    const initials = title
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? "")
+        .join("");
+
+    const timestampSource = item.updatedAt ?? item.createdAt;
+    const timestamp = timestampSource
+        ? new Date(timestampSource)
+        : undefined;
+
+    const timeLabel = timestamp && !Number.isNaN(timestamp.getTime())
+        ? new Intl.DateTimeFormat("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+          }).format(timestamp)
+        : code;
+
+    const preview = description || `Project code: ${code}`;
 
     const copyCode = async (code?: string) => {
         if (!code) {
@@ -42,60 +66,56 @@ export default function ChannelCard({
         <Pressable
             onPress={onPress}
             onLongPress={onLongPress}
-            className="flex-1 h-40 rounded-xl"
+            className="flex-row items-center bg-white px-4 py-3"
             style={{
-                backgroundColor: tint ?? "#60A5FA", // blue-400 default
-                overflow: "hidden",
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: "#E5E7EB",
             }}
         >
-            {onDelete ? (
-                <Pressable
-                    onPress={onDelete}
-                    style={{
-                        position: "absolute",
-                        top: 8,
-                        right: 8,
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 12,
-                        backgroundColor: "rgba(0,0,0,0.35)",
-                    }}
-                    hitSlop={8}
-                >
-                    <Text className="text-white font-kumbh text-xs">
-                        Delete
-                    </Text>
-                </Pressable>
-            ) : null}
+            <View
+                className="h-14 w-14 items-center justify-center rounded-full"
+                style={{ backgroundColor: tint ?? "#D1D5DB" }}
+            >
+                <Text className="font-kumbhBold text-[16px] text-white">
+                    {initials || "CH"}
+                </Text>
+            </View>
 
-            <View className="flex-1 p-3 justify-between">
-                <View className="flex-row items-center justify-between gap-5">
+            <View className="flex-1 px-3">
+                <View className="flex-row items-center justify-between gap-3">
                     <Text
-                        className="flex-1 text-white text-[12px] font-kumbhBold uppercase"
+                        className="flex-1 font-kumbhBold text-[16px] text-[#111827]"
                         numberOfLines={1}
                     >
                         {title}
                     </Text>
-                    <Pressable
-                        onPress={() => copyCode(item.code)}
-                        style={{
-                            alignItems: "center",
-                            justifyContent: "center",
-                        }}
-                        hitSlop={8}
-                    >
-                        <Copy size={15} color="#ffffff" />
-                    </Pressable>
                 </View>
-                <View className="flex-row items-center justify-between gap-5">
+                <Text
+                    className="mt-1 font-kumbh text-[13px] text-gray-500"
+                    numberOfLines={1}
+                >
+                    {preview}
+                </Text>
+            </View>
+
+            <View className="items-end justify-between self-stretch py-1">
+                <Text className="font-kumbh text-[11px] text-gray-500">
+                    {timeLabel}
+                </Text>
+                <View className="mt-2 min-h-6 min-w-6 items-center justify-center rounded-full bg-[#25D366] px-2">
                     <Text
-                        className="flex-1 text-white/90 font-kumbh text-xs"
-                        numberOfLines={1}
+                        className="font-kumbhBold text-[11px] text-white"
                     >
-                        {description}
+                        {memberCount}
                     </Text>
-                    <Text className="text-white/90 font-kumbh">{code}</Text>
                 </View>
+                <Pressable
+                    onPress={onCopyCode ?? (() => copyCode(item.code))}
+                    hitSlop={8}
+                    className="mt-2 items-center justify-center"
+                >
+                    <Copy size={14} color="#9CA3AF" />
+                </Pressable>
             </View>
         </Pressable>
     );

@@ -1,10 +1,24 @@
-// app/(admin)/channels/index.tsx  (or wherever this file lives)
+import { api } from "@/api/axios";
+import ChannelCard from "@/components/admin/ChannelCard";
+import EditChannelModal from "@/components/admin/EditChannelModal";
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { showSuccess } from "@/components/ui/toast";
+import { PRIMARY } from "@/constants/Colors";
+import { deleteChannelById } from "@/redux/channels/channels.thunks";
+import type { Channel } from "@/redux/channels/channels.types";
+import { useAppDispatch } from "@/store/hooks";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
-import { Plus, Search, Trash2 } from "lucide-react-native";
+import {
+    Archive,
+    ChevronRight,
+    Plus,
+    Search,
+    Trash2,
+} from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator, // <- kept for commented block
+    ActivityIndicator,
     Alert,
     FlatList,
     Modal,
@@ -16,17 +30,6 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import { api } from "@/api/axios";
-import ChannelCard from "@/components/admin/ChannelCard";
-import EditChannelModal from "@/components/admin/EditChannelModal";
-import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
-import { showSuccess } from "@/components/ui/toast";
-import { PRIMARY } from "@/constants/Colors";
-import { deleteChannelById } from "@/redux/channels/channels.thunks";
-import type { Channel } from "@/redux/channels/channels.types";
-import { useAppDispatch } from "@/store/hooks";
-import clsx from "clsx";
 
 const TINTS = [
     "#707fbc",
@@ -48,6 +51,7 @@ function hashToIndex(input: string, mod: number) {
     for (let i = 0; i < input.length; i++) h = (h * 33) ^ input.charCodeAt(i);
     return Math.abs(h) % mod;
 }
+
 function getTint(item: { color?: string; _id?: string }, index: number) {
     if (item.color) return item.color;
     if (item._id) return TINTS[hashToIndex(item._id, TINTS.length)];
@@ -111,30 +115,21 @@ export default function ChannelsIndex() {
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
-        if (!q) return channels;
-        return channels.filter((c) => {
-            const name = (c.name || "").toLowerCase();
-            const code = (c.code || "").toLowerCase();
-            const desc = (c.description || "").toLowerCase();
-            return name.includes(q) || code.includes(q) || desc.includes(q);
+        const sorted = [...channels].sort((a, b) => {
+            const aDate = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+            const bDate = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
+            return bDate - aDate;
+        });
+
+        return sorted.filter((channel) => {
+            const name = (channel.name || "").toLowerCase();
+            const code = (channel.code || "").toLowerCase();
+            const desc = (channel.description || "").toLowerCase();
+            return !q || name.includes(q) || code.includes(q) || desc.includes(q);
         });
     }, [channels, query]);
 
     const initialLoading = status === "loading" && channels.length === 0;
-
-    const copyCode = async (code?: string) => {
-        if (!code) {
-            Alert.alert("No code", "This Project has no code to copy.");
-            return;
-        }
-        try {
-            await Clipboard.setStringAsync(code);
-            // Alert.alert("Copied", "Project code copied to clipboard.");
-            showSuccess("Project code copied to clipboard.");
-        } catch (e) {
-            Alert.alert("Error", "Failed to copy Project code.");
-        }
-    };
 
     const openActions = (channel: Channel) => {
         setActionTarget(channel);
@@ -148,7 +143,7 @@ export default function ChannelsIndex() {
         if (!channelId) return;
         Alert.alert(
             "Delete Project",
-            `Are you sure you want to delete "${name || "this project"}"? This cannot be undone.`,
+            `Are you sure you want to delete \"${name || "this project"}\"? This cannot be undone.`,
             [
                 { text: "Cancel", style: "cancel" },
                 {
@@ -172,110 +167,138 @@ export default function ChannelsIndex() {
         );
     };
 
+    const copyCode = async (code?: string) => {
+        if (!code) {
+            Alert.alert("No code", "This Project has no code to copy.");
+            return;
+        }
+        try {
+            await Clipboard.setStringAsync(code);
+            showSuccess("Project code copied to clipboard.");
+        } catch (e) {
+            Alert.alert("Error", "Failed to copy Project code.");
+        }
+    };
+
+    const openCreate = () => router.push("/(admin)/channels/create");
+    const openDeleted = () => router.push("/(admin)/channels/deleted");
+
     return (
         <SafeAreaView
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
             className="flex-1 bg-white"
         >
-            {/* Header */}
             <PlatformAdaptiveHeader
                 title="Projects"
-                headerRight={({ tintColor }) => (
+                headerLeft={() => null}
+                headerRight={() => (
                     <View className="flex-row items-center gap-2 ios:mr-3">
                         <Pressable
-                            onPress={() =>
-                                router.push("/(admin)/channels/create")
-                            }
-                            className="w-10 h-10 rounded-full items-center justify-center"
+                            onPress={openDeleted}
+                            className="h-10 w-10 items-center justify-center rounded-full bg-white"
                             hitSlop={8}
-                            style={{
-                                backgroundColor: PRIMARY,
-                            }}
                         >
-                            <Plus size={20} color="white" />
+                            <Trash2 size={20} color="#111827" />
                         </Pressable>
                         <Pressable
-                            onPress={() =>
-                                router.push("/(admin)/channels/deleted")
-                            }
-                            className="w-10 h-10 items-center justify-center"
+                            onPress={openCreate}
+                            className="h-10 w-10 items-center justify-center rounded-full"
                             hitSlop={8}
+                            style={{ backgroundColor: PRIMARY }}
                         >
-                            <Trash2 size={20} color={tintColor ?? "#111827"} />
+                            <Plus size={20} color="#FFFFFF" />
                         </Pressable>
                     </View>
                 )}
-                headerLeft={() => null}
+                backgroundColor="#FFFFFF"
             />
 
-            {/* Search */}
-            <View className="my-2 flex-row items-center rounded-xl bg-gray-200 ios:h-14 android:h-12 px-4 gap-2 mx-2">
-                <Search size={20} color="#6B7280" />
-                <TextInput
-                    value={query}
-                    onChangeText={setQuery}
-                    placeholder="Search for Projects"
-                    placeholderTextColor="#9CA3AF"
-                    className={clsx(
-                        "flex-1 px-1 ios:h-12 font-kumbh text-text android:text-base ios:text-lg text-start",
-                        query.length === 0 ? "ios:pb-0" : "ios:pb-3",
-                    )}
-                    style={{
-                        textAlignVertical: "center",
-                    }}
-                    returnKeyType="search"
-                />
-            </View>
+            <FlatList
+                data={filtered}
+                keyExtractor={(item) => item._id}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                    />
+                }
+                contentContainerStyle={{ paddingBottom: 24 }}
+                ListHeaderComponent={
+                    <View className="px-4 pb-4">
+                        <View className="mt-1 rounded-[26px] bg-[#F3F4F6] px-4 py-4">
+                            <View className="flex-row items-center gap-3 rounded-full bg-white px-4 py-3">
+                                <Search size={20} color="#6B7280" />
+                                <TextInput
+                                    value={query}
+                                    onChangeText={setQuery}
+                                    placeholder="Search projects"
+                                    placeholderTextColor="#9CA3AF"
+                                    className="flex-1 font-kumbh text-[16px] text-[#111827]"
+                                    returnKeyType="search"
+                                    style={{ paddingVertical: 0 }}
+                                />
+                            </View>
 
-            {/* Content */}
-            {initialLoading ? (
-                <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator />
-                    <Text className="mt-2 text-gray-500 font-kumbh">
-                        Loading Projects...
-                    </Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={filtered}
-                    keyExtractor={(item) => item._id}
-                    numColumns={2}
-                    columnWrapperStyle={{ gap: 5 }}
-                    contentContainerStyle={{
-                        paddingBottom: 24,
-                        gap: 5,
-                        paddingHorizontal: 8,
-                    }}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                        />
-                    }
-                    renderItem={({ item, index }) => (
-                        <ChannelCard
-                            item={item}
-                            tint={getTint(item, index)}
-                            onPress={() => {
-                                router.push({
-                                    pathname: "/(admin)/chats/[channelId]",
-                                    params: { channelId: item._id },
-                                });
+                        </View>
+
+                        <Pressable
+                            onPress={openDeleted}
+                            className="mt-4 flex-row items-center rounded-[18px] bg-white px-4 py-4"
+                            style={{
+                                borderWidth: 1,
+                                borderColor: "#F3F4F6",
                             }}
-                            onLongPress={() => openActions(item)}
-                        />
-                    )}
-                    ListEmptyComponent={
+                        >
+                            <View className="h-11 w-11 items-center justify-center rounded-full bg-[#F4F4F5]">
+                                <Archive size={20} color="#6B7280" />
+                            </View>
+                            <View className="flex-1 px-3">
+                                <Text className="font-kumbhBold text-[17px] text-[#111827]">
+                                    Archived
+                                </Text>
+                                <Text className="mt-1 font-kumbh text-[13px] text-gray-500">
+                                    Review deleted projects and restore when
+                                    needed.
+                                </Text>
+                            </View>
+                            <ChevronRight size={18} color="#9CA3AF" />
+                        </Pressable>
+                    </View>
+                }
+                ListEmptyComponent={
+                    initialLoading ? (
+                        <View className="items-center justify-center py-16">
+                            <ActivityIndicator />
+                            <Text className="mt-2 font-kumbh text-gray-500">
+                                Loading Chats...
+                            </Text>
+                        </View>
+                    ) : (
                         <View className="px-5 py-16">
-                            <Text className="text-center text-gray-500 font-kumbh">
+                            <Text className="text-center font-kumbh text-gray-500">
                                 {status === "failed" && error
                                     ? `Error: ${error}`
                                     : "No Projects found."}
                             </Text>
                         </View>
-                    }
-                />
-            )}
+                    )
+                }
+                renderItem={({ item, index }) => (
+                    <ChannelCard
+                        item={item}
+                        tint={getTint(item, index)}
+                        onPress={() => {
+                            router.push({
+                                pathname: "/(admin)/chats/[channelId]",
+                                params: { channelId: item._id },
+                            });
+                        }}
+                        onLongPress={() => openActions(item)}
+                        onDelete={() => openActions(item)}
+                        onCopyCode={() => copyCode(item.code)}
+                    />
+                )}
+            />
 
             <Modal
                 transparent
@@ -299,8 +322,8 @@ export default function ChannelsIndex() {
                             borderTopRightRadius: 16,
                         }}
                     >
-                        <Text className="text-center font-kumbhBold text-base mb-3">
-                            Project Actions
+                        <Text className="mb-3 text-center font-kumbhBold text-base">
+                            Chat Actions
                         </Text>
                         <Pressable
                             onPress={() => {
@@ -313,7 +336,19 @@ export default function ChannelsIndex() {
                             className="py-3"
                         >
                             <Text className="text-center font-kumbh text-gray-700">
-                                Edit Project
+                                Edit Chat
+                            </Text>
+                        </Pressable>
+                        <View className="h-[1px] bg-gray-200" />
+                        <Pressable
+                            onPress={() =>
+                                actionTarget && copyCode(actionTarget.code)
+                            }
+                            disabled={!actionTarget}
+                            className="py-3"
+                        >
+                            <Text className="text-center font-kumbh text-gray-700">
+                                Copy Code
                             </Text>
                         </Pressable>
                         <View className="h-[1px] bg-gray-200" />
@@ -334,7 +369,7 @@ export default function ChannelsIndex() {
                             <Text className="text-center font-kumbh text-red-600">
                                 {deletingId === actionTarget?._id
                                     ? "Deleting..."
-                                    : "Delete Project"}
+                                    : "Delete Chat"}
                             </Text>
                         </Pressable>
                         <View className="h-[1px] bg-gray-200" />

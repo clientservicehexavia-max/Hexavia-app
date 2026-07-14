@@ -3,6 +3,7 @@ import { selectUser } from "@/redux/user/user.slice";
 import { fetchProfile } from "@/redux/user/user.thunks";
 import type { RootState } from "@/store";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
@@ -16,6 +17,19 @@ function firstNameOf(fullname?: string | null) {
 function prettyRole(role?: string | null) {
     if (!role) return "Project Member";
     return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function timeGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+}
+
+function prettyVariant(variant: Variant) {
+    if (variant === "admin") return "Admin";
+    if (variant === "staff") return "Staff";
+    return "Client";
 }
 
 type BaseProps = {
@@ -53,7 +67,7 @@ function routesFor(variant: Variant) {
             };
         default:
             return {
-                profile: "/(admin)/profile",
+                profile: "/(admin)/(tabs)/profile",
                 notifications: "/(admin)/notifications",
             };
     }
@@ -83,14 +97,22 @@ function UserHeaderCore({
 
     if (loadingProfile) {
         return (
-            <View className="px-5 pt-8 pb-4">
-                <ActivityIndicator style={{ marginTop: 8 }} />
+            <View className={`pt-5 pb-3 ${containerClassName ?? ""}`}>
+                <View className="flex-row items-center px-1">
+                    <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                        <ActivityIndicator size="small" color="#4C5FAB" />
+                    </View>
+                    <Text className="font-kumbh text-sm text-gray-500">
+                        Loading profile...
+                    </Text>
+                </View>
             </View>
         );
     }
 
     const greetingName = firstNameOf(user?.fullname);
     const computedRoleText = prettyRole(user?.role || undefined);
+    const variantText = prettyVariant(variant);
 
     const { profile, notifications } = routesFor(variant);
 
@@ -105,46 +127,57 @@ function UserHeaderCore({
     };
 
     return (
-        <View
-            className={`px-1 pt-8 pb-4 flex-row items-center justify-between ${containerClassName ?? ""}`}
-        >
-            <View className="flex-row items-center gap-3">
+        <View className={`pt-0 pb-3 ${containerClassName ?? ""}`}>
+            <View className="flex-row items-center justify-between">
                 <Pressable onPress={handleAvatarPress}>
-                    <AvatarPlaceholder avatar={user?.profilePicture} />
+                    <View className="rounded-2xl">
+                        <AvatarPlaceholder avatar={user?.profilePicture} />
+                    </View>
                 </Pressable>
 
-                <View>
-                    {/* Optional small title line above greeting */}
-                    {title ? (
-                        <Text className="text-xs text-gray-500 font-kumbhBold mb-1">
-                            {title}
-                        </Text>
-                    ) : null}
-
-                    <Text className="text-2xl ios:font-bold font-kumbh text-text">
-                        {greetingName ? `Hi ${greetingName}` : "Hi there!"}
-                    </Text>
-
-                    {/* Prefer explicit subtitleBadge; fall back to computed role text */}
-                    {subtitleBadge || computedRoleText ? (
-                        <View className="self-start rounded-full border border-emerald-300 px-3 py-1">
-                            <Text className="text-emerald-600 text-[12px] font-kumbhBold">
-                                {subtitleBadge ?? computedRoleText}
-                            </Text>
-                        </View>
-                    ) : null}
+                <View className="flex-row items-center gap-2">
+                    {rightExtra}
+                    <Pressable
+                        onPress={handleRightPress}
+                        className="h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-white"
+                    >
+                        {rightIcon ?? (
+                            <Ionicons
+                                name="notifications-outline"
+                                size={18}
+                                color="#4C5FAB"
+                            />
+                        )}
+                    </Pressable>
                 </View>
             </View>
 
-            <View className="flex-row items-center gap-2">
-                {rightExtra}
-                <Pressable
-                    onPress={handleRightPress}
-                    className="w-11 h-11 rounded-2xl bg-white shadow-sm items-center justify-center"
-                >
-                    {rightIcon}
-                </Pressable>
+            <View className="mt-3">
+                {title ? (
+                    <Text className="mb-1 font-kumbhBold text-[10px] uppercase tracking-[2px] text-gray-500">
+                        {title}
+                    </Text>
+                ) : null}
+
+                <Text className="font-kumbhBold text-[20px] leading-7 text-[#111827]">
+                    {greetingName ? `Hi, ${greetingName}!` : "Hi there!"}
+                </Text>
+                <Text className="mt-0.5 font-kumbh text-xs text-gray-500 uppercase">
+                    {timeGreeting()}
+                </Text>
+
+                {/* {subtitleBadge || computedRoleText ? (
+                    <View className="mt-2 flex-row items-center">
+                        <View className="self-start rounded-full bg-primary px-3 py-1">
+                            <Text className="font-kumbhBold text-[11px] text-white">
+                                {subtitleBadge ?? computedRoleText}
+                            </Text>
+                        </View>
+                    </View>
+                ) : null} */}
             </View>
+
+            <View className="mt-1 h-px bg-gray-100" />
         </View>
     );
 }

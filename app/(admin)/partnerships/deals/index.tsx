@@ -546,8 +546,7 @@ export default function DealsList() {
                     Number(d.expectedDealValue || 0) > 0) ||
                 (dashboardView === "commissionsDue" && commission.due > 0) ||
                 (dashboardView === "commissionsPaid" && commission.paid > 0) ||
-                (dashboardView === "outstanding" &&
-                    commission.outstanding > 0);
+                (dashboardView === "outstanding" && commission.outstanding > 0);
 
             return (
                 matchesQuery &&
@@ -615,14 +614,7 @@ export default function DealsList() {
                 ? safeFirst - safeSecond
                 : safeSecond - safeFirst;
         });
-    }, [
-        dashboardView,
-        deals,
-        debouncedQuery,
-        filters,
-        partnerNameById,
-        stage,
-    ]);
+    }, [dashboardView, deals, debouncedQuery, filters, partnerNameById, stage]);
 
     const renderItem = ({ item }: { item: Deal }) => {
         const paymentStatus =
@@ -754,60 +746,66 @@ export default function DealsList() {
                 )}
             />
 
-            <View className="px-4 pt-1 flex-1">
-                <View className="bg-gray-50 rounded-lg px-3 py-2 mb-3 flex-row items-center">
-                    <TextInput
-                        placeholder="Search deals..."
-                        value={query}
-                        onChangeText={setQuery}
-                        className="flex-1 ml-2 text-base"
-                        placeholderTextColor="#999"
-                    />
-                    <Pressable
-                        onPress={() => setShowFilters(true)}
-                        className={`ml-2 h-9 px-3 rounded-full flex-row items-center justify-center ${
-                            activeFilterCount
-                                ? "bg-blue-500"
-                                : "bg-white border border-gray-200"
-                        }`}
-                    >
-                        <Filter
-                            size={16}
-                            color={activeFilterCount ? "#FFFFFF" : "#374151"}
+            <View className="pt-1 flex-1">
+                <View className="px-4">
+                    <View className="bg-gray-50 rounded-lg px-3 py-2 mb-3 flex-row items-center">
+                        <TextInput
+                            placeholder="Search deals..."
+                            value={query}
+                            onChangeText={setQuery}
+                            className="flex-1 ml-2 text-base"
+                            placeholderTextColor="#999"
                         />
-                        {activeFilterCount ? (
-                            <Text className="ml-1 text-xs font-semibold text-white">
-                                {activeFilterCount}
-                            </Text>
-                        ) : null}
-                    </Pressable>
-                </View>
-
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    className="mb-3"
-                    style={{ maxHeight: 36 }}
-                    contentContainerStyle={{
-                        alignItems: "center",
-                        paddingRight: 16,
-                    }}
-                >
-                    <View className="flex-row gap-1.5">
-                        {STAGES.map((s) => (
-                            <Pill
-                                label={s}
-                                active={stage === s || (s === "All" && !stage)}
-                                key={s}
-                                onPress={() =>
-                                    handleStageChange(
-                                        s === "All" ? undefined : s,
-                                    )
+                        <Pressable
+                            onPress={() => setShowFilters(true)}
+                            className={`ml-2 h-9 px-3 rounded-full flex-row items-center justify-center ${
+                                activeFilterCount
+                                    ? "bg-blue-500"
+                                    : "bg-white border border-gray-200"
+                            }`}
+                        >
+                            <Filter
+                                size={16}
+                                color={
+                                    activeFilterCount ? "#FFFFFF" : "#374151"
                                 }
                             />
-                        ))}
+                            {activeFilterCount ? (
+                                <Text className="ml-1 text-xs font-semibold text-white">
+                                    {activeFilterCount}
+                                </Text>
+                            ) : null}
+                        </Pressable>
                     </View>
-                </ScrollView>
+
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        className="mb-3"
+                        style={{ maxHeight: 36 }}
+                        contentContainerStyle={{
+                            alignItems: "center",
+                            paddingRight: 16,
+                        }}
+                    >
+                        <View className="flex-row gap-1.5">
+                            {STAGES.map((s) => (
+                                <Pill
+                                    label={s}
+                                    active={
+                                        stage === s || (s === "All" && !stage)
+                                    }
+                                    key={s}
+                                    onPress={() =>
+                                        handleStageChange(
+                                            s === "All" ? undefined : s,
+                                        )
+                                    }
+                                />
+                            ))}
+                        </View>
+                    </ScrollView>
+                </View>
 
                 {error && (
                     <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
@@ -824,6 +822,7 @@ export default function DealsList() {
                         data={filtered}
                         keyExtractor={(item) => item._id}
                         renderItem={renderItem}
+                        contentContainerClassName="px-4"
                         refreshControl={
                             <RefreshControl
                                 refreshing={refreshing}

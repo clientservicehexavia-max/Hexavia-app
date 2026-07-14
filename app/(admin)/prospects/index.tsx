@@ -344,37 +344,49 @@ export default function ProspectsIndex() {
             {/* Header */}
             <View className=" pb-4">
                 <PlatformAdaptiveHeader
-                    title="Hexavia Prospects"
+                    title="Prospects"
                     headerRight={({ tintColor }) => (
-                        <Pressable
-                            onPress={() => setShowFilters(true)}
-                            className={clsx(
-                                "w-10 h-10 rounded-full items-center justify-center",
-                                hasAppliedFilters
-                                    ? "bg-blue-50"
-                                    : "bg-transparent",
-                            )}
-                        >
-                            <FilterIcon
-                                size={22}
-                                color={
-                                    hasAppliedFilters ? "#2563EB" : tintColor
+                        <View className="flex-row items-center gap-2">
+                            <Pressable
+                                onPress={() => setShowFilters(true)}
+                                className={clsx(
+                                    "w-10 h-10 rounded-full items-center justify-center",
+                                    hasAppliedFilters
+                                        ? "bg-blue-50"
+                                        : "bg-transparent",
+                                )}
+                            >
+                                <FilterIcon
+                                    size={22}
+                                    color={
+                                        hasAppliedFilters
+                                            ? "#2563EB"
+                                            : tintColor
+                                    }
+                                />
+                                {hasAppliedFilters ? (
+                                    <View className="absolute right-1.5 top-1.5 min-w-4 h-4 rounded-full bg-blue-600 px-1 items-center justify-center">
+                                        <Text className="text-[9px] leading-3 font-kumbhBold text-white">
+                                            {appliedFilterCount}
+                                        </Text>
+                                    </View>
+                                ) : null}
+                            </Pressable>
+                            <Pressable
+                                onPress={() =>
+                                    router.push("/(admin)/prospects/create")
                                 }
-                            />
-                            {hasAppliedFilters ? (
-                                <View className="absolute right-1.5 top-1.5 min-w-4 h-4 rounded-full bg-blue-600 px-1 items-center justify-center">
-                                    <Text className="text-[9px] leading-3 font-kumbhBold text-white">
-                                        {appliedFilterCount}
-                                    </Text>
-                                </View>
-                            ) : null}
-                        </Pressable>
+                                className="w-10 h-10 bg-primary rounded-full items-center justify-center"
+                            >
+                                <Plus size={26} color="#FFFFFF" />
+                            </Pressable>
+                        </View>
                     )}
                 />
 
-                {/* Search + Add */}
-                <View className="mt-3 flex-row items-center gap-3">
-                    <View className="flex-1 flex-row items-center gap-2 bg-white border border-gray-200 rounded-2xl px-3 h-12">
+                {/* Search */}
+                <View className="mt-3">
+                    <View className="w-full flex-row items-center gap-2 bg-white border border-gray-200 rounded-2xl px-3 h-12">
                         <Search size={18} color="#6B7280" />
                         <TextInput
                             value={query}
@@ -385,16 +397,6 @@ export default function ProspectsIndex() {
                             returnKeyType="search"
                         />
                     </View>
-
-                    <Pressable
-                        onPress={() => router.push("/(admin)/prospects/create")}
-                        className="flex-row items-center gap-2 bg-primary-50 border border-primary-100 rounded-2xl px-4 h-12"
-                    >
-                        <Plus size={18} color="#111827" />
-                        <Text className="text-sm font-kumbh text-text">
-                            Add
-                        </Text>
-                    </Pressable>
                 </View>
 
                 <View className="mt-4">

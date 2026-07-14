@@ -20,34 +20,50 @@ import {
     Text,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
-
-function initialsOf(name?: string) {
-    if (!name) return "U";
-    const parts = name.trim().split(/\s+/).slice(0, 2);
-    return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "U";
-}
 
 function InfoRow({
     icon,
     label,
     value,
+    isBadge = false,
+    withBorder = true,
 }: {
     icon: React.ComponentProps<typeof Ionicons>["name"];
     label: string;
     value?: string | null;
+    isBadge?: boolean;
+    withBorder?: boolean;
 }) {
     return (
-        <View className="flex-row items-center justify-between rounded-2xl bg-white/70 px-4 py-3 mb-3">
+        <View
+            className={`flex-row items-center justify-between px-4 py-4 ${
+                withBorder ? "border-b border-gray-100" : ""
+            }`}
+        >
             <View className="flex-row items-center">
-                <View className="mr-3 rounded-2xl bg-primary/10 p-2">
+                <View className="mr-3 h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
                     <Ionicons name={icon} size={18} color="#4C5FAB" />
                 </View>
-                <Text className="text-gray-500 font-kumbh">{label}</Text>
+                <Text className="font-kumbh text-base text-gray-800">
+                    {label}
+                </Text>
             </View>
-            <Text className="ml-4 max-w-[58%] text-right text-sm text-gray-900 font-kumbh">
-                {value || "—"}
-            </Text>
+
+            <View className="ml-4 flex-row items-center gap-2">
+                {isBadge ? (
+                    <View className="rounded-full bg-primary/10 px-3 py-1.5">
+                        <Text className="font-kumbhBold text-sm text-primary">
+                            {value || "-"}
+                        </Text>
+                    </View>
+                ) : (
+                    <Text className="max-w-[185px] text-right font-kumbh text-base text-gray-900">
+                        {value || "-"}
+                    </Text>
+                )}
+            </View>
         </View>
     );
 }
@@ -57,126 +73,21 @@ export default function Profile() {
     const router = useRouter();
     const user = useSelector(selectUser);
     const phase = useSelector(selectPhase);
+
     const [refreshing, setRefreshing] = useState(false);
+    const [pending, setPending] = useState<any | null>(null);
+
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         await dispatch(fetchProfile());
         setRefreshing(false);
     }, [dispatch]);
+
     useFocusEffect(
         useCallback(() => {
             if (!user) dispatch(fetchProfile());
         }, [dispatch, user]),
     );
-    const avatarUri = user?.profilePicture || undefined;
-    const logoutHandler = useCallback(async () => {
-        try {
-            await dispatch(
-                updateProfile({ expoPushToken: null, silent: true }),
-            );
-        } catch {}
-        dispatch(logout());
-        dispatch({ type: "chat/disconnect" });
-        dispatch(resetChat());
-        clearToken();
-        clearUser();
-        router.replace("/(auth)/login");
-    }, [dispatch, router]);
-    const role = user?.role ?? "";
-    const channel =
-        (user as any)?.channel?.name ||
-        (user as any)?.channelName ||
-        (user as any)?.channel ||
-        "";
-
-    const onLogOut = () => {
-        Alert.alert("Logout", "Are you sure you want to logout?", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Logout",
-                style: "destructive",
-                onPress: logoutHandler,
-            },
-        ]);
-    };
-
-    const topCard = useMemo(() => {
-        return (
-            <View
-                className="relative z-30 mx-4 mt-10 rounded-3xl bg-white p-4 shadow-lg"
-                style={{ elevation: 12 }}
-            >
-                <View className="flex-row items-center">
-                    <View className="h-20 w-20 rounded-2xl bg-gray-100 overflow-hidden mr-4 items-center justify-center">
-                        {avatarUri ? (
-                            <Image
-                                source={{ uri: avatarUri }}
-                                className="h-20 w-20"
-                                resizeMode="cover"
-                            />
-                        ) : (
-                            <Image
-                                source={{
-                                    uri: "https://png.pngtree.com/png-vector/20220709/ourmid/pngtree-businessman-user-avatar-wearing-suit-with-red-tie-png-image_5809521.png",
-                                }}
-                                className="h-20 w-20"
-                                resizeMode="cover"
-                            />
-                        )}
-                    </View>
-                    <View className="flex-1">
-                        <Text
-                            className="text-xl font-kumbhBold text-gray-900"
-                            numberOfLines={1}
-                        >
-                            {user?.fullname || "Unnamed User"}
-                        </Text>
-                        <Text
-                            className="mt-1 font-kumbh text-gray-500"
-                            numberOfLines={1}
-                        >
-                            @{user?.username || "username"} • {role || "Role"}
-                        </Text>
-                        {!!channel && (
-                            <View className="mt-2 self-start rounded-xl bg-primary/10 px-2.5 py-1">
-                                <Text className="text-xs font-kumbhBold text-primary">
-                                    Channel: {channel}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                </View>
-                <View className="mt-4 flex-row">
-                    <Pressable
-                        className="flex-1 mr-2 items-center justify-center rounded-2xl bg-primary px-4 py-3"
-                        onPress={() => router.push("/(admin)/profile/edit")}
-                    >
-                        <Text className="font-kumbhBold text-white">
-                            Edit Profile
-                        </Text>
-                    </Pressable>
-                    <Pressable
-                        className="flex-1 ml-2 items-center justify-center rounded-2xl bg-red-500 px-4 py-3"
-                        onPress={onLogOut}
-                    >
-                        <Text className="font-kumbhBold text-white">
-                            Log Out
-                        </Text>
-                    </Pressable>
-                </View>
-            </View>
-        );
-    }, [
-        avatarUri,
-        channel,
-        logoutHandler,
-        role,
-        router,
-        user?.fullname,
-        user?.username,
-    ]);
-
-    const [pending, setPending] = useState<any | null>(null);
 
     useEffect(() => {
         let mounted = true;
@@ -185,13 +96,49 @@ export default function Profile() {
             if (!mounted) return;
             setPending(p);
         })();
+
         return () => {
             mounted = false;
         };
     }, []);
 
+    const avatarUri = user?.profilePicture || undefined;
+    const role = user?.role ?? "";
+    const channel =
+        (user as any)?.channel?.name ||
+        (user as any)?.channelName ||
+        (user as any)?.channel ||
+        "";
+
+    const logoutHandler = useCallback(async () => {
+        try {
+            await dispatch(
+                updateProfile({ expoPushToken: null, silent: true }),
+            );
+        } catch {}
+
+        dispatch(logout());
+        dispatch({ type: "chat/disconnect" });
+        dispatch(resetChat());
+        clearToken();
+        clearUser();
+        router.replace("/(auth)/login");
+    }, [dispatch, router]);
+
+    const onLogOut = useCallback(() => {
+        Alert.alert("Logout", "Are you sure you want to logout?", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Logout",
+                style: "destructive",
+                onPress: logoutHandler,
+            },
+        ]);
+    }, [logoutHandler]);
+
     const applyPending = useCallback(async () => {
         if (!pending) return;
+
         try {
             if (
                 pending.ota &&
@@ -206,6 +153,7 @@ export default function Profile() {
                 await Updates.reloadAsync();
                 return;
             }
+
             if (pending.storeUrl) {
                 const can = await Linking.canOpenURL(pending.storeUrl);
                 if (can) {
@@ -219,28 +167,101 @@ export default function Profile() {
         } catch {}
     }, [pending]);
 
-    return (
-        <View className="flex-1 bg-gray-50">
-            {/* <StatusBar style="light" /> */}
-            {/* Header */}
-            <View className="relative z-0 h-40 w-full bg-primary rounded-b-[28px] px-5 pt-20 flex-row items-center gap-2">
-                <Pressable className="" onPress={() => router.back()}>
-                    <Ionicons name="chevron-back" size={24} color="white" />
+    const topCard = useMemo(() => {
+        return (
+            <View
+                className="mx-4 mt-4 rounded-3xl bg-white p-5"
+                style={{ elevation: 2 }}
+            >
+                <View className="flex-row items-center">
+                    <View className="relative mr-4">
+                        <View className="h-24 w-24 overflow-hidden rounded-full bg-gray-100">
+                            {avatarUri ? (
+                                <Image
+                                    source={{ uri: avatarUri }}
+                                    className="h-24 w-24"
+                                    resizeMode="cover"
+                                />
+                            ) : (
+                                <Image
+                                    source={{
+                                        uri: "https://png.pngtree.com/png-vector/20220709/ourmid/pngtree-businessman-user-avatar-wearing-suit-with-red-tie-png-image_5809521.png",
+                                    }}
+                                    className="h-24 w-24"
+                                    resizeMode="cover"
+                                />
+                            )}
+                        </View>
+                    </View>
+
+                    <View className="flex-1">
+                        <Text
+                            className="font-kumbhBold text-xl text-[#0F172A]"
+                            numberOfLines={2}
+                        >
+                            {user?.fullname || "Unnamed User"}
+                        </Text>
+                        <Text
+                            className="mt-1 font-kumbh text-sm text-gray-500"
+                            numberOfLines={1}
+                        >
+                            @{user?.username || "username"}
+                        </Text>
+
+                        <View className="mt-3 flex-row items-center gap-2">
+                            <View className="flex-row items-center rounded-full bg-primary/10 px-3 py-1.5">
+                                <Ionicons
+                                    name="shield-checkmark"
+                                    size={14}
+                                    color="#4C5FAB"
+                                />
+                                <Text className="ml-1.5 font-kumbhBold text-xs text-primary">
+                                    {role || "Role"}
+                                </Text>
+                            </View>
+
+                            {!!channel && (
+                                <View className="rounded-full bg-gray-100 px-3 py-1.5">
+                                    <Text className="font-kumbh text-xs text-gray-600">
+                                        {channel}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                </View>
+
+                <Pressable
+                    className="mt-5 flex-row items-center justify-center rounded-2xl bg-primary py-3"
+                    onPress={() => router.push("/(admin)/profile/edit")}
+                >
+                    <Ionicons name="create-outline" size={18} color="white" />
+                    <Text className="ml-2 font-kumbhBold text-sm text-white">
+                        Edit Profile
+                    </Text>
                 </Pressable>
-                <View>
-                    <Text className="text-white font-kumbhBold text-2xl">
-                        Profile
-                    </Text>
-                    <Text className="text-white/80 font-kumbh mt-1">
-                        Manage your account
-                    </Text>
+            </View>
+        );
+    }, [avatarUri, channel, role, router, user?.fullname, user?.username]);
+
+    return (
+        <SafeAreaView className="flex-1 bg-[#F4F5FA]" edges={["top"]}>
+            <View className="px-5 pb-1 pt-4">
+                <View className="flex-row items-center">
+                    <View className="flex-1">
+                        <Text className="font-kumbhBold text-3xl text-[#0B1534]">
+                            Profile
+                        </Text>
+                        <Text className="font-kumbh text-base text-[#667085]">
+                            Manage your account
+                        </Text>
+                    </View>
                 </View>
             </View>
 
-            {/* Body */}
             <ScrollView
-                className="flex-1 "
-                contentContainerStyle={{ paddingTop: 0, paddingBottom: 28 }}
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 20 }}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -251,21 +272,33 @@ export default function Profile() {
                 {topCard}
 
                 {pending && (
-                    <View className="mx-4 mt-4 rounded-2xl bg-yellow-50 p-4">
-                        <Text className="font-kumbhBold text-sm text-yellow-800">
-                            App update available
-                        </Text>
-                        <Text className="mt-1 text-sm text-yellow-700">
-                            {pending.latestVersion
-                                ? `Version: ${pending.latestVersion}`
-                                : "A new update is available."}
-                        </Text>
-                        <View className="mt-3 flex-row justify-end">
+                    <View
+                        className="mx-4 mt-4 rounded-3xl bg-white p-4"
+                        style={{ elevation: 2 }}
+                    >
+                        <View className="flex-row items-center">
+                            <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                                <Ionicons
+                                    name="arrow-up-circle"
+                                    size={20}
+                                    color="#4C5FAB"
+                                />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="font-kumbhBold text-base text-[#111827]">
+                                    Update available
+                                </Text>
+                                <Text className="mt-0.5 font-kumbh text-sm text-[#667085]">
+                                    {pending.latestVersion
+                                        ? `Version ${pending.latestVersion} is ready.`
+                                        : "A new update is available."}
+                                </Text>
+                            </View>
                             <Pressable
                                 onPress={applyPending}
-                                className="rounded-xl bg-yellow-600 px-3 py-2"
+                                className="rounded-2xl bg-primary px-5 py-3"
                             >
-                                <Text className="text-sm font-kumbhBold text-white">
+                                <Text className="font-kumbhBold text-sm text-white">
                                     Update
                                 </Text>
                             </Pressable>
@@ -273,49 +306,70 @@ export default function Profile() {
                     </View>
                 )}
 
-                {/* Details */}
-                <View className="mt-5 px-4">
-                    <Text className="mb-3 text-gray-800 font-kumbhBold">
+                <View className="mt-8 px-4">
+                    <Text className="mb-3 font-kumbhBold text-xs uppercase tracking-wider text-[#667085]">
                         Account Details
                     </Text>
 
-                    <InfoRow
-                        icon="person"
-                        label="Full name"
-                        value={user?.fullname || ""}
-                    />
-                    <InfoRow
-                        icon="at"
-                        label="Username"
-                        value={user?.username || ""}
-                    />
-                    <InfoRow
-                        icon="mail"
-                        label="Email"
-                        value={user?.email || ""}
-                    />
-                    <InfoRow
-                        icon="call"
-                        label="Phone"
-                        value={
-                            (user as any)?.phoneNumber ||
-                            (user as any)?.phone ||
-                            ""
-                        }
-                    />
-                    <InfoRow icon="people" label="Role" value={role} />
+                    <View
+                        className="overflow-hidden rounded-3xl bg-white"
+                        style={{ elevation: 2 }}
+                    >
+                        <InfoRow
+                            icon="person"
+                            label="Full name"
+                            value={user?.fullname || ""}
+                        />
+                        <InfoRow
+                            icon="at"
+                            label="Username"
+                            value={user?.username || ""}
+                        />
+                        <InfoRow
+                            icon="mail"
+                            label="Email"
+                            value={user?.email || ""}
+                        />
+                        <InfoRow
+                            icon="call"
+                            label="Phone"
+                            value={
+                                (user as any)?.phoneNumber ||
+                                (user as any)?.phone ||
+                                ""
+                            }
+                        />
+                    </View>
                 </View>
 
-                {/* Loading state overlay if first load */}
+                <View
+                    className="mx-4 mt-4 rounded-3xl border border-red-100 bg-white"
+                    style={{ elevation: 1 }}
+                >
+                    <Pressable
+                        className="flex-row items-center justify-center py-5"
+                        onPress={onLogOut}
+                    >
+                        <Ionicons
+                            name="log-out-outline"
+                            size={22}
+                            color="#E24C4B"
+                        />
+                        <Text className="ml-3 font-kumbhBold text-lg text-[#E24C4B]">
+                            Log Out
+                        </Text>
+                    </Pressable>
+                </View>
+
                 {phase === "loading" && !user && (
-                    <View className="mt-8 items-center">
-                        <ActivityIndicator />
-                        <Text className="mt-2 text-gray-500 font-kumbh">
-                            Loading profile…
+                    <View className="mt-12 items-center">
+                        <ActivityIndicator size="large" color="#4C5FAB" />
+                        <Text className="mt-4 font-kumbh text-sm text-gray-500">
+                            Loading profile...
                         </Text>
                     </View>
                 )}
             </ScrollView>
-        </View>
+        </SafeAreaView>
     );
 }

@@ -22,7 +22,7 @@ export default function AdminHeader({
     rightIcon,
     onRightPress,
 }: {
-    title: string;
+    title?: string;
     subtitleBadge?: string;
     rightIcon?: React.ReactNode;
     onRightPress?: () => void;

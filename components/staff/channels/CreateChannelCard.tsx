@@ -1,42 +1,41 @@
-import React from "react";
-import { View, Text, Pressable } from "react-native";
 import { Plus } from "lucide-react-native";
+import React from "react";
+import { Pressable, Text, View } from "react-native";
 
 type Props = {
-  width: number;
-  gap: number;
-  onPress: () => void;
+    width: number;
+    gap: number;
+    onPress: () => void;
 };
 
 export default function CreateChannelCard({ width, gap, onPress }: Props) {
-  const CARD_HEIGHT = 200;
-  const REDUCED_WIDTH = width * 0.6;
+    const CARD_HEIGHT = 130;
+    const REDUCED_WIDTH = width * 0.6;
 
-  return (
-    <Pressable
-      onPress={onPress}
-      className="rounded-2xl overflow-hidden"
-      style={{ width: REDUCED_WIDTH, marginRight: gap }}
-      testID="create-channel-card"
-    >
-      <View
-        className="bg-[#48A7FF] rounded-2xl p-5 justify-between"
-        style={{ height: CARD_HEIGHT }}
-      >
-        <Text className="text-white font-kumbhBold text-lg">
-          Create Project
-        </Text>
+    return (
+        <Pressable
+            onPress={onPress}
+            style={{
+                width: REDUCED_WIDTH,
+                marginRight: gap,
+                height: CARD_HEIGHT,
+            }}
+            testID="create-channel-card"
+        >
+            <View className="flex-1 rounded-2xl bg-white border border-dashed border-primary/40 p-4 justify-between">
+                <View className="flex-row items-center gap-2">
+                    <View className="h-7 w-7 rounded-lg bg-primary/10 items-center justify-center">
+                        <Plus size={15} color="#4C5FAB" />
+                    </View>
+                    <Text className="font-kumbhBold text-sm text-primary">
+                        New Project
+                    </Text>
+                </View>
 
-        <View className="items-center justify-center">
-          <View className="h-14 w-14 rounded-2xl bg-white/20 items-center justify-center">
-            <Plus size={28} color="#FFFFFF" />
-          </View>
-        </View>
-
-        <Text className="text-white/90 text-[11px]">
-          Start a space for your team to plan and chat.
-        </Text>
-      </View>
-    </Pressable>
-  );
+                <Text className="font-kumbh text-[11px] text-gray-400 leading-4">
+                    Start a space for your team to plan and chat.
+                </Text>
+            </View>
+        </Pressable>
+    );
 }

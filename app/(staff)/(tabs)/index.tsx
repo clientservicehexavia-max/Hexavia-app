@@ -1,5 +1,4 @@
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { Bell, ChevronRight } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -61,7 +60,7 @@ function prettyRole(role?: string | null) {
 
 export default function StaffHome() {
     const [showCreate, setShowCreate] = useState(false);
-        const [refreshing, setRefreshing] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const isIOS = Platform.OS === "ios";
 
     const router = useRouter();
@@ -138,7 +137,6 @@ export default function StaffHome() {
             className="flex-1 bg-white"
             edges={isIOS ? ["top", "left", "right"] : ["top", "left", "right"]}
         >
-            <StatusBar style="dark" />
             <ScrollView
                 className="flex-1"
                 contentContainerClassName="pb-8 px-4"
@@ -153,8 +151,8 @@ export default function StaffHome() {
                 <StaffHeader rightIcon={<Bell size={20} color="#111827" />} />
 
                 {/* Channels */}
-                <View className="mt-6 flex-row items-center justify-between">
-                    <Text className="text-3xl text-gray-900 font-kumbh">
+                <View className="mt-2 flex-row items-center justify-between">
+                    <Text className="text-lg text-gray-900 font-kumbhBold">
                         Projects
                     </Text>
                     <Pressable
@@ -168,7 +166,7 @@ export default function StaffHome() {
                     </Pressable>
                 </View>
 
-                <View style={{ marginTop: 16 }}>
+                <View style={{ marginTop: 5 }}>
                     <FlatList
                         data={listData as any}
                         horizontal
@@ -216,7 +214,7 @@ export default function StaffHome() {
                         // snapToInterval={SNAP}
                         // snapToAlignment="start"
                         decelerationRate="fast"
-                        style={{ height: 200 + 16 }}
+                        style={{ height: 130 + 20 }}
                         contentContainerStyle={{ paddingRight: 8 }}
                         getItemLayout={(_, index) => ({
                             length: SNAP,

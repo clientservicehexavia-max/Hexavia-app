@@ -1,18 +1,19 @@
 {
-  "extends": "@react-native/typescript-config/tsconfig.json",
-  "compilerOptions": {
-    "skipLibCheck": true,
-    "strict": true,
-    "baseUrl": ".",
-    "paths": { "@/*": ["./*"] },
-    "types": []
-  },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "nativewind-env.d.ts"
-  ],
-  "exclude": ["node_modules"]
+    "extends": "@react-native/typescript-config/tsconfig.json",
+    "compilerOptions": {
+        "skipLibCheck": true,
+        "strict": true,
+        "ignoreDeprecations": "6.0",
+        "baseUrl": ".",
+        "paths": { "@/*": ["./*"] },
+        "types": []
+    },
+    "include": [
+        "**/*.ts",
+        "**/*.tsx",
+        ".expo/types/**/*.ts",
+        "expo-env.d.ts",
+        "nativewind-env.d.ts"
+    ],
+    "exclude": ["node_modules"]
 }
