@@ -85,7 +85,7 @@ export interface ClientCreateInput {
     projectName?: string;
     phoneNumber?: string;
     email?: string;
-    source?: "Lujo heights" | "Boing" | "Moses Okoh" | "TMI" | "Private jet";
+    source?: string;
     engagement?: string;
     industry?: string;
     staffSize?: number;

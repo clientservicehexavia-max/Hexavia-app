@@ -139,22 +139,35 @@ const SOURCE_OPTIONS = [
     { label: "Moses Okoh", value: "Moses Okoh" },
     { label: "TMI", value: "TMI" },
     { label: "Private jet", value: "Private jet" },
+    { label: "Others", value: "Others" },
 ] as const;
 
 type SourceType = (typeof SOURCE_OPTIONS)[number]["value"] | "";
 
 const normalizeSource = (value?: unknown): SourceType => {
-    const normalized = String(value ?? "")
-        .toLowerCase()
-        .trim();
-    if (
-        normalized === "prospect" ||
-        normalized === "clients" ||
-        normalized === "partnership"
-    ) {
-        return normalized;
+    const trimmed = String(value ?? "").trim();
+    if (!trimmed) {
+        return "";
     }
-    return "";
+    const directMatch = SOURCE_OPTIONS.find(
+        (option) =>
+            option.value.toLowerCase() === trimmed.toLowerCase() &&
+            option.value !== "Others",
+    );
+    return directMatch ? (directMatch.value as SourceType) : "Others";
+};
+
+const normalizeSourceOther = (value?: unknown): string => {
+    const trimmed = String(value ?? "").trim();
+    if (!trimmed) {
+        return "";
+    }
+    const isKnownSource = SOURCE_OPTIONS.some(
+        (option) =>
+            option.value !== "Others" &&
+            option.value.toLowerCase() === trimmed.toLowerCase(),
+    );
+    return isKnownSource ? "" : trimmed;
 };
 
 const INDUSTRY_OPTIONS = [
@@ -446,7 +459,7 @@ export default function ClientDetails() {
                 isSuspended: false,
                 createdAt: clientFromStore.createdAt,
                 projectName: clientFromStore.projectName,
-                source: normalizeSource((clientFromStore as any).source),
+                source: String((clientFromStore as any).source ?? ""),
                 industry: clientFromStore.industry,
                 staffSize: clientFromStore.staffSize,
                 description: clientFromStore.description,
@@ -487,6 +500,9 @@ export default function ClientDetails() {
     const [projectName, setProjectName] = useState(baseUser.projectName ?? "");
     const [source, setSource] = useState<SourceType>(
         normalizeSource(baseUser.source),
+    );
+    const [sourceOther, setSourceOther] = useState(
+        normalizeSourceOther(baseUser.source),
     );
     const [industry, setIndustry] = useState(resolvedIndustry.selection);
     const [industryOther, setIndustryOther] = useState(resolvedIndustry.other);
@@ -536,6 +552,8 @@ export default function ClientDetails() {
         null,
     );
     const [showNoteModal, setShowNoteModal] = useState(false);
+    const effectiveSource =
+        source === "Others" ? sourceOther.trim() : source.trim();
     const effectiveIndustry =
         industry === "Other" ? industryOther.trim() : industry.trim();
     const documentLabel =
@@ -941,7 +959,7 @@ export default function ClientDetails() {
             baseUser.fullname || baseUser.username || baseUser.email || "";
         const baseEmail = baseUser.email ?? "";
         const basePhone = baseUser.phoneNumber ?? "";
-        const baseSource = normalizeSource(baseUser.source);
+        const baseSource = String(baseUser.source ?? "").trim();
         const baseIndustry = (baseUser.industry ?? "").trim();
         const baseJoined = toIsoDateInput(baseUser.createdAt);
 
@@ -949,7 +967,7 @@ export default function ClientDetails() {
             name !== baseName ||
             email !== baseEmail ||
             phoneNumber !== basePhone ||
-            source !== baseSource ||
+            effectiveSource !== baseSource ||
             projectName !== (baseUser.projectName ?? "") ||
             effectiveIndustry !== baseIndustry ||
             staffSize !== String(baseUser.staffSize ?? "") ||
@@ -972,7 +990,7 @@ export default function ClientDetails() {
         name,
         email,
         phoneNumber,
-        source,
+        effectiveSource,
         projectName,
         effectiveIndustry,
         staffSize,
@@ -997,6 +1015,7 @@ export default function ClientDetails() {
         setEmail(baseUser.email ?? "");
         setPhoneNumber(baseUser.phoneNumber ?? "");
         setSource(normalizeSource(baseUser.source));
+        setSourceOther(normalizeSourceOther(baseUser.source));
         setIndustry(resolvedIndustry.selection);
         setIndustryOther(resolvedIndustry.other);
         setstaffSize(String(baseUser.staffSize ?? ""));
@@ -1235,7 +1254,7 @@ export default function ClientDetails() {
             projectName: toNullableText(projectName),
             email: toNullableText(email),
             phoneNumber: toNullableText(phoneNumber),
-            source: toNullableText(source),
+            source: toNullableText(effectiveSource),
             industry: toNullableText(effectiveIndustry),
             staffSize: hasStaffSize ? parsedStaffSize : null,
             description: toNullableText(description),
@@ -1490,6 +1509,18 @@ export default function ClientDetails() {
                                             />
                                         </Pressable>
                                     </View>
+                                    {source === "Others" ? (
+                                        <View className="mt-4">
+                                            <FieldLabel>
+                                                Other Source
+                                            </FieldLabel>
+                                            <Input
+                                                value={sourceOther}
+                                                onChangeText={setSourceOther}
+                                                placeholder="Enter Source"
+                                            />
+                                        </View>
+                                    ) : null}
 
                                     {/* Industry | Staff Size */}
                                     <View className="mt-4">
@@ -2084,6 +2115,9 @@ export default function ClientDetails() {
                         onClose={() => setShowSourceSheet(false)}
                         onSelect={(value) => {
                             setSource(value as SourceType);
+                            if (value !== "Others") {
+                                setSourceOther("");
+                            }
                             setShowSourceSheet(false);
                         }}
                         title="Select Source"
