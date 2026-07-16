@@ -1918,7 +1918,8 @@ function AudioPreview({ uri }: { uri: string }) {
                     </Text>
                 </Pressable>
                 <Text className="text-white font-kumbh">
-                    {formatAudioTime(positionMs)} / {formatAudioTime(durationMs)}
+                    {formatAudioTime(positionMs)} /{" "}
+                    {formatAudioTime(durationMs)}
                 </Text>
             </View>
         </View>

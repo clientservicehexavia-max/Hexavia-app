@@ -1456,13 +1456,16 @@ export default function ChatScreen() {
                                         {pendingUploadPreview?.name}
                                     </Text>
                                     <Text className="text-sm text-gray-500 mt-1">
-                                        {pendingUploadPreview?.mimeType || "Document"}
+                                        {pendingUploadPreview?.mimeType ||
+                                            "Document"}
                                     </Text>
 
                                     {pendingUploadPreview?.kind === "audio" ? (
                                         <View className="mt-4">
                                             <Pressable
-                                                onPress={handleTogglePreviewAudio}
+                                                onPress={
+                                                    handleTogglePreviewAudio
+                                                }
                                                 disabled={
                                                     !previewAudioStatus.isLoaded
                                                 }

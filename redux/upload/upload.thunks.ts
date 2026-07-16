@@ -118,9 +118,7 @@ export const uploadSingle = createAsyncThunk<
                 ? err.response.data.message
                 : undefined;
         const rawData =
-            typeof err?.response?.data === "string"
-                ? err.response.data
-                : "";
+            typeof err?.response?.data === "string" ? err.response.data : "";
 
         const isTooLargeError =
             status === 413 ||
@@ -128,12 +126,9 @@ export const uploadSingle = createAsyncThunk<
                 `${backendMsg || ""} ${rawData}`,
             );
 
-        const msg =
-            isTooLargeError
-                                ? "Upload rejected by server size limit (HTTP 413). The file may be within app limits, but your proxy/server upload limit is lower."
-                : backendMsg ||
-                  err?.message ||
-                  "Upload failed. Please try again.";
+        const msg = isTooLargeError
+            ? "Upload rejected by server size limit (HTTP 413). The file may be within app limits, but your proxy/server upload limit is lower."
+            : backendMsg || err?.message || "Upload failed. Please try again.";
         showError(msg);
         return rejectWithValue(msg);
     }
