@@ -37,6 +37,7 @@ import * as XLSX from "xlsx";
 
 import DatePickerModal from "@/components/admin/DatePickerModal";
 import OptionSheet from "@/components/common/OptionSheet";
+import { api } from "@/api/axios";
 
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -391,6 +392,33 @@ function resolveIndustrySelection(value?: string) {
     return { selection: "Other", other: trimmed === "Other" ? "" : trimmed };
 }
 
+const extractPublicIdFromUrl = (url?: string) => {
+    if (!url) return null;
+    try {
+        const uploadIndex = url.indexOf("/upload/");
+        if (uploadIndex === -1) return null;
+
+        const after = url.substring(uploadIndex + "/upload/".length);
+        const parts = after.split("/");
+        if (parts[0]?.startsWith("v") && /^v\d+$/.test(parts[0])) {
+            parts.shift();
+        }
+
+        let publicId = parts.join("/").split("?")[0];
+        publicId = publicId.replace(/\.[^/.]+$/, "");
+
+        try {
+            publicId = decodeURIComponent(publicId);
+        } catch {
+            // keep raw value
+        }
+
+        return publicId || null;
+    } catch {
+        return null;
+    }
+};
+
 export default function ClientDetails() {
     const router = useRouter();
     const isIOS = Platform.OS === "ios";
@@ -643,11 +671,56 @@ export default function ClientDetails() {
         }
     }, [uploadingDocument]);
 
-    const handleRemoveDocument = useCallback(() => {
-        setDocumentFile(null);
-        setDocumentName("");
-        setDocumentRemoved(true);
-    }, []);
+    const handleDeleteDocument = useCallback(() => {
+        if (!id || (!documentLink && !documentFile)) return;
+
+        Alert.alert(
+            "Delete Document",
+            "Are you sure you want to delete this document? This cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            if (documentLink) {
+                                const publicId = extractPublicIdFromUrl(documentLink);
+                                if (publicId) {
+                                    await api.post("/upload/delete", {
+                                        publicId,
+                                    });
+                                }
+
+                                await dispatch(
+                                    updateClient({
+                                        id: String(id),
+                                        body: {
+                                            document: null,
+                                            documentUrl: null,
+                                        },
+                                    }),
+                                ).unwrap();
+                            }
+
+                            setDocumentFile(null);
+                            setDocumentName("");
+                            setDocumentRemoved(false);
+                            Alert.alert(
+                                "Deleted",
+                                "Document deleted successfully.",
+                            );
+                        } catch (err: any) {
+                            Alert.alert(
+                                "Delete failed",
+                                err?.message || "Unable to delete document.",
+                            );
+                        }
+                    },
+                },
+            ],
+        );
+    }, [id, documentLink, documentFile, dispatch]);
 
     const handleShareClientPdf = useCallback(async () => {
         const displayName = name.trim() || baseUser.fullname || "Client";
@@ -1856,7 +1929,7 @@ export default function ClientDetails() {
                                                 </Pressable>
                                             </View>
                                             <Pressable
-                                                onPress={handleRemoveDocument}
+                                                onPress={handleDeleteDocument}
                                                 disabled={
                                                     !documentLink &&
                                                     !documentFile
@@ -1877,7 +1950,7 @@ export default function ClientDetails() {
                                                     className="font-kumbhBold"
                                                     style={{ color: "#DC2626" }}
                                                 >
-                                                    Remove Document
+                                                    Delete Document
                                                 </Text>
                                             </Pressable>
                                         </View>

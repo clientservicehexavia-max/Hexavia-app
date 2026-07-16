@@ -1,5 +1,6 @@
 import { api } from "@/api/axios";
 import { showPromise } from "@/components/ui/toast";
+import { uploadSingle } from "@/redux/upload/upload.thunks";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import type {
     Client,
@@ -162,44 +163,29 @@ export const fetchClientById = createAsyncThunk<Client, string>(
 
 export const createClient = createAsyncThunk<Client, ClientCreateInput>(
     "client/createClient",
-    async (payload, { rejectWithValue }) => {
+    async (payload, { rejectWithValue, dispatch }) => {
         try {
             const documentFile = (payload as any)?.documentFile as
                 | { uri: string; name: string; type?: string }
                 | undefined;
 
-            let data: { success: boolean; message: string; client: Client };
-            if (documentFile?.uri) {
-                const form = new FormData();
-                Object.entries(payload as any).forEach(([key, value]) => {
-                    if (
-                        key === "documentFile" ||
-                        value === undefined ||
-                        value === null
-                    ) {
-                        return;
-                    }
-                    form.append(key, String(value));
-                });
-                form.append("document", {
-                    uri: documentFile.uri,
-                    name: documentFile.name,
-                    type: documentFile.type ?? "application/pdf",
-                } as any);
+            const requestBody: Record<string, unknown> = { ...(payload as any) };
+            delete requestBody.documentFile;
 
-                const res = await api.post("/admin/clients", form, {
-                    headers: { Accept: "application/json" },
-                    transformRequest: (v) => v,
-                });
-                data = res.data;
-            } else {
-                const res = await api.post<{
-                    success: boolean;
-                    message: string;
-                    client: Client;
-                }>("/admin/clients", payload);
-                data = res.data;
+            if (documentFile?.uri) {
+                const uploaded = await dispatch(uploadSingle(documentFile)).unwrap();
+                if (uploaded?.url) {
+                    requestBody.document = uploaded.url;
+                    requestBody.documentUrl = uploaded.url;
+                }
             }
+
+            const res = await api.post<{
+                success: boolean;
+                message: string;
+                client: Client;
+            }>("/admin/clients", requestBody);
+            const data = res.data;
             return data.client;
         } catch (err: any) {
             const status = err?.response?.status;
@@ -223,40 +209,32 @@ export const createClient = createAsyncThunk<Client, ClientCreateInput>(
 export const updateClient = createAsyncThunk<
     Client,
     { id: string; body: ClientUpdateInput }
->("client/updateClient", async ({ id, body }, { rejectWithValue }) => {
+>("client/updateClient", async ({ id, body }, { rejectWithValue, dispatch }) => {
     try {
         const documentFile = (body as any)?.documentFile as
             | { uri: string; name: string; type?: string }
             | undefined;
 
-        const req = documentFile?.uri
-            ? (() => {
-                  const form = new FormData();
-                  Object.entries(body as any).forEach(([key, value]) => {
-                      if (
-                          key === "documentFile" ||
-                          value === undefined ||
-                          value === null
-                      ) {
-                          return;
-                      }
-                      form.append(key, String(value));
-                  });
-                  form.append("document", {
-                      uri: documentFile.uri,
-                      name: documentFile.name,
-                      type: documentFile.type ?? "application/pdf",
-                  } as any);
-                  return api.put(`/admin/clients/${id}`, form, {
-                      headers: { Accept: "application/json" },
-                      transformRequest: (v) => v,
-                  });
-              })()
-            : api.put<{
-                  success: boolean;
-                  message: string;
-                  client: Client;
-              }>(`/admin/clients/${id}`, body);
+        const requestBody: Record<string, unknown> = { ...(body as any) };
+        delete requestBody.documentFile;
+
+        if (documentFile?.uri) {
+            const uploaded = await dispatch(uploadSingle(documentFile)).unwrap();
+            if (uploaded?.url) {
+                requestBody.document = uploaded.url;
+                requestBody.documentUrl = uploaded.url;
+            }
+        }
+
+        if (requestBody.document === null && requestBody.documentUrl === undefined) {
+            requestBody.documentUrl = null;
+        }
+
+        const req = api.put<{
+            success: boolean;
+            message: string;
+            client: Client;
+        }>(`/admin/clients/${id}`, requestBody);
 
         const { data } = await showPromise(
             req,
