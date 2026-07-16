@@ -73,16 +73,8 @@ const parseAmountInput = (value: string) => {
     const sanitized = value.replace(/[^\d.,]/g, "");
     if (!sanitized) return undefined;
 
-    // Support both `.` and `,` decimal separators while keeping thousands commas.
-    const hasDot = sanitized.includes(".");
-    const hasComma = sanitized.includes(",");
-    let normalized = sanitized;
-
-    if (hasDot && hasComma) {
-        normalized = sanitized.replace(/,/g, "");
-    } else if (!hasDot && hasComma) {
-        normalized = sanitized.replace(/,/g, ".");
-    }
+    // Treat commas only as thousands separators; decimal values must use `.`.
+    let normalized = sanitized.replace(/,/g, "");
 
     const segments = normalized.split(".");
     if (segments.length > 2) {
@@ -91,6 +83,32 @@ const parseAmountInput = (value: string) => {
 
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const formatAmountInputText = (value: string) => {
+    const sanitized = value.replace(/[^\d.,]/g, "");
+    if (!sanitized) return "";
+
+    let normalized = sanitized.replace(/,/g, "");
+    const segments = normalized.split(".");
+
+    if (segments.length > 2) {
+        normalized = `${segments[0]}.${segments.slice(1).join("")}`;
+    }
+
+    const [integerPartRaw, decimalPart] = normalized.split(".");
+    const integerPart = integerPartRaw || "0";
+    const formattedInteger = new Intl.NumberFormat("en-US", {
+        maximumFractionDigits: 0,
+    }).format(Number(integerPart));
+
+    if (normalized.endsWith(".")) {
+        return `${formattedInteger}.`;
+    }
+
+    return decimalPart !== undefined
+        ? `${formattedInteger}.${decimalPart}`
+        : formattedInteger;
 };
 
 export default function CreateDealScreen() {
@@ -125,7 +143,9 @@ export default function CreateDealScreen() {
 
     const [submitting, setSubmitting] = useState(false);
     const [tagInput, setTagInput] = useState("");
+    const [expectedDealValueInput, setExpectedDealValueInput] = useState("");
     const [agreedPercentageInput, setAgreedPercentageInput] = useState("");
+    const [agreedFixedAmountInput, setAgreedFixedAmountInput] = useState("");
 
     useEffect(() => {
         if (dealId && !deal) {
@@ -156,8 +176,28 @@ export default function CreateDealScreen() {
                     ? String(deal.agreedPercentage)
                     : "",
             );
+            setExpectedDealValueInput(
+                deal.expectedDealValue !== undefined
+                    ? formatAmountInputText(String(deal.expectedDealValue))
+                    : "",
+            );
+            setAgreedFixedAmountInput(
+                deal.agreedFixedAmount !== undefined
+                    ? formatAmountInputText(String(deal.agreedFixedAmount))
+                    : "",
+            );
         }
     }, [deal]);
+
+    const handleAmountInputChange = (
+        value: string,
+        setter: (value: string) => void,
+        field: "expectedDealValue" | "agreedFixedAmount",
+    ) => {
+        const formatted = formatAmountInputText(value);
+        setter(formatted);
+        handleUpdateForm(field, parseAmountInput(formatted));
+    };
 
     const handleAgreedPercentageInputChange = (value: string) => {
         const sanitized = value.replace(/[^\d.,]/g, "");
@@ -520,13 +560,12 @@ export default function CreateDealScreen() {
                                 <TextInput
                                     placeholder="Enter value in numbers"
                                     placeholderTextColor="#9CA3AF"
-                                    value={formatAmountForInput(
-                                        form.expectedDealValue,
-                                    )}
-                                    onChangeText={(v) =>
-                                        handleUpdateForm(
+                                    value={expectedDealValueInput}
+                                    onChangeText={(value) =>
+                                        handleAmountInputChange(
+                                            value,
+                                            setExpectedDealValueInput,
                                             "expectedDealValue",
-                                            parseAmountInput(v),
                                         )
                                     }
                                     keyboardType="decimal-pad"
@@ -567,13 +606,12 @@ export default function CreateDealScreen() {
                                 <TextInput
                                     placeholder="Enter fixed amount"
                                     placeholderTextColor="#9CA3AF"
-                                    value={formatAmountForInput(
-                                        form.agreedFixedAmount,
-                                    )}
-                                    onChangeText={(v) =>
-                                        handleUpdateForm(
+                                    value={agreedFixedAmountInput}
+                                    onChangeText={(value) =>
+                                        handleAmountInputChange(
+                                            value,
+                                            setAgreedFixedAmountInput,
                                             "agreedFixedAmount",
-                                            parseAmountInput(v),
                                         )
                                     }
                                     keyboardType="decimal-pad"
