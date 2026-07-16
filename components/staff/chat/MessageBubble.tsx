@@ -117,6 +117,17 @@ const filenameFromUri = (uri?: string) => {
     }
 };
 
+const filenameBaseFromUri = (uri?: string) => {
+    const name = filenameFromUri(uri);
+    return name.replace(/\.[^/.]+$/, "");
+};
+
+const audioLabelFromMessage = (msg: Message) => {
+    if (/^voice note$/i.test(msg.text || "")) return "Voice note";
+    const base = filenameBaseFromUri(msg.mediaUri).trim();
+    return base || "Audio";
+};
+
 function ImagePreviewModal({
     uri,
     visible,
@@ -269,6 +280,7 @@ function AudioLoadingPlayer({
 }) {
     const bubbleColor = isMe ? "#C9CEEA" : "#E5E7EB";
     const railColor = isMe ? "#AEB6DF" : "#CBD5E1";
+    const audioLabel = audioLabelFromMessage(msg);
     const dur = msg.durationMs ? msg.durationMs / 1000 : 0;
     const fmtClock = (s = 0) => {
         const total = Math.max(0, Math.round(s));
@@ -294,6 +306,9 @@ function AudioLoadingPlayer({
                     {displayName}
                 </Text>
             )}
+            <Text className="text-[12px] text-gray-700 font-kumbhBold mb-1 ml-1">
+                {audioLabel}
+            </Text>
             <View className="flex-row items-center">
                 <View className="h-9 w-9 items-center justify-center opacity-80">
                     <Loader2
@@ -381,6 +396,7 @@ function AudioPlayer({
     const bubbleColor = isMe ? "#C9CEEA" : "#E5E7EB";
     const railColor = isMe ? "#AEB6DF" : "#CBD5E1";
     const activeColor = "#4C5FAB";
+    const audioLabel = audioLabelFromMessage(msg);
 
     const seekTo = useCallback(
         (ratio: number) => {
@@ -452,6 +468,9 @@ function AudioPlayer({
                     {displayName}
                 </Text>
             )}
+            <Text className="text-[12px] text-gray-700 font-kumbhBold mb-1 ml-1">
+                {audioLabel}
+            </Text>
             <View className="flex-row items-center">
                 <Pressable
                     onPress={toggle}
