@@ -112,10 +112,28 @@ export const uploadSingle = createAsyncThunk<
                 body?.data?.resourceType ?? body?.data?.resource_type ?? null,
         };
     } catch (err: any) {
+        const status = err?.response?.status;
+        const backendMsg =
+            typeof err?.response?.data?.message === "string"
+                ? err.response.data.message
+                : undefined;
+        const rawData =
+            typeof err?.response?.data === "string"
+                ? err.response.data
+                : "";
+
+        const isTooLargeError =
+            status === 413 ||
+            /entity too large|request entity too large|file too large/i.test(
+                `${backendMsg || ""} ${rawData}`,
+            );
+
         const msg =
-            err?.response?.data?.message ||
-            err?.message ||
-            "Upload failed. Please try again.";
+            isTooLargeError
+                                ? "Upload rejected by server size limit (HTTP 413). The file may be within app limits, but your proxy/server upload limit is lower."
+                : backendMsg ||
+                  err?.message ||
+                  "Upload failed. Please try again.";
         showError(msg);
         return rejectWithValue(msg);
     }

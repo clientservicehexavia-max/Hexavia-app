@@ -46,7 +46,8 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { makeDescriptionFromName } from "@/utils/buildApiResources";
 import { getMimeFromName } from "@/utils/getMime";
 import { slugifyFilename } from "@/utils/slugAndCloudinary";
-import { Audio, Video } from "expo-av";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { ResizeMode, Video } from "expo-av";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -399,9 +400,10 @@ export default function ChannelResourcesScreen() {
 
                 // 3) verify what you're about to send
                 const info = await FileSystem.getInfoAsync(finalUri);
+                const fileSize = "size" in info ? info.size : undefined;
                 console.log("UPLOAD FILE:", {
                     exists: info.exists,
-                    size: info.size,
+                    size: fileSize,
                     uri: finalUri,
                     name: normalized.name,
                     mime: normalized.mime,
@@ -1854,69 +1856,33 @@ function ZoomableImage({ uri }: { uri: string }) {
 }
 
 function AudioPreview({ uri }: { uri: string }) {
-    const [sound, setSound] = useState<Audio.Sound | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [position, setPosition] = useState(0);
-    const [duration, setDuration] = useState(0);
+    const player = useAudioPlayer(uri, { updateInterval: 200 });
+    const status = useAudioPlayerStatus(player);
     const [barWidth, setBarWidth] = useState(0);
 
-    useEffect(() => {
-        let cancelled = false;
-        let localSound: Audio.Sound | null = null;
-
-        const load = async () => {
-            try {
-                const { sound: s } = await Audio.Sound.createAsync(
-                    { uri },
-                    { shouldPlay: false },
-                );
-                if (cancelled) {
-                    await s.unloadAsync();
-                    return;
-                }
-                localSound = s;
-                setSound(s);
-                s.setOnPlaybackStatusUpdate((status) => {
-                    if (!status.isLoaded) return;
-                    setIsPlaying(status.isPlaying);
-                    setPosition(status.positionMillis ?? 0);
-                    setDuration(status.durationMillis ?? 0);
-                });
-            } catch {
-                // ignore
-            }
-        };
-
-        load();
-
-        return () => {
-            cancelled = true;
-            if (localSound) {
-                localSound.unloadAsync();
-            }
-            setSound(null);
-        };
-    }, [uri]);
-
     const toggle = async () => {
-        if (!sound) return;
-        const status = await sound.getStatusAsync();
         if (!status.isLoaded) return;
-        if (status.isPlaying) {
-            await sound.pauseAsync();
+        if (status.playing) {
+            player.pause();
         } else {
-            await sound.playAsync();
+            player.play();
         }
     };
 
     const seekTo = async (ratio: number) => {
-        if (!sound || !duration) return;
-        const ms = Math.max(
+        if (!status.isLoaded || !status.duration) return;
+        const seconds = Math.max(
             0,
-            Math.min(duration, Math.floor(duration * ratio)),
+            Math.min(status.duration, status.duration * ratio),
         );
-        await sound.setPositionAsync(ms);
+        await player.seekTo(seconds);
     };
+
+    const durationMs = Math.max(0, Math.floor((status.duration ?? 0) * 1000));
+    const positionMs = Math.max(
+        0,
+        Math.floor((status.currentTime ?? 0) * 1000),
+    );
 
     return (
         <View className="w-full max-w-[340px] rounded-2xl bg-white/10 px-4 py-4">
@@ -1936,8 +1902,8 @@ function AudioPreview({ uri }: { uri: string }) {
                     className="h-2 bg-white/80"
                     style={{
                         width:
-                            duration > 0 && barWidth > 0
-                                ? (position / duration) * barWidth
+                            durationMs > 0 && barWidth > 0
+                                ? (positionMs / durationMs) * barWidth
                                 : 0,
                     }}
                 />
@@ -1948,11 +1914,11 @@ function AudioPreview({ uri }: { uri: string }) {
                     className="px-4 py-2 rounded-full bg-white"
                 >
                     <Text className="font-kumbhBold text-gray-900">
-                        {isPlaying ? "Pause" : "Play"}
+                        {status.playing ? "Pause" : "Play"}
                     </Text>
                 </Pressable>
                 <Text className="text-white font-kumbh">
-                    {formatAudioTime(position)} / {formatAudioTime(duration)}
+                    {formatAudioTime(positionMs)} / {formatAudioTime(durationMs)}
                 </Text>
             </View>
         </View>
@@ -1977,11 +1943,11 @@ function VideoPreview({ uri }: { uri: string }) {
                 source={{ uri }}
                 style={{ width: "100%", height: 260, borderRadius: 12 }}
                 useNativeControls
-                resizeMode="contain"
+                resizeMode={ResizeMode.CONTAIN}
                 shouldPlay
             />
             <Pressable
-                onPress={() => ref.current?.presentFullscreenPlayerAsync?.()}
+                onPress={() => ref.current?.presentFullscreenPlayer?.()}
                 className="mt-3 self-center flex-row items-center gap-2 rounded-full bg-white px-4 py-2"
             >
                 <Maximize2 size={16} color="#111827" />

@@ -29,6 +29,8 @@ import {
     AudioModule,
     RecordingPresets,
     setAudioModeAsync,
+    useAudioPlayer,
+    useAudioPlayerStatus,
     useAudioRecorder,
     useAudioRecorderState,
     type RecordingOptions,
@@ -67,6 +69,8 @@ import {
 } from "react-native-safe-area-context";
 
 const TYPE: "community" | "direct" = "community";
+const MAX_PICKED_UPLOAD_MB = 25;
+const MAX_PICKED_UPLOAD_BYTES = MAX_PICKED_UPLOAD_MB * 1024 * 1024;
 const VOICE_RECORDING_OPTIONS: RecordingOptions = {
     ...RecordingPresets.HIGH_QUALITY,
     numberOfChannels: 1,
@@ -77,7 +81,7 @@ type PendingUploadPreview = {
     uri: string;
     name: string;
     mimeType: string;
-    kind: "image" | "document";
+    kind: "image" | "document" | "audio";
     resourceDescription: string;
     messageText: string;
 };
@@ -113,6 +117,9 @@ const extractCloudinaryPublicId = (url?: string, stripExtension = false) => {
     }
 };
 
+const isPickerAssetTooLarge = (asset?: { size?: number | null }) =>
+    typeof asset?.size === "number" && asset.size > MAX_PICKED_UPLOAD_BYTES;
+
 export default function ChatScreen() {
     const { channelId: rawId } = useLocalSearchParams<{ channelId: string }>();
     const dispatch = useAppDispatch();
@@ -127,6 +134,55 @@ export default function ChatScreen() {
 
     const channelSel = useMemo(() => selectChannelById(channelId), [channelId]);
     const channel = useAppSelector(channelSel);
+
+    const mentionables = useMemo<Mentionable[]>(() => {
+        const rawMembers = ((channel as any)?.members ?? []) as any[];
+        const normalizedMembers = rawMembers
+            .map((member: any) => {
+                const candidate = member?.user ?? member?.member ?? member;
+                const profile =
+                    candidate?._id && typeof candidate._id === "object"
+                        ? candidate._id
+                        : candidate;
+
+                const id =
+                    profile?._id ??
+                    candidate?._id ??
+                    candidate?.id ??
+                    member?._id ??
+                    member?.id;
+                if (!id) return null;
+
+                return {
+                    _id: String(id),
+                    name:
+                        profile?.name ??
+                        profile?.fullName ??
+                        profile?.fullname ??
+                        profile?.username ??
+                        candidate?.name ??
+                        candidate?.fullName ??
+                        candidate?.fullname ??
+                        candidate?.username ??
+                        "User",
+                    fullName: profile?.fullName ?? profile?.fullname,
+                    displayName: profile?.displayName,
+                    avatar: profile?.avatar,
+                };
+            })
+            .filter(Boolean) as Array<{
+            _id: string;
+            name?: string;
+            fullName?: string;
+            displayName?: string;
+            avatar?: string;
+        }>;
+
+        return buildMentionables(
+            normalizedMembers,
+            meId !== undefined && meId !== null ? String(meId) : undefined,
+        );
+    }, [channel, meId]);
 
     useEffect(() => {
         if (!meId) return;
@@ -213,6 +269,15 @@ export default function ChatScreen() {
     const [pendingUploadPreview, setPendingUploadPreview] =
         useState<PendingUploadPreview | null>(null);
     const [sendingPreviewUpload, setSendingPreviewUpload] = useState(false);
+
+    const previewAudioSource =
+        pendingUploadPreview?.kind === "audio"
+            ? pendingUploadPreview.uri
+            : null;
+    const previewAudioPlayer = useAudioPlayer(previewAudioSource, {
+        updateInterval: 200,
+    });
+    const previewAudioStatus = useAudioPlayerStatus(previewAudioPlayer);
     const showScrollToBottomRef = useRef(false);
     const scrollButtonRef = useRef<View>(null);
     type ChatListItem =
@@ -613,6 +678,12 @@ export default function ChatScreen() {
                 });
                 if (!res.canceled && res.assets?.[0]) {
                     const a = res.assets[0];
+                    if (isPickerAssetTooLarge(a as any)) {
+                        showError(
+                            `File is too large. Please upload files under ${MAX_PICKED_UPLOAD_MB}MB.`,
+                        );
+                        return;
+                    }
                     const name = a.name ?? `document_${Date.now()}`;
                     const type = a.mimeType ?? "application/octet-stream";
                     setPendingUploadPreview({
@@ -634,56 +705,22 @@ export default function ChatScreen() {
                 });
                 if (!res.canceled && res.assets?.[0]) {
                     const a = res.assets[0];
+                    if (isPickerAssetTooLarge(a as any)) {
+                        showError(
+                            `Audio is too large. Please upload files under ${MAX_PICKED_UPLOAD_MB}MB.`,
+                        );
+                        return;
+                    }
                     const name = a.name ?? `audio_${Date.now()}.m4a`;
                     const type = a.mimeType ?? "audio/m4a";
-                    const dest = FileSystem.cacheDirectory + name; // ensure name includes .m4a
-                    await FileSystem.copyAsync({ from: a.uri, to: dest });
-
-                    const uploaded = await dispatch(
-                        uploadSingle({ uri: dest, name, type }),
-                    ).unwrap();
-
-                    await dispatch(
-                        uploadChannelResources({
-                            channelId,
-                            resources: [
-                                {
-                                    name,
-                                    description: "Audio file shared in chat",
-                                    resourceUpload: uploaded.url,
-                                    publicId:
-                                        uploaded.publicId ??
-                                        extractCloudinaryPublicId(
-                                            uploaded.url,
-                                        ) ??
-                                        name,
-                                    resourceType: uploaded.resourceType,
-                                },
-                            ],
-                        }),
-                    ).unwrap();
-
-                    if (uploaded.url) {
-                        dispatch({
-                            type: "chat/sendChannel",
-                            payload: {
-                                meId,
-                                channelId,
-                                text: "Audio resource uploaded",
-                                attachment: {
-                                    mediaUri: uploaded.url,
-                                    publicId: uploaded.publicId || undefined,
-                                    assetId: uploaded.assetId || undefined,
-                                    mimeType: type,
-                                    resourceType:
-                                        uploaded.resourceType || undefined,
-                                },
-                            },
-                        });
-                        scrollToBottom();
-                    } else {
-                        showError("Upload succeeded but no file URL returned.");
-                    }
+                    setPendingUploadPreview({
+                        uri: a.uri,
+                        name,
+                        mimeType: type,
+                        kind: "audio",
+                        resourceDescription: "Audio file shared in chat",
+                        messageText: "Audio resource uploaded",
+                    });
                 }
             }
         } catch (e) {
@@ -864,6 +901,44 @@ export default function ChatScreen() {
         }
     }, [pendingUploadPreview, channelId, meId, dispatch, scrollToBottom]);
 
+    const handleTogglePreviewAudio = useCallback(async () => {
+        if (!previewAudioStatus.isLoaded) return;
+        try {
+            if (previewAudioStatus.playing) {
+                previewAudioPlayer.pause();
+                return;
+            }
+
+            await setAudioModeAsync({
+                allowsRecording: false,
+                playsInSilentMode: true,
+                shouldPlayInBackground: false,
+                shouldRouteThroughEarpiece: false,
+            });
+
+            const done =
+                typeof previewAudioStatus.duration === "number" &&
+                typeof previewAudioStatus.currentTime === "number" &&
+                previewAudioStatus.duration > 0 &&
+                previewAudioStatus.currentTime >=
+                    previewAudioStatus.duration - 0.25;
+            if (done) {
+                await previewAudioPlayer.seekTo(0);
+            }
+
+            previewAudioPlayer.play();
+        } catch {
+            showError("Unable to play audio preview.");
+        }
+    }, [previewAudioPlayer, previewAudioStatus]);
+
+    useEffect(() => {
+        if (pendingUploadPreview?.kind === "audio") return;
+        if (!previewAudioStatus.isLoaded || !previewAudioStatus.playing) return;
+        previewAudioPlayer.pause();
+        void previewAudioPlayer.seekTo(0);
+    }, [pendingUploadPreview?.kind, previewAudioPlayer, previewAudioStatus]);
+
     const setScrollButtonVisible = useCallback((visible: boolean) => {
         if (showScrollToBottomRef.current === visible) return;
         showScrollToBottomRef.current = visible;
@@ -890,51 +965,6 @@ export default function ChatScreen() {
     const lastSendRef = useRef(0);
     const MIN_INTERVAL_MS = 350;
 
-    // ...inside component:
-    const members = (channel as any)?.members ?? []; // [{_id, name/displayName, avatar}, ...]
-    // console.log(members, channel);
-
-    const mentionables = useMemo<Mentionable[]>(() => {
-        const enriched = (members as any[]).map((m: any, idx: number) => {
-            const base = typeof m === "string" ? { _id: m } : m;
-            const entry = base?.user ?? base?.member ?? base;
-            const profile =
-                entry?._id && typeof entry._id === "object" ? entry._id : entry;
-            const rawId =
-                entry?._id ??
-                entry?.id ??
-                profile?._id ??
-                profile?.id ??
-                m?.userId ??
-                m?.memberId ??
-                `member-${idx}`;
-            const username =
-                profile?.username ??
-                profile?.name ??
-                profile?.fullName ??
-                profile?.email ??
-                profile?.displayName ??
-                (typeof profile === "string" ? profile : undefined) ??
-                `member-${idx}`;
-            const resolvedId =
-                typeof rawId === "object" && rawId !== null
-                    ? (rawId._id ?? rawId.id ?? JSON.stringify(rawId))
-                    : rawId;
-            return {
-                _id: String(resolvedId),
-                name: username,
-                displayName: username,
-                avatar:
-                    profile?.profilePicture ??
-                    profile?.avatar ??
-                    profile?.photo ??
-                    undefined,
-            };
-        });
-        return buildMentionables(enriched, meId as any);
-    }, [members, meId]);
-
-    // Build a quick lookup map for bubble highlighting and mentions
     const mentionMap = useMemo(
         () =>
             Object.fromEntries(
@@ -1426,9 +1456,37 @@ export default function ChatScreen() {
                                         {pendingUploadPreview?.name}
                                     </Text>
                                     <Text className="text-sm text-gray-500 mt-1">
-                                        {pendingUploadPreview?.mimeType ||
-                                            "Document"}
+                                        {pendingUploadPreview?.mimeType || "Document"}
                                     </Text>
+
+                                    {pendingUploadPreview?.kind === "audio" ? (
+                                        <View className="mt-4">
+                                            <Pressable
+                                                onPress={handleTogglePreviewAudio}
+                                                disabled={
+                                                    !previewAudioStatus.isLoaded
+                                                }
+                                                className={`h-10 rounded-lg items-center justify-center ${
+                                                    !previewAudioStatus.isLoaded
+                                                        ? "bg-gray-300"
+                                                        : "bg-blue-600"
+                                                }`}
+                                            >
+                                                {!previewAudioStatus.isLoaded ? (
+                                                    <ActivityIndicator
+                                                        size="small"
+                                                        color="white"
+                                                    />
+                                                ) : (
+                                                    <Text className="text-white font-semibold">
+                                                        {previewAudioStatus.playing
+                                                            ? "Pause Preview"
+                                                            : "Play Preview"}
+                                                    </Text>
+                                                )}
+                                            </Pressable>
+                                        </View>
+                                    ) : null}
                                 </View>
 
                                 <View className="flex-row gap-3 mt-5">
