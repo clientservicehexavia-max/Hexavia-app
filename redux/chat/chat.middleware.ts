@@ -397,6 +397,8 @@ export const chatMiddleware: Middleware<{}, RootState> =
                         text: string;
                         attachment?: {
                             mediaUri: string;
+                            publicId?: string;
+                            assetId?: string;
                             mimeType: string;
                             durationMs?: number;
                         };
@@ -533,6 +535,8 @@ export const chatMiddleware: Middleware<{}, RootState> =
                 const attachment = msg.mediaUri
                     ? {
                           mediaUri: msg.mediaUri,
+                          publicId: (msg as any).publicId,
+                          assetId: (msg as any).assetId,
                           mimeType: msg.mimeType,
                           durationMs: msg.durationMs,
                       }

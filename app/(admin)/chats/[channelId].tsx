@@ -48,11 +48,14 @@ import React, {
     useState,
 } from "react";
 import {
+    ActivityIndicator,
     Alert,
     AppState,
     FlatList,
+    Image,
     Keyboard,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     Pressable,
     Text,
@@ -68,6 +71,46 @@ const VOICE_RECORDING_OPTIONS: RecordingOptions = {
     ...RecordingPresets.HIGH_QUALITY,
     numberOfChannels: 1,
     bitRate: 64000,
+};
+
+type PendingUploadPreview = {
+    uri: string;
+    name: string;
+    mimeType: string;
+    kind: "image" | "document";
+    resourceDescription: string;
+    messageText: string;
+};
+
+const extractCloudinaryPublicId = (url?: string, stripExtension = false) => {
+    if (!url || typeof url !== "string") return null;
+    try {
+        const parsed = new URL(url);
+        const uploadToken = "/upload/";
+        const uploadIndex = parsed.pathname.indexOf(uploadToken);
+        if (uploadIndex === -1) return null;
+
+        const afterUpload = parsed.pathname.slice(
+            uploadIndex + uploadToken.length,
+        );
+        const segments = afterUpload.split("/").filter(Boolean);
+        if (!segments.length) return null;
+
+        const versionIndex = segments.findIndex((segment) =>
+            /^v\d+$/.test(segment),
+        );
+        const publicIdSegments =
+            versionIndex >= 0 ? segments.slice(versionIndex + 1) : segments;
+        if (!publicIdSegments.length) return null;
+
+        let publicId = decodeURIComponent(publicIdSegments.join("/"));
+        if (stripExtension) {
+            publicId = publicId.replace(/\.[^/.]+$/, "");
+        }
+        return publicId || null;
+    } catch {
+        return null;
+    }
 };
 
 export default function ChatScreen() {
@@ -167,6 +210,9 @@ export default function ChatScreen() {
     const [selected, setSelected] = useState<Message | null>(null);
     const [replyTo, setReplyTo] = useState<ReplyMeta | null>(null);
     const [pendingVoiceNotes, setPendingVoiceNotes] = useState<Message[]>([]);
+    const [pendingUploadPreview, setPendingUploadPreview] =
+        useState<PendingUploadPreview | null>(null);
+    const [sendingPreviewUpload, setSendingPreviewUpload] = useState(false);
     const showScrollToBottomRef = useRef(false);
     const scrollButtonRef = useRef<View>(null);
     type ChatListItem =
@@ -523,41 +569,14 @@ export default function ChatScreen() {
                         (a as any).fileName ??
                         `image_${Date.now()}.${a.mimeType?.split("/")?.[1] ?? "jpg"}`;
                     const type = a.mimeType ?? "image/jpeg";
-                    const uploadAction = await dispatch(
-                        uploadSingle({ uri: a.uri, name, type }),
-                    );
-                    if (uploadSingle.fulfilled.match(uploadAction)) {
-                        const { url, publicId } = uploadAction.payload;
-                        if (channelId) {
-                            await dispatch(
-                                uploadChannelResources({
-                                    channelId,
-                                    resources: [
-                                        {
-                                            name,
-                                            description: "Image shared in chat",
-                                            resourceUpload: url,
-                                            publicId: publicId ?? name,
-                                        },
-                                    ],
-                                }),
-                            );
-                        }
-                        dispatch({
-                            type: "chat/sendChannel",
-                            payload: {
-                                meId,
-                                channelId,
-                                text: "Image resource uploaded",
-                                attachment: {
-                                    mediaUri: url,
-                                    mimeType: "image/jpeg",
-                                    isImage: true,
-                                } as any,
-                            },
-                        });
-                        scrollToBottom();
-                    }
+                    setPendingUploadPreview({
+                        uri: a.uri,
+                        name,
+                        mimeType: type,
+                        kind: "image",
+                        resourceDescription: "Image shared in chat",
+                        messageText: "Image resource uploaded",
+                    });
                 }
             }
 
@@ -572,41 +591,14 @@ export default function ChatScreen() {
                     const a = res.assets[0];
                     const name = `photo_${Date.now()}.jpg`;
                     const type = a.mimeType ?? "image/jpeg";
-                    const uploadAction = await dispatch(
-                        uploadSingle({ uri: a.uri, name, type }),
-                    );
-                    if (uploadSingle.fulfilled.match(uploadAction)) {
-                        const { url, publicId } = uploadAction.payload;
-                        if (channelId) {
-                            await dispatch(
-                                uploadChannelResources({
-                                    channelId,
-                                    resources: [
-                                        {
-                                            name,
-                                            description:
-                                                "Photo captured in chat",
-                                            resourceUpload: url,
-                                            publicId: publicId ?? name,
-                                        },
-                                    ],
-                                }),
-                            );
-                        }
-                        dispatch({
-                            type: "chat/sendChannel",
-                            payload: {
-                                meId,
-                                channelId,
-                                text: "Image resource uploaded",
-                                attachment: {
-                                    mediaUri: url,
-                                    mimeType: "image/jpeg",
-                                },
-                            },
-                        });
-                        scrollToBottom();
-                    }
+                    setPendingUploadPreview({
+                        uri: a.uri,
+                        name,
+                        mimeType: type,
+                        kind: "image",
+                        resourceDescription: "Photo captured in chat",
+                        messageText: "Image resource uploaded",
+                    });
                 }
             }
 
@@ -620,38 +612,14 @@ export default function ChatScreen() {
                     const a = res.assets[0];
                     const name = a.name ?? `document_${Date.now()}`;
                     const type = a.mimeType ?? "application/octet-stream";
-                    const uploadAction = await dispatch(
-                        uploadSingle({ uri: a.uri, name, type }),
-                    );
-                    if (uploadSingle.fulfilled.match(uploadAction)) {
-                        const { url, publicId } = uploadAction.payload;
-                        if (channelId) {
-                            await dispatch(
-                                uploadChannelResources({
-                                    channelId,
-                                    resources: [
-                                        {
-                                            name,
-                                            description:
-                                                "Document shared in chat",
-                                            resourceUpload: url,
-                                            publicId: publicId ?? name,
-                                        },
-                                    ],
-                                }),
-                            );
-                        }
-                        dispatch({
-                            type: "chat/sendChannel",
-                            payload: {
-                                meId,
-                                channelId,
-                                text: "Document resource uploaded",
-                                attachment: { mediaUri: url, mimeType: type },
-                            },
-                        });
-                        scrollToBottom();
-                    }
+                    setPendingUploadPreview({
+                        uri: a.uri,
+                        name,
+                        mimeType: type,
+                        kind: "document",
+                        resourceDescription: "Document shared in chat",
+                        messageText: "Document resource uploaded",
+                    });
                 }
             }
 
@@ -680,7 +648,12 @@ export default function ChatScreen() {
                                     name,
                                     description: "Audio file shared in chat",
                                     resourceUpload: uploaded.url,
-                                    publicId: uploaded.publicId ?? name,
+                                    publicId:
+                                        uploaded.publicId ??
+                                        extractCloudinaryPublicId(
+                                            uploaded.url,
+                                        ) ??
+                                        name,
                                     resourceType: uploaded.resourceType,
                                 },
                             ],
@@ -818,6 +791,67 @@ export default function ChatScreen() {
         nativeScrollView?.scrollTo?.({ y: 0, animated: true });
         listRef.current?.scrollToOffset({ offset: 0, animated: true });
     }, []);
+
+    const handleConfirmPreviewUpload = useCallback(async () => {
+        if (!pendingUploadPreview || !channelId || !meId) return;
+        setSendingPreviewUpload(true);
+        try {
+            const uploadAction = await dispatch(
+                uploadSingle({
+                    uri: pendingUploadPreview.uri,
+                    name: pendingUploadPreview.name,
+                    type: pendingUploadPreview.mimeType,
+                }),
+            );
+            if (!uploadSingle.fulfilled.match(uploadAction)) {
+                showError("Failed to upload attachment.");
+                return;
+            }
+
+            const { url, publicId, assetId } = uploadAction.payload;
+            await dispatch(
+                uploadChannelResources({
+                    channelId,
+                    resources: [
+                        {
+                            name: pendingUploadPreview.name,
+                            description:
+                                pendingUploadPreview.resourceDescription,
+                            resourceUpload: url,
+                            publicId:
+                                publicId ??
+                                extractCloudinaryPublicId(url) ??
+                                pendingUploadPreview.name,
+                        },
+                    ],
+                }),
+            );
+
+            dispatch({
+                type: "chat/sendChannel",
+                payload: {
+                    meId,
+                    channelId,
+                    text: pendingUploadPreview.messageText,
+                    attachment: {
+                        mediaUri: url,
+                        publicId: publicId || undefined,
+                        assetId: assetId || undefined,
+                        mimeType: pendingUploadPreview.mimeType,
+                        ...(pendingUploadPreview.kind === "image"
+                            ? { isImage: true }
+                            : {}),
+                    },
+                },
+            });
+            scrollToBottom();
+            setPendingUploadPreview(null);
+        } catch (e: any) {
+            showError(e?.message || "Failed to upload attachment.");
+        } finally {
+            setSendingPreviewUpload(false);
+        }
+    }, [pendingUploadPreview, channelId, meId, dispatch, scrollToBottom]);
 
     const setScrollButtonVisible = useCallback((visible: boolean) => {
         if (showScrollToBottomRef.current === visible) return;
@@ -1041,7 +1075,10 @@ export default function ChatScreen() {
                                 name: voice.name,
                                 description: `Voice note - ${secs}s`,
                                 resourceUpload: uploaded.url,
-                                publicId: uploaded.publicId ?? voice.name,
+                                publicId:
+                                    uploaded.publicId ??
+                                    extractCloudinaryPublicId(uploaded.url) ??
+                                    voice.name,
                                 resourceType: uploaded.resourceType,
                             },
                         ],
@@ -1057,6 +1094,8 @@ export default function ChatScreen() {
                             text: "Voice note",
                             attachment: {
                                 mediaUri: uploaded.url,
+                                publicId: uploaded.publicId || undefined,
+                                assetId: uploaded.assetId || undefined,
                                 mimeType: voice.type,
                                 durationMs: voice.durationMs,
                             },
@@ -1299,6 +1338,123 @@ export default function ChatScreen() {
                     onClose={() => setSheetOpen(false)}
                     items={items}
                 />
+
+                <Modal
+                    visible={!!pendingUploadPreview}
+                    animationType="slide"
+                    transparent
+                    onRequestClose={() =>
+                        !sendingPreviewUpload && setPendingUploadPreview(null)
+                    }
+                >
+                    {pendingUploadPreview?.kind === "image" ? (
+                        <View className="flex-1 bg-black">
+                            <View className="absolute top-14 left-0 right-0 z-10 px-4 flex-row items-center justify-between">
+                                <Pressable
+                                    onPress={() =>
+                                        setPendingUploadPreview(null)
+                                    }
+                                    disabled={sendingPreviewUpload}
+                                    className="px-4 h-10 rounded-full bg-black/45 items-center justify-center"
+                                >
+                                    <Text className="text-white font-semibold">
+                                        Cancel
+                                    </Text>
+                                </Pressable>
+                                <Pressable
+                                    onPress={handleConfirmPreviewUpload}
+                                    disabled={sendingPreviewUpload}
+                                    className={`px-5 h-10 rounded-full items-center justify-center ${
+                                        sendingPreviewUpload
+                                            ? "bg-blue-300"
+                                            : "bg-blue-600"
+                                    }`}
+                                >
+                                    {sendingPreviewUpload ? (
+                                        <ActivityIndicator
+                                            size="small"
+                                            color="white"
+                                        />
+                                    ) : (
+                                        <Text className="text-white font-semibold">
+                                            Send
+                                        </Text>
+                                    )}
+                                </Pressable>
+                            </View>
+
+                            <Image
+                                source={{ uri: pendingUploadPreview.uri }}
+                                resizeMode="contain"
+                                style={{ width: "100%", height: "100%" }}
+                            />
+
+                            <View className="absolute bottom-10 left-4 right-4 rounded-xl bg-black/45 px-4 py-3">
+                                <Text
+                                    className="text-white font-semibold"
+                                    numberOfLines={1}
+                                >
+                                    {pendingUploadPreview.name}
+                                </Text>
+                            </View>
+                        </View>
+                    ) : (
+                        <View className="flex-1 bg-black/40 justify-end">
+                            <View className="bg-white rounded-t-3xl px-5 pt-5 pb-8">
+                                <Text className="text-lg font-bold text-gray-900 mb-3">
+                                    Preview Upload
+                                </Text>
+
+                                <View className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4">
+                                    <Text
+                                        className="text-base font-semibold text-gray-900"
+                                        numberOfLines={2}
+                                    >
+                                        {pendingUploadPreview?.name}
+                                    </Text>
+                                    <Text className="text-sm text-gray-500 mt-1">
+                                        {pendingUploadPreview?.mimeType ||
+                                            "Document"}
+                                    </Text>
+                                </View>
+
+                                <View className="flex-row gap-3 mt-5">
+                                    <Pressable
+                                        onPress={() =>
+                                            setPendingUploadPreview(null)
+                                        }
+                                        disabled={sendingPreviewUpload}
+                                        className="flex-1 h-11 rounded-lg border border-gray-300 items-center justify-center"
+                                    >
+                                        <Text className="text-gray-800 font-semibold">
+                                            Cancel
+                                        </Text>
+                                    </Pressable>
+                                    <Pressable
+                                        onPress={handleConfirmPreviewUpload}
+                                        disabled={sendingPreviewUpload}
+                                        className={`flex-1 h-11 rounded-lg items-center justify-center ${
+                                            sendingPreviewUpload
+                                                ? "bg-blue-300"
+                                                : "bg-blue-600"
+                                        }`}
+                                    >
+                                        {sendingPreviewUpload ? (
+                                            <ActivityIndicator
+                                                size="small"
+                                                color="white"
+                                            />
+                                        ) : (
+                                            <Text className="text-white font-semibold">
+                                                Send
+                                            </Text>
+                                        )}
+                                    </Pressable>
+                                </View>
+                            </View>
+                        </View>
+                    )}
+                </Modal>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

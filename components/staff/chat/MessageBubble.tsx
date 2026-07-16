@@ -200,30 +200,59 @@ async function openDocument(uri: string) {
     }
 }
 
-function DocumentPill({ msg }: { msg: Message }) {
+function DocumentPill({
+    msg,
+    isMe,
+    displayName,
+    onLongPress,
+}: {
+    msg: Message;
+    isMe: boolean;
+    displayName?: string;
+    onLongPress?: () => void;
+}) {
     const name = useMemo(() => filenameFromUri(msg.mediaUri), [msg.mediaUri]);
     return (
         <Pressable
             onPress={() => msg.mediaUri && openDocument(msg.mediaUri)}
-            className="px-3 py-2 rounded-lg bg-white/60 border border-white/40 flex-row items-center"
+            onLongPress={onLongPress}
+            className="p-1 rounded-lg "
             style={{ width: 220, maxWidth: "100%" }}
         >
-            <FileText size={18} color="#374151" />
-            <Text
-                className="ml-2 text-[13px] text-gray-800"
-                style={{ flex: 1, flexShrink: 1 }}
-                numberOfLines={2}
-                ellipsizeMode="tail"
-            >
-                {name}
-            </Text>
+            {!isMe && (
+                <Text
+                    className="text-[11px] text-gray-500 mb-1 ml-1"
+                    numberOfLines={1}
+                >
+                    {displayName}
+                </Text>
+            )}
+            <View className="flex-row items-center bg-white/60 p-2 rounded-lg">
+                <FileText size={20} color="#374151" />
+                <Text
+                    className="ml-2 text-[13px] text-gray-800"
+                    style={{ flex: 1, flexShrink: 1 }}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                >
+                    {name}
+                </Text>
+            </View>
         </Pressable>
     );
 }
 
 let activeAudio: { id: string; pause: () => void } | null = null;
 
-function AudioLoadingPlayer({ msg, isMe }: { msg: Message; isMe: boolean }) {
+function AudioLoadingPlayer({
+    msg,
+    isMe,
+    displayName,
+}: {
+    msg: Message;
+    isMe: boolean;
+    displayName?: string;
+}) {
     const bubbleColor = isMe ? "#C9CEEA" : "#E5E7EB";
     const railColor = isMe ? "#AEB6DF" : "#CBD5E1";
     const dur = msg.durationMs ? msg.durationMs / 1000 : 0;
@@ -243,6 +272,14 @@ function AudioLoadingPlayer({ msg, isMe }: { msg: Message; isMe: boolean }) {
                 backgroundColor: bubbleColor,
             }}
         >
+            {!isMe && (
+                <Text
+                    className="text-[11px] text-gray-500 my-1 ml-1"
+                    numberOfLines={1}
+                >
+                    {displayName}
+                </Text>
+            )}
             <View className="flex-row items-center">
                 <View className="h-9 w-9 items-center justify-center opacity-80">
                     <Loader2
@@ -270,7 +307,6 @@ function AudioLoadingPlayer({ msg, isMe }: { msg: Message; isMe: boolean }) {
                     <Text className="text-[11px] text-gray-500 font-kumbh mr-1">
                         Sending
                     </Text>
-                    {isMe ? <StatusTicks status="sending" /> : null}
                 </View>
             </View>
         </View>
@@ -280,13 +316,13 @@ function AudioLoadingPlayer({ msg, isMe }: { msg: Message; isMe: boolean }) {
 function AudioPlayer({
     msg,
     isMe,
-    avatar,
-    initials,
+    displayName,
 }: {
     msg: Message;
     isMe: boolean;
     avatar?: string | null;
     initials?: string;
+    displayName?: string;
 }) {
     const player = useAudioPlayer(msg.mediaUri!, { updateInterval: 200 });
     const status = useAudioPlayerStatus(player);
@@ -387,13 +423,21 @@ function AudioPlayer({
 
     return (
         <View
-            className="rounded-xl px-3 py-2"
+            className="rounded-xl px-2 pt-2 pb-1"
             style={{
                 width: isMe ? 220 : 260,
                 maxWidth: "100%",
                 backgroundColor: bubbleColor,
             }}
         >
+            {!isMe && (
+                <Text
+                    className="text-[11px] text-gray-500 my-1 ml-1"
+                    numberOfLines={1}
+                >
+                    {displayName}
+                </Text>
+            )}
             <View className="flex-row items-center">
                 <Pressable
                     onPress={toggle}
@@ -445,8 +489,8 @@ function AudioPlayer({
             </View>
 
             <View
-                className="mt-1 flex-row items-center justify-between"
-                style={{ marginLeft: isMe ? 45 : 92 }}
+                className="flex-row items-center justify-between"
+                style={{ marginLeft: 40 }}
             >
                 <Text className="text-[11px] text-gray-600 font-kumbh">
                     {status.isLoaded || dur
@@ -597,8 +641,16 @@ export default function MessageBubble({
                 <>
                     <Pressable
                         onPress={() => setImgOpen(true)}
-                        className="overflow-hidden rounded-lg"
+                        className="overflow-hidden rounded-lg p-1"
                     >
+                        {!isMe && (
+                            <Text
+                                className="text-[11px] text-gray-500 mb-1"
+                                numberOfLines={1}
+                            >
+                                {displayName}
+                            </Text>
+                        )}
                         <View
                             style={{
                                 width: 224,
@@ -619,6 +671,7 @@ export default function MessageBubble({
                                         style={{
                                             width: 224,
                                             height: 168,
+                                            borderRadius: 8,
                                         }}
                                         resizeMode="cover"
                                         onLoadStart={() =>
@@ -668,19 +721,27 @@ export default function MessageBubble({
                     <AudioPlayer
                         msg={msg}
                         isMe={isMe}
-                        avatar={avatar}
-                        initials={initials}
+                        displayName={displayName}
                     />
                 ) : (
-                    <AudioLoadingPlayer msg={msg} isMe={isMe} />
+                    <AudioLoadingPlayer
+                        msg={msg}
+                        isMe={isMe}
+                        displayName={displayName}
+                    />
                 )
             ) : isDocument(msg) ? (
-                <DocumentPill msg={msg} />
+                <DocumentPill
+                    msg={msg}
+                    isMe={isMe}
+                    displayName={displayName}
+                    onLongPress={() => onLongPress?.(msg)}
+                />
             ) : null}
 
-            {!isMe && (
+            {!isMe && !isAudio(msg) && (
                 <Text
-                    className="text-[11px] text-gray-500 mt-1"
+                    className="text-[11px] text-gray-500 mb-0.5"
                     numberOfLines={1}
                 >
                     {displayName}
@@ -707,11 +768,11 @@ export default function MessageBubble({
 
     if (isMe) {
         return (
-            <View className="px-3 mb-2 items-end">
-                <Pressable
-                    onLongPress={() => onLongPress?.(msg)}
-                    className="max-w-[75%]"
-                >
+            <Pressable
+                onLongPress={() => onLongPress?.(msg)}
+                className="px-3 mb-2 items-end"
+            >
+                <View className="max-w-[75%]">
                     <View
                         className={
                             isAudio(msg) ? "" : "bg-[#C9CEEA] rounded-xl"
@@ -725,7 +786,7 @@ export default function MessageBubble({
                     >
                         {BubbleCore}
                     </View>
-                </Pressable>
+                </View>
 
                 {!isAudio(msg) ? (
                     <View className="flex-row items-center mt-1">
@@ -752,12 +813,15 @@ export default function MessageBubble({
                         Seen by {msg.seenBy.join(", ")}
                     </Text>
                 )}
-            </View>
+            </Pressable>
         );
     }
 
     return (
-        <View className="px-2 mb-2 items-start">
+        <Pressable
+            onLongPress={() => onLongPress?.(msg)}
+            className="px-2 mb-2 items-start"
+        >
             <View className="flex-row items-end">
                 {avatar ? (
                     <Image
@@ -774,10 +838,7 @@ export default function MessageBubble({
                     </View>
                 )}
 
-                <Pressable
-                    onLongPress={() => onLongPress?.(msg)}
-                    style={{ maxWidth: "75%", flexShrink: 1 }}
-                >
+                <View style={{ maxWidth: "75%", flexShrink: 1 }}>
                     <View
                         className={
                             isAudio(msg) ? "" : "bg-gray-200 rounded-xl p-3"
@@ -791,8 +852,8 @@ export default function MessageBubble({
                             {formatTime(msg.createdAt)}
                         </Text>
                     ) : null}
-                </Pressable>
+                </View>
             </View>
-        </View>
+        </Pressable>
     );
 }
