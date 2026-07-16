@@ -212,10 +212,24 @@ function DocumentPill({
     onLongPress?: () => void;
 }) {
     const name = useMemo(() => filenameFromUri(msg.mediaUri), [msg.mediaUri]);
+    const didLongPressRef = useRef(false);
     return (
         <Pressable
-            onPress={() => msg.mediaUri && openDocument(msg.mediaUri)}
-            onLongPress={onLongPress}
+            onPress={() => {
+                // Swallow the press that follows a long-press so opening the
+                // document doesn't interrupt the delete/reply action sheet.
+                if (didLongPressRef.current) {
+                    didLongPressRef.current = false;
+                    return;
+                }
+                if (msg.mediaUri) {
+                    void openDocument(msg.mediaUri);
+                }
+            }}
+            onLongPress={() => {
+                didLongPressRef.current = true;
+                onLongPress?.();
+            }}
             className="p-1 rounded-lg "
             style={{ width: 220, maxWidth: "100%" }}
         >

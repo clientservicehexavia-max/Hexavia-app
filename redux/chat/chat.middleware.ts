@@ -164,6 +164,9 @@ export const chatMiddleware: Middleware<{}, RootState> =
                                         data.attachment?.mimeType ??
                                         (looksImage ? "image/jpeg" : undefined),
                                     durationMs: data.attachment?.durationMs,
+                                    publicId: data.attachment?.publicId,
+                                    assetId: data.attachment?.assetId,
+                                    resourceType: data.attachment?.resourceType,
                                     taggedUsers: normalizeTaggedUsers(
                                         data.taggedUsers ?? data.tag,
                                     ),
@@ -202,6 +205,9 @@ export const chatMiddleware: Middleware<{}, RootState> =
                                 data.attachment?.mimeType ??
                                 (looksImage ? "image/jpeg" : undefined),
                             durationMs: data.attachment?.durationMs,
+                            publicId: data.attachment?.publicId,
+                            assetId: data.attachment?.assetId,
+                            resourceType: data.attachment?.resourceType,
                             taggedUsers: normalizeTaggedUsers(
                                 data.taggedUsers ?? data.tag,
                             ),
@@ -401,6 +407,7 @@ export const chatMiddleware: Middleware<{}, RootState> =
                             assetId?: string;
                             mimeType: string;
                             durationMs?: number;
+                            resourceType?: string;
                         };
                         taggedUsers?: ChatTaggedUser[];
                     };
@@ -430,6 +437,9 @@ export const chatMiddleware: Middleware<{}, RootState> =
                             mediaUri: attachment?.mediaUri,
                             mimeType: attachment?.mimeType,
                             durationMs: attachment?.durationMs,
+                            publicId: attachment?.publicId,
+                            assetId: attachment?.assetId,
+                            resourceType: attachment?.resourceType,
                             taggedUsers: normalizedTaggedUsers,
                         },
                     }),
@@ -539,6 +549,7 @@ export const chatMiddleware: Middleware<{}, RootState> =
                           assetId: (msg as any).assetId,
                           mimeType: msg.mimeType,
                           durationMs: msg.durationMs,
+                          resourceType: (msg as any).resourceType,
                       }
                     : undefined;
 

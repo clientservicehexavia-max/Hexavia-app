@@ -253,6 +253,9 @@ export default function ChatScreen() {
                 mediaUri: (m as any).mediaUri,
                 mimeType: (m as any).mimeType,
                 durationMs: (m as any).durationMs,
+                publicId: (m as any).publicId,
+                assetId: (m as any).assetId,
+                resourceType: (m as any).resourceType,
                 replyTo: (m as any).replyTo,
             };
         });
@@ -669,7 +672,11 @@ export default function ChatScreen() {
                                 text: "Audio resource uploaded",
                                 attachment: {
                                     mediaUri: uploaded.url,
+                                    publicId: uploaded.publicId || undefined,
+                                    assetId: uploaded.assetId || undefined,
                                     mimeType: type,
+                                    resourceType:
+                                        uploaded.resourceType || undefined,
                                 },
                             },
                         });
@@ -822,6 +829,8 @@ export default function ChatScreen() {
                                 publicId ??
                                 extractCloudinaryPublicId(url) ??
                                 pendingUploadPreview.name,
+                            resourceType:
+                                uploadAction.payload.resourceType ?? undefined,
                         },
                     ],
                 }),
@@ -838,6 +847,8 @@ export default function ChatScreen() {
                         publicId: publicId || undefined,
                         assetId: assetId || undefined,
                         mimeType: pendingUploadPreview.mimeType,
+                        resourceType:
+                            uploadAction.payload.resourceType || undefined,
                         ...(pendingUploadPreview.kind === "image"
                             ? { isImage: true }
                             : {}),
@@ -1098,6 +1109,8 @@ export default function ChatScreen() {
                                 assetId: uploaded.assetId || undefined,
                                 mimeType: voice.type,
                                 durationMs: voice.durationMs,
+                                resourceType:
+                                    uploaded.resourceType || undefined,
                             },
                         },
                     });

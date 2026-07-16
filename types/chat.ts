@@ -26,6 +26,9 @@ export type Message = {
     mediaUri?: string;
     mimeType?: string;
     durationMs?: number;
+    publicId?: string;
+    assetId?: string;
+    resourceType?: string;
     mentions?: Mention[];
 };
 

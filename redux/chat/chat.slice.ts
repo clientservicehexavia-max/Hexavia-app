@@ -229,6 +229,9 @@ export const chatSlice = createSlice({
                                 d.attachment?.mimeType ??
                                 (isImg ? "image/jpeg" : undefined),
                             durationMs: d.attachment?.durationMs,
+                            publicId: d.attachment?.publicId,
+                            assetId: d.attachment?.assetId,
+                            resourceType: d.attachment?.resourceType,
                         };
                     }
                     if (!thr.messages.includes(id)) {
