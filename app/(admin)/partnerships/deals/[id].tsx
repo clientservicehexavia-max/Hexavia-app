@@ -13,7 +13,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { generateDealReportPdf } from "@/utils/partnershipReports";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import {
     Check,
@@ -27,7 +27,7 @@ import {
     Upload,
     X,
 } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -131,8 +131,8 @@ function FieldRow({
     value?: React.ReactNode;
 }) {
     return (
-        <View className="py-2 border-b border-gray-100 last:border-b-0">
-            <Text className="text-xs font-medium text-gray-500 mb-1 capitalize">
+        <View className="py-1 border-b border-gray-100 last:border-b-0">
+            <Text className="text-xs font-medium text-gray-500 mb-0.5 capitalize">
                 {label}
             </Text>
             <Text className="text-base text-gray-900 capitalize">
@@ -302,10 +302,15 @@ export default function DealDetails() {
 
     const [activityModalVisible, setActivityModalVisible] = useState(false);
     const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+    const [revenueEntryModalVisible, setRevenueEntryModalVisible] =
+        useState(false);
     const [contributionModalVisible, setContributionModalVisible] =
         useState(false);
     const [documentModalVisible, setDocumentModalVisible] = useState(false);
     const [stageModalVisible, setStageModalVisible] = useState(false);
+    const [editingRevenueIndex, setEditingRevenueIndex] = useState<
+        number | null
+    >(null);
 
     const [activityForm, setActivityForm] = useState({
         activityType: "",
@@ -320,6 +325,12 @@ export default function DealDetails() {
         notes: "",
     });
     const [paymentFile, setPaymentFile] = useState<PickedFile | null>(null);
+    const [revenueEntryForm, setRevenueEntryForm] = useState({
+        investorName: "",
+        investmentDate: todayISO(),
+        investmentAmount: "",
+        notes: "",
+    });
     const [contributionForm, setContributionForm] = useState({
         contributionType: "",
         description: "",
@@ -338,11 +349,13 @@ export default function DealDetails() {
         partnerId ? selectPartnerById(partnerId)(state) : undefined,
     );
 
-    useEffect(() => {
-        if (id && !deal) {
-            dispatch(fetchDealById(id));
-        }
-    }, [id, deal, dispatch]);
+    useFocusEffect(
+        useCallback(() => {
+            if (id) {
+                dispatch(fetchDealById(id));
+            }
+        }, [dispatch, id]),
+    );
 
     useEffect(() => {
         if (partnerId && !partner) {
@@ -351,22 +364,93 @@ export default function DealDetails() {
     }, [partnerId, partner, dispatch]);
 
     const financial = deal?.financialReconciliation;
+    const isRevenueShare = deal?.agreementType === "Revenue Share";
+    const revenueSharePercentage = Number(
+        financial?.revenueSharePercentage ?? deal?.agreedPercentage ?? 0,
+    );
+    const revenueEntries = financial?.revenueEntries || [];
+    const normalizedRevenueEntries = revenueEntries.map((entry) => {
+        const investmentAmount = Number(entry.investmentAmount ?? 0);
+        const commissionPercentage = Number(
+            entry.commissionPercentage ?? revenueSharePercentage ?? 0,
+        );
+        const calculatedCommission = Number(
+            entry.calculatedCommission ??
+                (investmentAmount * commissionPercentage) / 100,
+        );
+
+        return {
+            ...entry,
+            investmentAmount,
+            commissionPercentage,
+            calculatedCommission,
+        };
+    });
+    const totalRevenueGenerated = Number(
+        financial?.totalRevenueGenerated ??
+            normalizedRevenueEntries.reduce(
+                (sum, entry) => sum + Number(entry.investmentAmount || 0),
+                0,
+            ),
+    );
+    const totalPartnerEarnings = Number(
+        financial?.totalPartnerEarnings ??
+            normalizedRevenueEntries.reduce(
+                (sum, entry) => sum + Number(entry.calculatedCommission || 0),
+                0,
+            ),
+    );
     const amountPaid = Number(financial?.amountPaid ?? 0);
-    const dealValue = Number(
-        financial?.dealValue ?? deal?.expectedDealValue ?? 0,
-    );
-    const agreedAmount = Number(
-        financial?.agreedAmount ??
-            deal?.expectedPartnerReturn ??
-            deal?.agreedFixedAmount ??
-            (deal?.agreedPercentage && deal?.expectedDealValue
-                ? (deal.expectedDealValue * deal.agreedPercentage) / 100
-                : 0),
-    );
+    const expectedDealValue = Number(deal?.expectedDealValue ?? 0);
+    const financialDealValue = Number(financial?.dealValue);
+    const hasFinancialDealValue =
+        Number.isFinite(financialDealValue) && financialDealValue > 0;
+    const dealValue = hasFinancialDealValue
+        ? financialDealValue
+        : expectedDealValue;
+
+    const financialAgreedAmount = Number(financial?.agreedAmount);
+    const hasFinancialAgreedAmount =
+        Number.isFinite(financialAgreedAmount) && financialAgreedAmount > 0;
+    const expectedPartnerReturn = Number(deal?.expectedPartnerReturn ?? 0);
+    const hasExpectedPartnerReturn =
+        Number.isFinite(expectedPartnerReturn) && expectedPartnerReturn > 0;
+    const percentageBasedReturn =
+        Number(deal?.agreedPercentage ?? 0) > 0 &&
+        Number(deal?.expectedDealValue ?? 0) > 0
+            ? (Number(deal?.expectedDealValue) *
+                  Number(deal?.agreedPercentage)) /
+              100
+            : 0;
+
+    const agreedAmount =
+        deal?.agreementType === "Fixed Fee"
+            ? hasFinancialAgreedAmount
+                ? financialAgreedAmount
+                : Number(deal?.agreedFixedAmount ?? 0)
+            : hasFinancialAgreedAmount
+              ? financialAgreedAmount
+              : hasExpectedPartnerReturn
+                ? expectedPartnerReturn
+                : percentageBasedReturn;
+    const effectiveAgreedAmount = isRevenueShare
+        ? totalPartnerEarnings
+        : agreedAmount;
     const balanceOutstanding = Math.max(
-        Number(financial?.balanceOutstanding ?? agreedAmount - amountPaid),
+        Number(
+            financial?.balanceOutstanding ?? effectiveAgreedAmount - amountPaid,
+        ),
         0,
     );
+    const computedPaymentStatus = isRevenueShare
+        ? effectiveAgreedAmount <= 0
+            ? "Not Paid"
+            : amountPaid <= 0
+              ? "Not Paid"
+              : amountPaid >= effectiveAgreedAmount
+                ? "Fully Paid"
+                : "Partially Paid"
+        : financial?.paymentStatus || "Pending";
     const commissionApproved = financial?.approvalStatus === "Approved";
 
     const headerBadges = useMemo(() => {
@@ -525,13 +609,21 @@ export default function DealDetails() {
                     ? documentUpload
                     : documentUpload?.url;
             const nextAmountPaid = amountPaid + paymentAmount;
-            const nextBalance = Math.max(agreedAmount - nextAmountPaid, 0);
-            const nextPaymentStatus =
-                nextBalance <= 0
+            const nextBalance = Math.max(
+                effectiveAgreedAmount - nextAmountPaid,
+                0,
+            );
+            const nextPaymentStatus = isRevenueShare
+                ? nextBalance <= 0
                     ? "Fully Paid"
                     : nextAmountPaid > 0
-                      ? "Part Paid"
-                      : "Pending";
+                      ? "Partially Paid"
+                      : "Not Paid"
+                : nextBalance <= 0
+                  ? "Fully Paid"
+                  : nextAmountPaid > 0
+                    ? "Part Paid"
+                    : "Pending";
 
             await dispatch(
                 updateDeal({
@@ -539,8 +631,17 @@ export default function DealDetails() {
                     updates: {
                         financialReconciliation: {
                             ...(deal.financialReconciliation || {}),
-                            dealValue,
-                            agreedAmount,
+                            dealValue: isRevenueShare ? undefined : dealValue,
+                            agreedAmount: effectiveAgreedAmount,
+                            revenueSharePercentage: isRevenueShare
+                                ? revenueSharePercentage
+                                : undefined,
+                            totalRevenueGenerated: isRevenueShare
+                                ? totalRevenueGenerated
+                                : undefined,
+                            totalPartnerEarnings: isRevenueShare
+                                ? totalPartnerEarnings
+                                : undefined,
                             amountPaid: nextAmountPaid,
                             balanceOutstanding: nextBalance,
                             paymentDate: paymentForm.paymentDate || todayISO(),
@@ -584,6 +685,135 @@ export default function DealDetails() {
         }
     };
 
+    const handleOpenRevenueEntryModal = (index?: number) => {
+        if (typeof index === "number") {
+            const entry = normalizedRevenueEntries[index];
+            if (entry) {
+                setEditingRevenueIndex(index);
+                setRevenueEntryForm({
+                    investorName: entry.investorName || "",
+                    investmentDate: entry.investmentDate || todayISO(),
+                    investmentAmount: String(entry.investmentAmount || ""),
+                    notes: entry.notes || "",
+                });
+                setRevenueEntryModalVisible(true);
+                return;
+            }
+        }
+
+        setEditingRevenueIndex(null);
+        setRevenueEntryForm({
+            investorName: "",
+            investmentDate: todayISO(),
+            investmentAmount: "",
+            notes: "",
+        });
+        setRevenueEntryModalVisible(true);
+    };
+
+    const handleSaveRevenueEntry = async () => {
+        if (!deal) return;
+        const investorName = revenueEntryForm.investorName.trim();
+        const investmentAmount = parseAmount(revenueEntryForm.investmentAmount);
+
+        if (!investorName || investmentAmount <= 0) {
+            Alert.alert(
+                "Missing details",
+                "Investor name and investment amount are required.",
+            );
+            return;
+        }
+
+        const commissionPercentage = Number(revenueSharePercentage || 0);
+        const calculatedCommission =
+            (investmentAmount * commissionPercentage) / 100;
+
+        const nextEntries = [...normalizedRevenueEntries];
+        const nextEntry = {
+            investorName,
+            investmentDate: revenueEntryForm.investmentDate || todayISO(),
+            investmentAmount,
+            commissionPercentage,
+            calculatedCommission,
+            notes: revenueEntryForm.notes.trim(),
+            createdAt:
+                typeof editingRevenueIndex === "number"
+                    ? nextEntries[editingRevenueIndex]?.createdAt ||
+                      new Date().toISOString()
+                    : new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        if (typeof editingRevenueIndex === "number") {
+            nextEntries[editingRevenueIndex] = {
+                ...nextEntries[editingRevenueIndex],
+                ...nextEntry,
+            };
+        } else {
+            nextEntries.push(nextEntry);
+        }
+
+        const nextTotalRevenueGenerated = nextEntries.reduce(
+            (sum, entry) => sum + Number(entry.investmentAmount || 0),
+            0,
+        );
+        const nextTotalPartnerEarnings = nextEntries.reduce(
+            (sum, entry) => sum + Number(entry.calculatedCommission || 0),
+            0,
+        );
+        const nextBalance = Math.max(nextTotalPartnerEarnings - amountPaid, 0);
+        const nextPaymentStatus =
+            amountPaid <= 0
+                ? "Not Paid"
+                : amountPaid >= nextTotalPartnerEarnings
+                  ? "Fully Paid"
+                  : "Partially Paid";
+
+        setSaving(true);
+        try {
+            await dispatch(
+                updateDeal({
+                    id: deal._id,
+                    updates: {
+                        expectedPartnerReturn: nextTotalPartnerEarnings,
+                        agreedPercentage: commissionPercentage,
+                        financialReconciliation: {
+                            ...(deal.financialReconciliation || {}),
+                            dealValue: undefined,
+                            agreedAmount: nextTotalPartnerEarnings,
+                            revenueSharePercentage: commissionPercentage,
+                            totalRevenueGenerated: nextTotalRevenueGenerated,
+                            totalPartnerEarnings: nextTotalPartnerEarnings,
+                            amountPaid,
+                            balanceOutstanding: nextBalance,
+                            paymentStatus: nextPaymentStatus,
+                            revenueEntries: nextEntries,
+                            approvalStatus:
+                                deal.financialReconciliation?.approvalStatus ||
+                                "Pending",
+                        },
+                    },
+                }),
+            ).unwrap();
+
+            setRevenueEntryModalVisible(false);
+            setEditingRevenueIndex(null);
+            setRevenueEntryForm({
+                investorName: "",
+                investmentDate: todayISO(),
+                investmentAmount: "",
+                notes: "",
+            });
+        } catch (err: any) {
+            Alert.alert(
+                "Error",
+                err?.message || "Failed to save revenue entry",
+            );
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleToggleCommissionApproval = async () => {
         if (!deal) return;
         const nextApprovalStatus = commissionApproved ? "Pending" : "Approved";
@@ -595,13 +825,18 @@ export default function DealDetails() {
                     updates: {
                         financialReconciliation: {
                             ...(deal.financialReconciliation || {}),
-                            dealValue,
-                            agreedAmount,
+                            dealValue: isRevenueShare ? undefined : dealValue,
+                            agreedAmount: effectiveAgreedAmount,
                             amountPaid,
                             balanceOutstanding,
-                            paymentStatus:
-                                deal.financialReconciliation?.paymentStatus ||
-                                "Pending",
+                            paymentStatus: isRevenueShare
+                                ? amountPaid <= 0
+                                    ? "Not Paid"
+                                    : amountPaid >= effectiveAgreedAmount
+                                      ? "Fully Paid"
+                                      : "Partially Paid"
+                                : deal.financialReconciliation?.paymentStatus ||
+                                  "Pending",
                             approvalStatus: nextApprovalStatus,
                         },
                     },
@@ -922,12 +1157,9 @@ export default function DealDetails() {
     }
 
     const showPercentage =
-        deal.agreementType === "Percentage Commission" ||
-        (deal.agreementType !== "Fixed Fee" && hasValue(deal.agreedPercentage));
+        hasValue(deal.agreedPercentage) && !hasValue(deal.agreedFixedAmount);
     const showFixedAmount =
-        !showPercentage &&
-        (deal.agreementType === "Fixed Fee" ||
-            hasValue(deal.agreedFixedAmount));
+        hasValue(deal.agreedFixedAmount) && !hasValue(deal.agreedPercentage);
 
     const renderOverview = () => (
         <View>
@@ -1010,6 +1242,13 @@ export default function DealDetails() {
     const renderFinancials = () => (
         <View>
             <View className="flex-row flex-wrap gap-1 mb-4">
+                {isRevenueShare ? (
+                    <ActionButton
+                        label="Add Revenue Entry"
+                        icon={<Plus size={18} color="white" />}
+                        onPress={() => handleOpenRevenueEntryModal()}
+                    />
+                ) : null}
                 <ActionButton
                     label="Add Payment"
                     icon={<Plus size={18} color="white" />}
@@ -1038,27 +1277,49 @@ export default function DealDetails() {
             </View>
 
             <Card>
-                <FieldRow label="Deal value" value={formatAmount(dealValue)} />
-                <FieldRow
-                    label="Agreed percentage"
-                    value={
-                        showPercentage && hasValue(deal.agreedPercentage)
-                            ? `${deal.agreedPercentage}%`
-                            : "—"
-                    }
-                />
-                <FieldRow
-                    label="Fixed amount"
-                    value={
-                        showFixedAmount
-                            ? formatAmount(deal.agreedFixedAmount)
-                            : "—"
-                    }
-                />
-                <FieldRow
-                    label="Expected partner return"
-                    value={formatAmount(agreedAmount)}
-                />
+                {isRevenueShare ? (
+                    <>
+                        <FieldRow
+                            label="Revenue Share %"
+                            value={
+                                hasValue(revenueSharePercentage)
+                                    ? `${revenueSharePercentage}%`
+                                    : "—"
+                            }
+                        />
+                        <FieldRow
+                            label="Total Revenue Generated"
+                            value={formatAmount(totalRevenueGenerated)}
+                        />
+                        <FieldRow
+                            label="Total Partner Earnings"
+                            value={formatAmount(effectiveAgreedAmount)}
+                        />
+                    </>
+                ) : (
+                    <>
+                        <FieldRow
+                            label="Deal value"
+                            value={formatAmount(dealValue)}
+                        />
+                        {showPercentage ? (
+                            <FieldRow
+                                label="Agreed percentage"
+                                value={`${deal.agreedPercentage}%`}
+                            />
+                        ) : null}
+                        {showFixedAmount ? (
+                            <FieldRow
+                                label="Fixed amount"
+                                value={formatAmount(deal.agreedFixedAmount)}
+                            />
+                        ) : null}
+                        <FieldRow
+                            label="Expected partner return"
+                            value={formatAmount(effectiveAgreedAmount)}
+                        />
+                    </>
+                )}
                 <FieldRow
                     label="Amount paid"
                     value={formatAmount(amountPaid)}
@@ -1069,13 +1330,67 @@ export default function DealDetails() {
                 />
                 <FieldRow
                     label="Payment status"
-                    value={financial?.paymentStatus || "Not Due"}
+                    value={computedPaymentStatus}
                 />
                 <FieldRow
                     label="Approval status"
                     value={financial?.approvalStatus || "Pending"}
                 />
             </Card>
+
+            {isRevenueShare ? (
+                <>
+                    <Text className="text-base font-bold text-gray-900 mb-2">
+                        Revenue Entries
+                    </Text>
+                    {normalizedRevenueEntries.length ? (
+                        normalizedRevenueEntries.map((entry, index) => (
+                            <Pressable
+                                key={`${entry.investmentDate}-${entry.investorName}-${index}`}
+                                onPress={() =>
+                                    handleOpenRevenueEntryModal(index)
+                                }
+                            >
+                                <Card>
+                                    <View className="flex-row items-center justify-between">
+                                        <Text className="text-gray-900 font-bold text-base">
+                                            {entry.investorName}
+                                        </Text>
+                                        <Text className="text-xs font-medium text-blue-700">
+                                            {entry.commissionPercentage}%
+                                        </Text>
+                                    </View>
+                                    <Text className="text-gray-500 mt-1">
+                                        {formatDate(entry.investmentDate)}
+                                    </Text>
+                                    <View className="mt-3">
+                                        <FieldRow
+                                            label="Investment Amount"
+                                            value={formatAmount(
+                                                entry.investmentAmount,
+                                            )}
+                                        />
+                                        <FieldRow
+                                            label="Calculated Commission"
+                                            value={formatAmount(
+                                                entry.calculatedCommission,
+                                            )}
+                                        />
+                                        <FieldRow
+                                            label="Notes"
+                                            value={entry.notes || "—"}
+                                        />
+                                    </View>
+                                </Card>
+                            </Pressable>
+                        ))
+                    ) : (
+                        <Text className="text-gray-500 mb-4">
+                            No revenue entries yet.
+                        </Text>
+                    )}
+                </>
+            ) : null}
 
             <Text className="text-base font-bold text-gray-900 mb-2">
                 Payment History
@@ -1488,6 +1803,77 @@ export default function DealDetails() {
                     icon={<Check size={18} color="white" />}
                     disabled={saving}
                     onPress={handleAddPayment}
+                />
+            </FormModal>
+
+            <FormModal
+                title={
+                    editingRevenueIndex !== null
+                        ? "Update Revenue Entry"
+                        : "Add Revenue Entry"
+                }
+                visible={revenueEntryModalVisible}
+                onClose={() => {
+                    setRevenueEntryModalVisible(false);
+                    setEditingRevenueIndex(null);
+                }}
+            >
+                <LabeledInput
+                    label="Investor Name"
+                    value={revenueEntryForm.investorName}
+                    onChangeText={(investorName) =>
+                        setRevenueEntryForm((prev) => ({
+                            ...prev,
+                            investorName,
+                        }))
+                    }
+                    placeholder="Enter investor name"
+                />
+                <LabeledInput
+                    label="Investment Date"
+                    value={revenueEntryForm.investmentDate}
+                    onChangeText={(investmentDate) =>
+                        setRevenueEntryForm((prev) => ({
+                            ...prev,
+                            investmentDate,
+                        }))
+                    }
+                    placeholder="YYYY-MM-DD"
+                />
+                <LabeledInput
+                    label="Investment Amount"
+                    value={revenueEntryForm.investmentAmount}
+                    onChangeText={(investmentAmount) =>
+                        setRevenueEntryForm((prev) => ({
+                            ...prev,
+                            investmentAmount,
+                        }))
+                    }
+                    keyboardType="numeric"
+                    placeholder="Enter amount"
+                />
+                <View className="mb-4 rounded-lg bg-gray-50 px-4 py-3">
+                    <Text className="text-xs font-medium text-gray-500">
+                        Commission Percentage
+                    </Text>
+                    <Text className="mt-1 text-base font-semibold text-gray-900">
+                        {revenueSharePercentage}%
+                    </Text>
+                </View>
+                <LabeledInput
+                    label="Notes"
+                    value={revenueEntryForm.notes}
+                    onChangeText={(notes) =>
+                        setRevenueEntryForm((prev) => ({ ...prev, notes }))
+                    }
+                    multiline
+                    placeholder="Optional notes"
+                />
+                <ActionButton
+                    label={saving ? "Saving..." : "Save Revenue Entry"}
+                    icon={<Check size={18} color="white" />}
+                    disabled={saving}
+                    onPress={handleSaveRevenueEntry}
                 />
             </FormModal>
 

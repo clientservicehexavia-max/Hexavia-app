@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -70,9 +70,26 @@ const formatAmountForInput = (value?: number) => {
 };
 
 const parseAmountInput = (value: string) => {
-    const sanitized = value.replace(/,/g, "").replace(/[^\d.]/g, "");
+    const sanitized = value.replace(/[^\d.,]/g, "");
     if (!sanitized) return undefined;
-    const parsed = Number(sanitized);
+
+    // Support both `.` and `,` decimal separators while keeping thousands commas.
+    const hasDot = sanitized.includes(".");
+    const hasComma = sanitized.includes(",");
+    let normalized = sanitized;
+
+    if (hasDot && hasComma) {
+        normalized = sanitized.replace(/,/g, "");
+    } else if (!hasDot && hasComma) {
+        normalized = sanitized.replace(/,/g, ".");
+    }
+
+    const segments = normalized.split(".");
+    if (segments.length > 2) {
+        normalized = `${segments[0]}.${segments.slice(1).join("")}`;
+    }
+
+    const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : undefined;
 };
 
@@ -108,6 +125,7 @@ export default function CreateDealScreen() {
 
     const [submitting, setSubmitting] = useState(false);
     const [tagInput, setTagInput] = useState("");
+    const [agreedPercentageInput, setAgreedPercentageInput] = useState("");
 
     useEffect(() => {
         if (dealId && !deal) {
@@ -133,12 +151,68 @@ export default function CreateDealScreen() {
                 description: deal.description,
                 tags: deal.tags || [],
             });
+            setAgreedPercentageInput(
+                deal.agreedPercentage !== undefined
+                    ? String(deal.agreedPercentage)
+                    : "",
+            );
         }
     }, [deal]);
+
+    const handleAgreedPercentageInputChange = (value: string) => {
+        const sanitized = value.replace(/[^\d.,]/g, "");
+        setAgreedPercentageInput(sanitized);
+        handleUpdateForm("agreedPercentage", parseAmountInput(sanitized));
+    };
 
     const handleUpdateForm = (field: keyof FormData, value: any) => {
         setForm((prev) => ({ ...prev, [field]: value }));
     };
+
+    const handleAgreementTypeChange = (
+        agreementType: Deal["agreementType"] | undefined,
+    ) => {
+        setForm((prev) => ({
+            ...prev,
+            agreementType,
+            agreedPercentage:
+                agreementType === "Percentage Commission" ||
+                agreementType === "Revenue Share"
+                    ? prev.agreedPercentage
+                    : undefined,
+            agreedFixedAmount:
+                agreementType === "Fixed Fee"
+                    ? prev.agreedFixedAmount
+                    : undefined,
+            expectedDealValue:
+                agreementType === "Revenue Share"
+                    ? undefined
+                    : prev.expectedDealValue,
+        }));
+    };
+
+    const partnerReturn = useMemo(() => {
+        if (form.agreementType === "Percentage Commission") {
+            const value = Number(form.expectedDealValue ?? 0);
+            const percentage = Number(form.agreedPercentage ?? 0);
+            if (!Number.isFinite(value) || !Number.isFinite(percentage)) {
+                return undefined;
+            }
+            return (value * percentage) / 100;
+        }
+
+        if (form.agreementType === "Fixed Fee") {
+            const amount = Number(form.agreedFixedAmount ?? 0);
+            return Number.isFinite(amount) ? amount : undefined;
+        }
+
+        return undefined;
+    }, [
+        form.agreedFixedAmount,
+        form.agreedPercentage,
+        form.agreementType,
+        form.expectedDealValue,
+    ]);
 
     const handleAddTag = () => {
         if (tagInput.trim() && !form.tags?.includes(tagInput.trim())) {
@@ -173,10 +247,38 @@ export default function CreateDealScreen() {
                 dealSource: form.dealSource,
                 stage: form.stage as Deal["stage"],
                 agreementType: form.agreementType,
-                expectedDealValue: form.expectedDealValue,
-                agreedPercentage: form.agreedPercentage,
-                agreedFixedAmount: form.agreedFixedAmount,
-                expectedPartnerReturn: form.expectedPartnerReturn,
+                expectedDealValue:
+                    form.agreementType === "Revenue Share"
+                        ? undefined
+                        : form.expectedDealValue,
+                agreedPercentage:
+                    form.agreementType === "Percentage Commission" ||
+                    form.agreementType === "Revenue Share"
+                        ? form.agreedPercentage
+                        : undefined,
+                agreedFixedAmount:
+                    form.agreementType === "Fixed Fee"
+                        ? form.agreedFixedAmount
+                        : undefined,
+                expectedPartnerReturn: partnerReturn,
+                financialReconciliation:
+                    form.agreementType === "Revenue Share"
+                        ? {
+                              ...(deal?.financialReconciliation || {}),
+                              amountPaid: Number(
+                                  deal?.financialReconciliation?.amountPaid ??
+                                      0,
+                              ),
+                              paymentStatus:
+                                  deal?.financialReconciliation
+                                      ?.paymentStatus ?? "Not Paid",
+                              approvalStatus:
+                                  deal?.financialReconciliation
+                                      ?.approvalStatus ?? "Pending",
+                              revenueSharePercentage:
+                                  form.agreedPercentage ?? 0,
+                          }
+                        : undefined,
                 recurringRevenue: form.recurringRevenue,
                 recurringFrequency: form.recurringFrequency,
                 description: form.description,
@@ -388,7 +490,7 @@ export default function CreateDealScreen() {
                                     <Pressable
                                         key={t}
                                         onPress={() =>
-                                            handleUpdateForm("agreementType", t)
+                                            handleAgreementTypeChange(t)
                                         }
                                         className={`px-3 py-2 rounded-lg border ${
                                             form.agreementType === t
@@ -410,48 +512,45 @@ export default function CreateDealScreen() {
                             </View>
                         </View>
 
-                        {/* Expected Deal Value */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Expected Deal Value
-                            </Text>
-                            <TextInput
-                                placeholder="Enter value in numbers"
-                                placeholderTextColor="#9CA3AF"
-                                value={formatAmountForInput(
-                                    form.expectedDealValue,
-                                )}
-                                onChangeText={(v) =>
-                                    handleUpdateForm(
-                                        "expectedDealValue",
-                                        parseAmountInput(v),
-                                    )
-                                }
-                                keyboardType="decimal-pad"
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                editable={!submitting}
-                            />
-                        </View>
-
-                        {/* Agreed Percentage/Amount */}
-                        {form.agreementType === "Percentage Commission" && (
+                        {form.agreementType !== "Revenue Share" ? (
                             <View className="mb-6">
                                 <Text className="text-gray-700 font-semibold mb-2">
-                                    Agreed Percentage (%)
+                                    Expected Deal Value
+                                </Text>
+                                <TextInput
+                                    placeholder="Enter value in numbers"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={formatAmountForInput(
+                                        form.expectedDealValue,
+                                    )}
+                                    onChangeText={(v) =>
+                                        handleUpdateForm(
+                                            "expectedDealValue",
+                                            parseAmountInput(v),
+                                        )
+                                    }
+                                    keyboardType="decimal-pad"
+                                    className="border border-gray-300 rounded-lg px-4 py-2 text-base"
+                                    editable={!submitting}
+                                />
+                            </View>
+                        ) : null}
+
+                        {/* Agreed Percentage/Amount */}
+                        {(form.agreementType === "Percentage Commission" ||
+                            form.agreementType === "Revenue Share") && (
+                            <View className="mb-6">
+                                <Text className="text-gray-700 font-semibold mb-2">
+                                    {form.agreementType === "Revenue Share"
+                                        ? "Revenue Share Percentage (%)"
+                                        : "Agreed Percentage (%)"}
                                 </Text>
                                 <TextInput
                                     placeholder="Enter percentage"
                                     placeholderTextColor="#9CA3AF"
-                                    value={
-                                        form.agreedPercentage
-                                            ? String(form.agreedPercentage)
-                                            : ""
-                                    }
-                                    onChangeText={(v) =>
-                                        handleUpdateForm(
-                                            "agreedPercentage",
-                                            v ? Number(v) : undefined,
-                                        )
+                                    value={agreedPercentageInput}
+                                    onChangeText={
+                                        handleAgreedPercentageInputChange
                                     }
                                     keyboardType="decimal-pad"
                                     className="border border-gray-300 rounded-lg px-4 py-2 text-base"
@@ -484,28 +583,30 @@ export default function CreateDealScreen() {
                             </View>
                         )}
 
-                        {/* Expected Partner Return */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Expected Partner Return
-                            </Text>
-                            <TextInput
-                                placeholder="Enter expected return"
-                                placeholderTextColor="#9CA3AF"
-                                value={formatAmountForInput(
-                                    form.expectedPartnerReturn,
-                                )}
-                                onChangeText={(v) =>
-                                    handleUpdateForm(
-                                        "expectedPartnerReturn",
-                                        parseAmountInput(v),
-                                    )
-                                }
-                                keyboardType="decimal-pad"
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                editable={!submitting}
-                            />
-                        </View>
+                        {form.agreementType !== "Revenue Share" ? (
+                            <View className="mb-6">
+                                <Text className="text-gray-700 font-semibold mb-2">
+                                    Partner Return
+                                </Text>
+                                <TextInput
+                                    placeholder="Calculated from agreement terms"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={formatAmountForInput(partnerReturn)}
+                                    className="border border-gray-300 rounded-lg px-4 py-2 text-base"
+                                    editable={false}
+                                />
+                            </View>
+                        ) : (
+                            <View className="mb-6 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+                                <Text className="text-sm font-semibold text-blue-700">
+                                    Revenue Share deal
+                                </Text>
+                                <Text className="mt-1 text-xs text-blue-700/80">
+                                    Add investor revenue entries in Deal Details
+                                    - Financials.
+                                </Text>
+                            </View>
+                        )}
 
                         {/* Recurring Revenue */}
                         <View className="mb-6">
@@ -553,6 +654,7 @@ export default function CreateDealScreen() {
                                             "monthly",
                                             "quarterly",
                                             "yearly",
+                                            "as needed",
                                         ] as const
                                     ).map((f) => (
                                         <Pressable
@@ -563,7 +665,7 @@ export default function CreateDealScreen() {
                                                     f,
                                                 )
                                             }
-                                            className={`flex-1 px-3 py-2 rounded-lg border ${
+                                            className={`flex-1 p-2 rounded-lg border ${
                                                 form.recurringFrequency === f
                                                     ? "border-blue-500 bg-blue-50"
                                                     : "border-gray-300 bg-white"
