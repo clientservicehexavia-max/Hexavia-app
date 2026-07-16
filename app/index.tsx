@@ -9,6 +9,7 @@ import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
 
 import { updateProfile } from "@/redux/user/user.thunks";
 import { registerPushToken } from "@/utils/pushToken";
+import { roleHomePath } from "@/utils/roles";
 
 const PENDING_CHANNEL_KEY = "PENDING_CHANNEL_ID";
 
@@ -82,12 +83,7 @@ export default function Splash() {
                 router.replace("/(auth)/create-password");
             } else if (phase === "authenticated") {
                 const role = user?.role;
-                if (role === "client") router.replace("/(client)/(tabs)");
-                else if (role === "staff") router.replace("/(staff)/(tabs)");
-                else if (role === "admin") router.replace("/(admin)/(tabs)");
-                else if (role === "super-admin")
-                    router.replace("/(admin)/(tabs)");
-                else router.replace("/(client)/(tabs)"); // default to client
+                router.replace(roleHomePath(role) as any);
             }
         }, 3000);
         return () => clearTimeout(timer);

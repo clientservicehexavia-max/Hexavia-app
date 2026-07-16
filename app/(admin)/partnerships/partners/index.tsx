@@ -32,10 +32,13 @@ import {
     selectAllPartners,
     selectPartnerError,
     selectPartnerLoading,
+    selectPartnerPagination,
 } from "@/redux/partner/partner.selectors";
 import { fetchPartners } from "@/redux/partner/partner.thunks";
 import type { Partner } from "@/redux/partner/partner.types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+
+const PAGE_LIMIT = 20;
 
 function useDebounced<T>(value: T, ms: number) {
     const [deb, setDeb] = useState(value);
@@ -68,6 +71,7 @@ export default function PartnersListScreen() {
     const partners = useAppSelector(selectAllPartners);
     const loading = useAppSelector(selectPartnerLoading);
     const error = useAppSelector(selectPartnerError);
+    const pagination = useAppSelector(selectPartnerPagination);
 
     const [query, setQuery] = useState("");
     const [status, setStatus] = useState<string | undefined>(undefined);
@@ -76,21 +80,38 @@ export default function PartnersListScreen() {
 
     const debouncedQuery = useDebounced(query, 300);
 
+    const loadPartners = useCallback(
+        async (page: number, asRefresh = false) => {
+            if (asRefresh) setRefreshing(true);
+            try {
+                await dispatch(
+                    fetchPartners({
+                        search: debouncedQuery,
+                        status,
+                        page,
+                        limit: PAGE_LIMIT,
+                    }),
+                ).unwrap();
+            } catch (err) {
+                console.error("Error fetching partners:", err);
+            } finally {
+                if (asRefresh) setRefreshing(false);
+            }
+        },
+        [dispatch, debouncedQuery, status],
+    );
+
     const onRefresh = useCallback(async () => {
-        setRefreshing(true);
-        try {
-            await dispatch(
-                fetchPartners({
-                    search: debouncedQuery,
-                    status: status,
-                }),
-            ).unwrap();
-        } catch (err) {
-            console.error("Error fetching partners:", err);
-        } finally {
-            setRefreshing(false);
-        }
-    }, [dispatch, debouncedQuery, status]);
+        await loadPartners(1, true);
+    }, [loadPartners]);
+
+    const loadMore = useCallback(() => {
+        if (loading || refreshing) return;
+        if (!pagination) return;
+        if (pagination.currentPage >= pagination.totalPages) return;
+
+        void loadPartners(pagination.currentPage + 1, false);
+    }, [loading, refreshing, pagination, loadPartners]);
 
     useFocusEffect(
         useCallback(() => {
@@ -120,6 +141,8 @@ export default function PartnersListScreen() {
             return matchesQuery && matchesStatus;
         });
     }, [partners, debouncedQuery, status]);
+
+    const isInitialLoading = loading && !refreshing && partners.length === 0;
 
     const renderPartnerItem = ({ item }: { item: Partner }) => (
         <Pressable
@@ -221,7 +244,7 @@ export default function PartnersListScreen() {
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
         >
-            <View className="flex-1 px-4">
+            <View className="flex-1">
                 <PlatformAdaptiveHeader
                     title="Partners"
                     headerRight={({ tintColor }) => (
@@ -239,18 +262,20 @@ export default function PartnersListScreen() {
                     )}
                 />
 
-                <View className="bg-gray-50 rounded-lg px-3 py-2 mb-4 flex-row items-center">
-                    <Search size={18} color="#666" />
-                    <TextInput
-                        placeholder="Search partners..."
-                        value={query}
-                        onChangeText={setQuery}
-                        className="flex-1 ml-2 text-base"
-                        placeholderTextColor="#999"
-                    />
+                <View className="px-4">
+                    <View className="bg-gray-50 rounded-lg px-4 py-2 mb-4 flex-row items-center">
+                        <Search size={18} color="#666" />
+                        <TextInput
+                            placeholder="Search partners..."
+                            value={query}
+                            onChangeText={setQuery}
+                            className="flex-1 ml-2 text-base"
+                            placeholderTextColor="#999"
+                        />
+                    </View>
                 </View>
 
-                <View className="flex-row gap-2 mb-4">
+                <View className="flex-row gap-2 mb-4 px-4">
                     {["all", "active", "inactive"].map((s) => (
                         <Pressable
                             key={s}
@@ -286,7 +311,7 @@ export default function PartnersListScreen() {
                 )}
 
                 {/* Partners List */}
-                {loading && !refreshing ? (
+                {isInitialLoading ? (
                     <View className="flex-1 justify-center items-center">
                         <ActivityIndicator size="large" color="#3b82f6" />
                     </View>
@@ -295,11 +320,24 @@ export default function PartnersListScreen() {
                         data={filteredPartners}
                         keyExtractor={(item) => item._id}
                         renderItem={renderPartnerItem}
+                        contentContainerClassName="px-4"
+                        onEndReachedThreshold={0.25}
+                        onEndReached={loadMore}
                         refreshControl={
                             <RefreshControl
                                 refreshing={refreshing}
                                 onRefresh={onRefresh}
                             />
+                        }
+                        ListFooterComponent={
+                            loading && !refreshing && partners.length > 0 ? (
+                                <View className="py-4 items-center">
+                                    <ActivityIndicator
+                                        size="small"
+                                        color="#3b82f6"
+                                    />
+                                </View>
+                            ) : null
                         }
                         ListEmptyComponent={
                             <View className="flex-1 justify-center items-center">

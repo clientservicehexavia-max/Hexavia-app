@@ -9,11 +9,24 @@ export type ClientStatus =
     | string;
 
 export interface Client {
+    notes?: Array<{
+        title: string;
+        description: string;
+        createdAt?: string;
+        updatedAt?: string;
+    }>;
     phoneNumber?: string;
     _id: string;
     name: string;
     projectName?: string;
     email?: string;
+    source?:
+        | "Lujo heights"
+        | "Boing"
+        | "Moses Okoh"
+        | "TMI"
+        | "Private jet"
+        | string;
     engagement?: string;
     industry?: string;
     staffSize?: number;
@@ -42,6 +55,7 @@ export interface ClientFilters {
     status?: string;
     industry?: string;
     engagement?: string;
+    source?: string;
     page?: number;
     limit?: number;
     sortBy?: string;
@@ -71,6 +85,7 @@ export interface ClientCreateInput {
     projectName?: string;
     phoneNumber?: string;
     email?: string;
+    source?: string;
     engagement?: string;
     industry?: string;
     staffSize?: number;
@@ -87,6 +102,13 @@ export interface ClientCreateInput {
     documentUrl?: string;
     documentFile?: { uri: string; name: string; type?: string };
     status?: ClientStatus;
+    createdAt?: string;
+    notes?: Array<{
+        title: string;
+        description: string;
+        createdAt?: string;
+        updatedAt?: string;
+    }>;
 }
 
 export type ClientUpdateInput = Partial<ClientCreateInput>;

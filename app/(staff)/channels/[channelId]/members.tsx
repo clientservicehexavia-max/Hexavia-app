@@ -46,6 +46,7 @@ import {
 import type { ChannelResource } from "@/redux/channels/resources.types";
 import { selectUser } from "@/redux/user/user.slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { isAdminLikeRole } from "@/utils/roles";
 
 type MemberItem = {
     id: string;
@@ -833,9 +834,13 @@ function RowMember({
     isRemoving?: boolean;
 }) {
     const displayRole = formatRole(item.role);
-    const isAdminLike = ["admin", "super-admin", "owner"].includes(
-        String(item.role || "").toLowerCase(),
-    );
+    const isAdminLike = [
+        "admin",
+        "super-admin",
+        "supervisor",
+        "clientservice",
+        "owner",
+    ].includes(String(item.role || "").toLowerCase());
 
     return (
         <View className="mx-5 mb-3 rounded-3xl bg-white border border-gray-100 px-4 py-3 flex-row items-center">
@@ -928,7 +933,7 @@ export default function ChannelInfoScreen() {
     }, [dispatch, channelId]);
 
     const meRole = (me?.role ?? "").toLowerCase();
-    const canManageMembers = meRole === "admin" || meRole === "super-admin";
+    const canManageMembers = isAdminLikeRole(meRole);
     const meId = me?._id ? String(me._id) : null;
     const adminUsers = useAppSelector(selectAdminUsers);
     const isAddingMember = useAppSelector((state) => state.admin.addingMember);
@@ -1416,9 +1421,7 @@ export default function ChannelInfoScreen() {
                 ListHeaderComponent={header}
                 renderItem={({ item }) => {
                     const memberRole = (item.role ?? "").toLowerCase();
-                    const isPrivileged = ["admin", "super-admin"].includes(
-                        memberRole,
-                    );
+                    const isPrivileged = isAdminLikeRole(memberRole);
                     const isSelf = meId === item.id;
                     const canRemoveMember =
                         canManageMembers && !isSelf && !isPrivileged;

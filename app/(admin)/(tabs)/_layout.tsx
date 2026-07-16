@@ -1,3 +1,6 @@
+import { RootState } from "@/store";
+import { useAppSelector } from "@/store/hooks";
+import { canAccessTeamManagement } from "@/utils/roles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 import { default as React } from "react";
@@ -53,6 +56,10 @@ function TabButton({
 
 export default function AdminTabsLayout() {
     const inset = useSafeAreaInsets();
+    const role = useAppSelector(
+        (s: RootState) => s.auth.user?.role ?? s.user.user?.role,
+    );
+    const showTeamTab = canAccessTeamManagement(role);
 
     return (
         <Tabs
@@ -109,6 +116,7 @@ export default function AdminTabsLayout() {
             <Tabs.Screen
                 name="team"
                 options={{
+                    href: showTeamTab ? undefined : null,
                     tabBarIcon: ({ focused }) => (
                         <TabButton
                             focused={focused}

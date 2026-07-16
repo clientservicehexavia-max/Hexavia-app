@@ -1,5 +1,5 @@
-import { createSelector } from "@reduxjs/toolkit";
 import type { RootState } from "@/store";
+import { createSelector } from "@reduxjs/toolkit";
 import type { Partner } from "./partner.types";
 
 const selectPartnerState = (s: RootState) => s.partner;
@@ -8,7 +8,7 @@ const selectAllIds = (s: RootState) => s.partner.allIds;
 
 export const selectAllPartners = createSelector(
     [selectById, selectAllIds],
-    (byId, allIds) => allIds.map((id) => byId[id]).filter(Boolean)
+    (byId, allIds) => allIds.map((id) => byId[id]).filter(Boolean),
 );
 
 export const selectPartnerById = (id: string) =>
@@ -34,12 +34,17 @@ export const selectPartnerPagination = (state: RootState) => {
     return selectPartnerState(state).pagination;
 };
 
-export const selectPartnerCount = createSelector([selectAllIds], (allIds) => allIds.length);
-
-export const selectActivePartners = createSelector([selectAllPartners], (partners) =>
-    partners.filter((p) => p.status === "active")
+export const selectPartnerCount = createSelector(
+    [selectPartnerPagination],
+    (pagination) => pagination.totalCount,
 );
 
-export const selectInactivePartners = createSelector([selectAllPartners], (partners) =>
-    partners.filter((p) => p.status === "inactive")
+export const selectActivePartners = createSelector(
+    [selectAllPartners],
+    (partners) => partners.filter((p) => p.status === "active"),
+);
+
+export const selectInactivePartners = createSelector(
+    [selectAllPartners],
+    (partners) => partners.filter((p) => p.status === "inactive"),
 );

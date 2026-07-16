@@ -1,5 +1,5 @@
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Filter, Handshake, Plus, Wallet, X } from "lucide-react-native";
 import React, {
     useCallback,
@@ -125,6 +125,13 @@ type DealFilters = {
     createdBy?: string;
     sortOrder?: (typeof SORT_OPTIONS)[number]["value"];
 };
+
+type DashboardView =
+    | "open"
+    | "dealValue"
+    | "commissionsDue"
+    | "commissionsPaid"
+    | "outstanding";
 
 const formatAmount = (value?: number) => {
     if (value === undefined || value === null || Number.isNaN(value))
@@ -291,6 +298,52 @@ function getPartnerReturn(deal: Deal) {
     );
 }
 
+function getCommissionSnapshot(deal: Deal) {
+    const financial = deal.financialReconciliation;
+    const due =
+        financial?.agreedAmount ??
+        deal.expectedPartnerReturn ??
+        deal.agreedFixedAmount ??
+        (deal.expectedDealValue && deal.agreedPercentage
+            ? (deal.expectedDealValue * deal.agreedPercentage) / 100
+            : 0);
+    const paid = Number(financial?.amountPaid || 0);
+    const outstanding =
+        financial?.balanceOutstanding !== undefined
+            ? Number(financial.balanceOutstanding || 0)
+            : Math.max(Number(due || 0) - paid, 0);
+
+    return {
+        due: Number(due || 0),
+        paid,
+        outstanding,
+    };
+}
+
+function firstParam(value: string | string[] | undefined) {
+    return Array.isArray(value) ? value[0] : value;
+}
+
+function parseDashboardView(value: string | string[] | undefined) {
+    const next = firstParam(value);
+    return [
+        "open",
+        "dealValue",
+        "commissionsDue",
+        "commissionsPaid",
+        "outstanding",
+    ].includes(next || "")
+        ? (next as DashboardView)
+        : undefined;
+}
+
+function parseStage(value: string | string[] | undefined) {
+    const next = firstParam(value);
+    return STAGES.includes(next as (typeof STAGES)[number]) && next !== "All"
+        ? next
+        : undefined;
+}
+
 function toOptions(values: readonly string[]) {
     return values.map((value) => ({ label: value, value }));
 }
@@ -311,6 +364,10 @@ function hasTextMatch(value: string | undefined, query: string) {
 
 export default function DealsList() {
     const router = useRouter();
+    const params = useLocalSearchParams<{
+        stage?: string;
+        dashboardView?: DashboardView;
+    }>();
     const dispatch = useAppDispatch();
     const isIOS = Platform.OS === "ios";
 
@@ -320,7 +377,12 @@ export default function DealsList() {
     const error = useAppSelector(selectDealError);
 
     const [query, setQuery] = useState("");
-    const [stage, setStage] = useState<string | undefined>(undefined);
+    const [stage, setStage] = useState<string | undefined>(() =>
+        parseStage(params.stage),
+    );
+    const [dashboardView, setDashboardView] = useState<
+        DashboardView | undefined
+    >(() => parseDashboardView(params.dashboardView));
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState<DealFilters>({});
     const [refreshing, setRefreshing] = useState(false);
@@ -401,14 +463,21 @@ export default function DealsList() {
     }, [deals]);
 
     const activeFilterCount = useMemo(() => {
-        return Object.values(filters).filter((value) =>
+        const modalFilterCount = Object.values(filters).filter((value) =>
             String(value ?? "").trim(),
         ).length;
-    }, [filters]);
+        return modalFilterCount + (dashboardView ? 1 : 0);
+    }, [dashboardView, filters]);
 
     const resetFilters = useCallback(() => {
         setStage(undefined);
+        setDashboardView(undefined);
         setFilters({});
+    }, []);
+
+    const handleStageChange = useCallback((nextStage?: string) => {
+        setDashboardView(undefined);
+        setStage(nextStage);
     }, []);
 
     const updateFilter = useCallback(
@@ -467,10 +536,23 @@ export default function DealsList() {
                 ].some((value) => hasTextMatch(value, normalizedQuery));
             const matchesStage =
                 !stage || stage === "All" ? true : d.stage === stage;
+            const commission = getCommissionSnapshot(d);
+            const matchesDashboardView =
+                !dashboardView ||
+                (dashboardView === "open" &&
+                    d.stage !== "Closed Won" &&
+                    d.stage !== "Closed Lost") ||
+                (dashboardView === "dealValue" &&
+                    Number(d.expectedDealValue || 0) > 0) ||
+                (dashboardView === "commissionsDue" && commission.due > 0) ||
+                (dashboardView === "commissionsPaid" && commission.paid > 0) ||
+                (dashboardView === "outstanding" &&
+                    commission.outstanding > 0);
 
             return (
                 matchesQuery &&
                 matchesStage &&
+                matchesDashboardView &&
                 (!filters.introductionType ||
                     d.introductionType === filters.introductionType) &&
                 (!filters.dealSource || d.dealSource === filters.dealSource) &&
@@ -533,7 +615,14 @@ export default function DealsList() {
                 ? safeFirst - safeSecond
                 : safeSecond - safeFirst;
         });
-    }, [deals, debouncedQuery, filters, partnerNameById, stage]);
+    }, [
+        dashboardView,
+        deals,
+        debouncedQuery,
+        filters,
+        partnerNameById,
+        stage,
+    ]);
 
     const renderItem = ({ item }: { item: Deal }) => {
         const paymentStatus =
@@ -542,6 +631,8 @@ export default function DealsList() {
         const partnerName =
             partnerNameById.get(item.partnerId) || "Unknown partner";
         const partnerReturn = getPartnerReturn(item);
+        const commission = getCommissionSnapshot(item);
+        const isFullyPaid = paymentStatus === "Fully Paid";
 
         return (
             <Pressable
@@ -593,15 +684,26 @@ export default function DealsList() {
                 </View>
 
                 <View className="mt-3 flex-row flex-wrap gap-2">
-                    {item.agreementType ? (
-                        <View className="px-2 py-1 rounded-full bg-gray-100">
-                            <Text className="text-xs text-gray-700 font-medium">
-                                {item.agreementType}
+                    {commission.outstanding > 0 ? (
+                        <View className="px-2 py-1 rounded-full bg-rose-50">
+                            <Text className="text-xs text-rose-700 font-medium">
+                                Outstanding:{" "}
+                                {formatAmount(commission.outstanding)}
                             </Text>
                         </View>
                     ) : null}
-                    <View className="px-2 py-1 rounded-full bg-blue-50">
-                        <Text className="text-xs text-blue-700 font-medium">
+                    <View
+                        className={`px-2 py-1 rounded-full ${
+                            isFullyPaid ? "bg-emerald-50" : "bg-blue-50"
+                        }`}
+                    >
+                        <Text
+                            className={`text-xs font-medium ${
+                                isFullyPaid
+                                    ? "text-emerald-700"
+                                    : "text-blue-700"
+                            }`}
+                        >
                             Payment: {paymentStatus}
                         </Text>
                     </View>
@@ -698,7 +800,9 @@ export default function DealsList() {
                                 active={stage === s || (s === "All" && !stage)}
                                 key={s}
                                 onPress={() =>
-                                    setStage(s === "All" ? undefined : s)
+                                    handleStageChange(
+                                        s === "All" ? undefined : s,
+                                    )
                                 }
                             />
                         ))}

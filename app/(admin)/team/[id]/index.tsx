@@ -3,16 +3,24 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { CalendarCheck2 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Platform, Pressable, Text, View } from "react-native";
+import {
+    ActionSheetIOS,
+    Alert,
+    Platform,
+    Pressable,
+    Text,
+    View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import OptionSheet from "@/components/common/OptionSheet";
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
 import {
     deleteAdminUser,
-    downgradeAdmin,
     promoteUser,
     toggleUserSuspension,
 } from "@/redux/admin/admin.thunks";
+import type { PromoteRole } from "@/redux/admin/admin.types";
 import {
     selectAllChannels,
     selectChannelsForUser,
@@ -20,7 +28,9 @@ import {
 import { fetchChannels } from "@/redux/channels/channels.thunks";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { showError } from "@/components/ui/toast";
 import { dialPhone, openEmail, openWhatsApp } from "@/utils/contact";
+import { getRoleChangeTargets } from "@/utils/roles";
 import { Mail, MessageCircle, Phone as PhoneIcon } from "lucide-react-native";
 
 export default function StaffDetails() {
@@ -57,8 +67,56 @@ export default function StaffDetails() {
     const name = user.fullname || user.username || user.email || "Unknown";
     const joined = formatDate(user.createdAt);
     const isIOS = Platform.OS === "ios";
-    const isAdmin = user.role === "admin" || user.role === "super-admin";
     const [deletingUser, setDeletingUser] = useState(false);
+    const [isRoleSheetVisible, setRoleSheetVisible] = useState(false);
+
+    const roleSheetTargets = getRoleChangeTargets(user.role) as PromoteRole[];
+
+    const applyRoleChange = async (nextRole: PromoteRole) => {
+        if (!user?._id) return;
+        try {
+            await dispatch(
+                promoteUser({
+                    userId: user._id,
+                    role: nextRole,
+                }),
+            ).unwrap();
+        } catch {
+            // toast handled in thunk
+        }
+    };
+
+    const showRoleChangeSheet = () => {
+        if (!roleSheetTargets.length) {
+            showError("No role changes available for this user");
+            return;
+        }
+
+        const labels = roleSheetTargets.map(
+            (role) => `Change to ${formatRole(role)}`,
+        );
+
+        if (Platform.OS === "ios") {
+            ActionSheetIOS.showActionSheetWithOptions(
+                {
+                    options: [...labels, "Cancel"],
+                    cancelButtonIndex: labels.length,
+                    title: "Change Role",
+                },
+                (buttonIndex) => {
+                    if (
+                        buttonIndex >= 0 &&
+                        buttonIndex < roleSheetTargets.length
+                    ) {
+                        void applyRoleChange(roleSheetTargets[buttonIndex]);
+                    }
+                },
+            );
+            return;
+        }
+
+        setRoleSheetVisible(true);
+    };
 
     const onDeleteUser = () => {
         if (!user?._id || deletingUser) return;
@@ -162,30 +220,11 @@ export default function StaffDetails() {
                 </Pressable>
 
                 <Pressable
-                    onPress={() =>
-                        isAdmin
-                            ? dispatch(downgradeAdmin({ userId: user._id }))
-                            : dispatch(
-                                  promoteUser({
-                                      userId: user._id,
-                                      role: "admin",
-                                  }),
-                              )
-                    }
-                    className={
-                        isAdmin
-                            ? "flex-row items-center justify-center gap-3 bg-red-50 border border-red-200 rounded-2xl py-4"
-                            : "flex-row items-center justify-center gap-3 bg-primary-50 border border-primary-200 rounded-2xl py-4"
-                    }
+                    onPress={showRoleChangeSheet}
+                    className="flex-row items-center justify-center gap-3 bg-primary-50 border border-primary-200 rounded-2xl py-4"
                 >
-                    <Text
-                        className={
-                            isAdmin
-                                ? "text-base font-kumbhBold text-red-700"
-                                : "text-base font-kumbhBold text-text"
-                        }
-                    >
-                        {isAdmin ? "Demote to Staff" : "Promote to Admin"}
+                    <Text className="text-base font-kumbhBold text-text">
+                        Change Role
                     </Text>
                 </Pressable>
 
@@ -233,6 +272,24 @@ export default function StaffDetails() {
                     </Text>
                 </Pressable>
             </View>
+
+            <OptionSheet
+                visible={isRoleSheetVisible}
+                onClose={() => setRoleSheetVisible(false)}
+                title="Change Role"
+                selectedValue=""
+                onSelect={(value) => {
+                    const nextRole = String(value) as PromoteRole;
+                    setRoleSheetVisible(false);
+                    if (roleSheetTargets.includes(nextRole)) {
+                        void applyRoleChange(nextRole);
+                    }
+                }}
+                options={roleSheetTargets.map((role) => ({
+                    value: role,
+                    label: `Change to ${formatRole(role)}`,
+                }))}
+            />
         </SafeAreaView>
     );
 }

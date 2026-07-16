@@ -29,15 +29,46 @@ type ManualReceivableSource =
     | "Inner Circle"
     | "Consulting"
     | "Partnerships"
-    | "Retreat";
+    | "Retreat"
+    | "Books"
+    | "Internal Transfer"
+    | "Others";
 type AttendanceType = "physical" | "virtual";
 type TableType = "individual" | "corporate";
+
+const RECEIVABLE_SOURCE_OPTIONS: ManualReceivableSource[] = [
+    "BWE",
+    "Inner Circle",
+    "Consulting",
+    "Partnerships",
+    "Retreat",
+    "Books",
+    "Internal Transfer",
+    "Others",
+];
 
 function fmtDMY(d: Date) {
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
+}
+
+function toISODate(dmy: string) {
+    const m = dmy.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return dmy;
+    const dd = m[1];
+    const mm = m[2];
+    const yyyy = m[3];
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function toCreatedAt(dmy: string) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    return `${toISODate(dmy)}T${hh}:${mm}:${ss}`;
 }
 
 export default function ReceivableForm() {
@@ -108,6 +139,8 @@ export default function ReceivableForm() {
             return showError("Select a BWE attendance type.");
 
         try {
+            const createdAt = toCreatedAt(date);
+
             if (isEditing && clientId) {
                 await dispatch(
                     updateClient({
@@ -120,15 +153,17 @@ export default function ReceivableForm() {
                             isExternal: true,
                             description: desc.trim() || undefined,
                             status: "current",
+                            createdAt,
                         },
                     }),
                 ).unwrap();
 
                 showSuccess("External client updated.");
-                router.replace({
-                    pathname: "/(admin)/clients/installments",
-                    params: { clientId: clientId! },
-                });
+                // router.replace({
+                //     pathname: "/(admin)/clients/installments",
+                //     params: { clientId: clientId! },
+                // });
+                router.back();
                 return;
             }
 
@@ -141,6 +176,7 @@ export default function ReceivableForm() {
                     isExternal: true,
                     description: desc.trim() || undefined,
                     status: "current",
+                    createdAt,
                 }),
             ).unwrap();
 
@@ -182,10 +218,7 @@ export default function ReceivableForm() {
                     contentContainerClassName="px-5 pb-10 pt-2"
                     keyboardShouldPersistTaps="handled"
                 >
-                    <Text className="android:text-xl ios:text-2xl font-kumbhBold text-[#111827]">
-                        {isEditing ? "Edit Receivable" : "Record Receivable"}
-                    </Text>
-                    <Text className="text-[14px] text-gray-500 font-kumbh mb-6">
+                    <Text className="text-[14px] text-gray-500 font-kumbh my-6">
                         {isEditing
                             ? "Update this external receivable"
                             : "Add a manual receivable for an external client"}
@@ -260,21 +293,13 @@ export default function ReceivableForm() {
                             Source
                         </Text>
                         <View className="flex-row flex-wrap gap-2">
-                            {[
-                                "BWE",
-                                "Inner Circle",
-                                "Consulting",
-                                "Partnerships",
-                                "Retreat",
-                            ].map((item) => {
+                            {RECEIVABLE_SOURCE_OPTIONS.map((item) => {
                                 const active = source === item;
                                 return (
                                     <Pressable
                                         key={item}
                                         onPress={() => {
-                                            setSource(
-                                                item as ManualReceivableSource,
-                                            );
+                                            setSource(item);
                                             if (item === "Inner Circle")
                                                 setAttendance("virtual");
                                         }}

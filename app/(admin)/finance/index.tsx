@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import clsx from "clsx";
 import { useRouter } from "expo-router";
-import { ArrowDown, ArrowUp, Eye, Plus } from "lucide-react-native";
+import { ArrowDown, ArrowUp, Eye, Filter, Plus } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     FlatList,
@@ -42,12 +42,12 @@ import { selectClientFilters } from "@/redux/client/client.selectors";
 import { fetchClients } from "@/redux/client/client.thunks";
 
 type Flow = "Receivables" | "Expenses";
+type GroupingMode = "daily" | "monthly";
 
 type Txn = {
     id: string;
     title: string;
     amount: number;
-    time: string;
     status: "Successful" | "Pending";
     description: string;
     projectName?: string;
@@ -58,8 +58,18 @@ type Txn = {
     isExternal?: boolean;
     isFullyPaid?: boolean;
     dir: "up" | "down";
+    isoDate: string;
     dateKey: string;
+    monthKey: string;
+    monthLabel: string;
     kind: "expense" | "clientReceivable";
+};
+
+type TxnSection = {
+    title: string;
+    bucketTotal: number;
+    sortValue: number;
+    data: Txn[];
 };
 
 const NGN = (n: number) =>
@@ -132,10 +142,14 @@ function buildFilteredReceivables(clients: any[]) {
         );
 }
 
-function formatTime(iso: string) {
+function formatDateLabel(iso: string) {
     try {
         const d = new Date(iso);
-        return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        return d.toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+        });
     } catch {
         return "";
     }
@@ -158,6 +172,23 @@ function dateBucket(iso?: string) {
     return d.toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
+        year: "numeric",
+    });
+}
+
+function monthKey(iso?: string) {
+    const d = new Date(iso || "");
+    if (Number.isNaN(d.getTime())) return "unknown";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+}
+
+function monthLabel(iso?: string) {
+    const d = new Date(iso || "");
+    if (Number.isNaN(d.getTime())) return "Unknown month";
+    return d.toLocaleDateString(undefined, {
+        month: "long",
         year: "numeric",
     });
 }
@@ -262,7 +293,9 @@ export default function FinanceIndex() {
     const [clientsRefreshing, setClientsRefreshing] = useState(false);
 
     const [tab, setTab] = useState<Flow>("Receivables");
+    const [groupingMode, setGroupingMode] = useState<GroupingMode>("monthly");
     const [hidden, setHidden] = useState(false);
+    const [showGroupingPicker, setShowGroupingPicker] = useState(false);
 
     // client picker modal
     const [showClientPicker, setShowClientPicker] = useState(false);
@@ -285,13 +318,51 @@ export default function FinanceIndex() {
     }, [summary, tab, filteredReceivables, records]);
 
     /* Section builder */
-    const sections = useMemo(() => {
+    const sections = useMemo<TxnSection[]>(() => {
+        const buildSections = (txns: Txn[], mode: GroupingMode) => {
+            const map = new Map<string, TxnSection>();
+
+            txns.forEach((txn) => {
+                const key =
+                    mode === "daily"
+                        ? txn.dateKey || "—"
+                        : txn.monthKey || "unknown";
+                const title =
+                    mode === "daily"
+                        ? txn.dateKey || "—"
+                        : txn.monthLabel || "Unknown month";
+
+                if (!map.has(key)) {
+                    map.set(key, {
+                        title,
+                        bucketTotal: 0,
+                        sortValue: 0,
+                        data: [],
+                    });
+                }
+
+                const section = map.get(key)!;
+                section.data.push(txn);
+                section.bucketTotal += Number(txn.amount || 0);
+
+                const txDate = new Date(txn.isoDate || "");
+                const fallbackDate = new Date();
+                const parsed = Number.isNaN(txDate.getTime())
+                    ? fallbackDate.getTime()
+                    : txDate.getTime();
+                section.sortValue = Math.max(section.sortValue, parsed);
+            });
+
+            return Array.from(map.values()).sort(
+                (a, b) => b.sortValue - a.sortValue,
+            );
+        };
+
         if (tab === "Receivables") {
             const clientTxns: Txn[] = (clients || []).map((c: any) => ({
                 id: c._id,
                 title: c?.isExternal ? c?.engagement || "External" : "Receive",
                 amount: getTotalPaid(c),
-                time: formatTime(c?.createdAt || ""),
                 description: `${c?.projectName || "Unnamed project"}\n${c?.name || "Unnamed client"}`,
                 projectName: c?.projectName || "Unnamed project",
                 clientName: c?.name || "Unnamed client",
@@ -300,23 +371,14 @@ export default function FinanceIndex() {
                 isFullyPaid: getOutstandingReceivable(c) === 0,
                 status: "Pending",
                 dir: "down",
+                isoDate: c?.createdAt || "",
                 dateKey: dateBucket(c?.createdAt || ""),
+                monthKey: monthKey(c?.createdAt || ""),
+                monthLabel: monthLabel(c?.createdAt || ""),
                 kind: "clientReceivable",
             }));
 
-            const txns: Txn[] = [...clientTxns];
-
-            const map = new Map<string, Txn[]>();
-            txns.forEach((t) => {
-                const key = t.dateKey || "—";
-                if (!map.has(key)) map.set(key, []);
-                map.get(key)!.push(t);
-            });
-
-            return Array.from(map.entries()).map(([title, data]) => ({
-                title,
-                data,
-            }));
+            return buildSections(clientTxns, groupingMode);
         }
 
         // Expenses
@@ -330,25 +392,18 @@ export default function FinanceIndex() {
                 id: r._id,
                 title: "Expense",
                 amount: r.amount,
-                time: formatTime(r.date),
                 description: String(r.description ?? ""), // <- force string
                 status: "Successful",
                 dir: "up",
+                isoDate: r.date,
                 dateKey: dateBucket(r.date),
+                monthKey: monthKey(r.date),
+                monthLabel: monthLabel(r.date),
                 kind: "expense", // <- new
             }));
 
-        const map = new Map<string, Txn[]>();
-        txns.forEach((t) => {
-            if (!map.has(t.dateKey)) map.set(t.dateKey, []);
-            map.get(t.dateKey)!.push(t);
-        });
-
-        return Array.from(map.entries()).map(([title, data]) => ({
-            title,
-            data,
-        }));
-    }, [tab, clients, records]);
+        return buildSections(txns, groupingMode);
+    }, [tab, clients, records, groupingMode]);
 
     const fetchAndPaginateReceivables = useCallback(
         async (asRefresh = false) => {
@@ -629,7 +684,32 @@ export default function FinanceIndex() {
             )}
 
             {/* Header */}
-            <PlatformAdaptiveHeader title="Finance" />
+            <PlatformAdaptiveHeader
+                title="Finance"
+                headerRight={({ tintColor }) => (
+                    <View className="flex-row items-center" style={{ gap: 6 }}>
+                        <Pressable
+                            onPress={() => setShowGroupingPicker(true)}
+                            className="w-10 h-10 rounded-full items-center justify-center"
+                        >
+                            <Filter size={21} color={tintColor} />
+                        </Pressable>
+
+                        <Pressable
+                            onPress={() => {
+                                if (tab === "Receivables") {
+                                    router.push("/(admin)/finance/receivable");
+                                } else {
+                                    router.push("/(admin)/finance/form");
+                                }
+                            }}
+                            className="w-10 h-10 rounded-full items-center justify-center"
+                        >
+                            <Plus size={28} color={tintColor} />
+                        </Pressable>
+                    </View>
+                )}
+            />
 
             {/* Total card */}
             <View className="px-5 mt-2">
@@ -668,7 +748,7 @@ export default function FinanceIndex() {
                 }
                 renderScene={() => (
                     <View className="flex-1 pt-2">
-                        <SectionList
+                        <SectionList<Txn, TxnSection>
                             sections={sections}
                             keyExtractor={(item) => item.id}
                             contentContainerStyle={{ paddingBottom: 24 }}
@@ -681,11 +761,16 @@ export default function FinanceIndex() {
                             }
                             onEndReachedThreshold={0.2}
                             onEndReached={loadMore}
-                            renderSectionHeader={({ section: { title } }) => (
+                            renderSectionHeader={({ section }) => (
                                 <View className="bg-white">
-                                    <Text className="px-5 py-1.5 text-gray-500 font-kumbh">
-                                        {title}
-                                    </Text>
+                                    <View className="px-5 py-4 flex-row items-center justify-between">
+                                        <Text className="text-gray-500 font-kumbhBold">
+                                            {section.title}
+                                        </Text>
+                                        <Text className="text-[#111827] font-kumbhBold">
+                                            {NGN(section.bucketTotal)}
+                                        </Text>
+                                    </View>
                                 </View>
                             )}
                             ItemSeparatorComponent={() => (
@@ -726,27 +811,59 @@ export default function FinanceIndex() {
                 }}
             />
 
-            {/* Floating button */}
-            <Pressable
-                onPress={() => {
-                    if (tab === "Receivables") {
-                        router.push("/(admin)/finance/receivable");
-                    } else {
-                        router.push("/(admin)/finance/form");
-                    }
-                }}
-                className="absolute right-5 bottom-10 px-4 h-12 rounded-2xl bg-[#4C5FAB] flex-row items-center"
-                style={{ paddingHorizontal: 16 }}
+            <Modal
+                visible={showGroupingPicker}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowGroupingPicker(false)}
             >
-                <View className="w-6 h-6 rounded-full bg-white/15 items-center justify-center mr-2">
-                    <Plus size={16} color="#fff" />
-                </View>
-                <Text className="text-white font-kumbhBold">
-                    {tab === "Expenses"
-                        ? "Record Expense"
-                        : "Record Receivable"}
-                </Text>
-            </Pressable>
+                <Pressable
+                    className="flex-1 bg-black/30 justify-end"
+                    onPress={() => setShowGroupingPicker(false)}
+                >
+                    <Pressable className="bg-white rounded-t-3xl px-5 pt-5 pb-8">
+                        <Text className="text-lg font-kumbhBold text-[#111827] mb-3">
+                            Sectioning
+                        </Text>
+
+                        {(
+                            [
+                                ["daily", "Daily"],
+                                ["monthly", "Monthly"],
+                            ] as const
+                        ).map(([value, label]) => {
+                            const active = groupingMode === value;
+                            return (
+                                <Pressable
+                                    key={value}
+                                    onPress={() => {
+                                        setGroupingMode(value);
+                                        setShowGroupingPicker(false);
+                                    }}
+                                    className={clsx(
+                                        "h-12 rounded-xl px-4 mb-2 flex-row items-center justify-between",
+                                        active ? "bg-[#EEF1FF]" : "bg-gray-100",
+                                    )}
+                                >
+                                    <Text
+                                        className={clsx(
+                                            "font-kumbhBold",
+                                            active
+                                                ? "text-[#4C5FAB]"
+                                                : "text-[#111827]",
+                                        )}
+                                    >
+                                        {label}
+                                    </Text>
+                                    {active ? (
+                                        <View className="w-2.5 h-2.5 rounded-full bg-[#4C5FAB]" />
+                                    ) : null}
+                                </Pressable>
+                            );
+                        })}
+                    </Pressable>
+                </Pressable>
+            </Modal>
 
             {/* ───────── Client Picker Modal ───────── */}
             <Modal
@@ -1021,7 +1138,7 @@ function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
                     {NGN(item.amount)}
                 </Text>
                 <Text className="text-sm text-gray-500 font-kumbh mt-1">
-                    {item.time}
+                    {formatDateLabel(item.isoDate)}
                 </Text>
             </View>
         </Pressable>

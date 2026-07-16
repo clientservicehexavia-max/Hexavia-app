@@ -49,6 +49,8 @@ export default function PartnerFormScreen() {
         description: "",
         contactEmail: "",
         contactPhone: "",
+        alternateContactEmail: "",
+        alternateContactPhone: "",
         address: "",
         partnerType: undefined,
         industry: "",
@@ -75,6 +77,8 @@ export default function PartnerFormScreen() {
                 description: partner.description,
                 contactEmail: partner.contactEmail,
                 contactPhone: partner.contactPhone,
+                alternateContactEmail: partner.alternateContactEmail,
+                alternateContactPhone: partner.alternateContactPhone,
                 address: partner.address,
                 partnerType: partner.partnerType,
                 industry: partner.industry,
@@ -125,6 +129,8 @@ export default function PartnerFormScreen() {
                     description,
                     contactEmail,
                     contactPhone,
+                    alternateContactEmail,
+                    alternateContactPhone,
                     address,
                     partnerType,
                     industry,
@@ -142,6 +148,8 @@ export default function PartnerFormScreen() {
                             description,
                             contactEmail,
                             contactPhone,
+                            alternateContactEmail,
+                            alternateContactPhone,
                             address,
                             partnerType,
                             industry,
@@ -161,6 +169,8 @@ export default function PartnerFormScreen() {
                     description,
                     contactEmail,
                     contactPhone,
+                    alternateContactEmail,
+                    alternateContactPhone,
                     address,
                     partnerType,
                     industry,
@@ -176,6 +186,8 @@ export default function PartnerFormScreen() {
                         description,
                         contactEmail,
                         contactPhone,
+                        alternateContactEmail,
+                        alternateContactPhone,
                         address,
                         partnerType,
                         industry,
@@ -205,6 +217,9 @@ export default function PartnerFormScreen() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 className="flex-1"
+                keyboardVerticalOffset={
+                    Platform.select({ ios: 70, android: 0 }) as number
+                }
             >
                 <View className="flex-1 px-4">
                     <PlatformAdaptiveHeader
@@ -318,6 +333,42 @@ export default function PartnerFormScreen() {
                                 value={form.contactPhone}
                                 onChangeText={(v) =>
                                     handleUpdateForm("contactPhone", v)
+                                }
+                                keyboardType="phone-pad"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
+                                editable={!submitting}
+                            />
+                        </View>
+
+                        {/* Alternate Email */}
+                        <View className="mb-6">
+                            <Text className="text-gray-700 font-semibold mb-2">
+                                Alternate Email (Optional)
+                            </Text>
+                            <TextInput
+                                placeholder="Enter alternate email address"
+                                placeholderTextColor="#9CA3AF"
+                                value={form.alternateContactEmail}
+                                onChangeText={(v) =>
+                                    handleUpdateForm("alternateContactEmail", v)
+                                }
+                                keyboardType="email-address"
+                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
+                                editable={!submitting}
+                            />
+                        </View>
+
+                        {/* Alternate Phone */}
+                        <View className="mb-6">
+                            <Text className="text-gray-700 font-semibold mb-2">
+                                Alternate Phone (Optional)
+                            </Text>
+                            <TextInput
+                                placeholder="Enter alternate phone number"
+                                placeholderTextColor="#9CA3AF"
+                                value={form.alternateContactPhone}
+                                onChangeText={(v) =>
+                                    handleUpdateForm("alternateContactPhone", v)
                                 }
                                 keyboardType="phone-pad"
                                 className="border border-gray-300 rounded-lg px-4 py-2 text-base"

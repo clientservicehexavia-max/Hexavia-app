@@ -42,6 +42,13 @@ import { dialPhone, openEmail, openWhatsApp } from "@/utils/contact";
 import clsx from "clsx";
 
 const STATUS_OPTS = ["active", "closed"] as const;
+const SOURCE_OPTS = [
+    "Lujo heights",
+    "Boing",
+    "Moses Okoh",
+    "TMI",
+    "Private jet",
+] as const;
 const SORTBY_OPTS = ["createdAt", "updatedAt", "payableAmount"] as const;
 const ORDER_OPTS = ["desc", "asc"] as const;
 const LIMIT_OPTS = [10, 20, 50, 100] as const;
@@ -137,6 +144,7 @@ export default function ClientsIndex() {
         status: undefined,
         industry: undefined,
         engagement: undefined,
+        source: undefined,
         sortBy: "createdAt",
         sortOrder: "desc",
         limit: 10,
@@ -164,6 +172,7 @@ export default function ClientsIndex() {
             status: filters.status,
             industry: filters.industry,
             engagement: filters.engagement,
+            source: filters.source,
             sortBy: (filters.sortBy as any) ?? "createdAt",
             sortOrder: filters.sortOrder ?? "desc",
             limit: filters.limit ?? 10,
@@ -261,6 +270,13 @@ export default function ClientsIndex() {
             );
         }
 
+        if (filters.source) {
+            const source = String(filters.source).toLowerCase();
+            base = base.filter(
+                (c: any) => String(c.source ?? "").toLowerCase() === source,
+            );
+        }
+
         const sortBy = filters.sortBy ?? "createdAt";
         const sortOrder = filters.sortOrder ?? "desc";
         base = [...base].sort((a: any, b: any) => {
@@ -294,6 +310,7 @@ export default function ClientsIndex() {
                 c.projectName,
                 c.email,
                 c.industry,
+                c.source,
                 c.status,
                 String(c.payableAmount ?? ""),
             ]
@@ -306,6 +323,7 @@ export default function ClientsIndex() {
         debouncedQuery,
         filters.engagement,
         filters.industry,
+        filters.source,
         filters.sortBy,
         filters.sortOrder,
         activeStatus,
@@ -342,6 +360,7 @@ export default function ClientsIndex() {
                 activeStatus,
                 filters.industry,
                 filters.engagement,
+                filters.source,
                 filters.sortBy && filters.sortBy !== "createdAt"
                     ? filters.sortBy
                     : undefined,
@@ -362,6 +381,7 @@ export default function ClientsIndex() {
             filters.createdAtTo,
             filters.engagement,
             filters.industry,
+            filters.source,
             filters.limit,
             filters.sortBy,
             filters.sortOrder,
@@ -381,6 +401,7 @@ export default function ClientsIndex() {
             status: undefined,
             industry: undefined,
             engagement: undefined,
+            source: undefined,
             createdAtFrom: undefined,
             createdAtTo: undefined,
             updatedAtFrom: undefined,
@@ -404,6 +425,15 @@ export default function ClientsIndex() {
         return arr;
     }, [clients]);
 
+    const dynamicSourceOpts = useMemo(() => {
+        const set = new Set<string>();
+        displayClients.forEach((c: any) => {
+            if (c.source) set.add(String(c.source).trim());
+        });
+        const arr = Array.from(set).filter(Boolean);
+        return arr.length > 0 ? arr : [...SOURCE_OPTS];
+    }, [displayClients]);
+
     return (
         <SafeAreaView
             edges={
@@ -414,7 +444,7 @@ export default function ClientsIndex() {
             {/* Header */}
             <View className="pb-4 px-4">
                 <PlatformAdaptiveHeader
-                    title="Hexavia Clients"
+                    title="Clients"
                     headerRight={({ tintColor }) => (
                         <Pressable
                             onPress={() => setShowFilters(true)}
@@ -625,6 +655,7 @@ export default function ClientsIndex() {
                 form={form}
                 industryOptions={dynamicIndustryOpts}
                 engagementOptions={dynamicEngagementOpts}
+                sourceOptions={dynamicSourceOpts}
                 onClose={() => setShowFilters(false)}
                 onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
                 onApply={() => {
@@ -712,6 +743,7 @@ function ClientRow({
             />
 
             <Row label="Industry" value={item.industry ?? "—"} />
+            <Row label="Source" value={item.source ?? "—"} />
             <Row label="Engagement" value={item.engagement ?? "—"} />
             <Row label="Receivable" value={formatMoney(item.payableAmount)} />
             <Row label="Created At" value={formatDateTime(createdAt)} />
@@ -799,6 +831,7 @@ type FilterModalProps = {
     form: ClientFilters;
     industryOptions: string[];
     engagementOptions: string[];
+    sourceOptions: string[];
     onClose: () => void;
     onChange: (patch: Partial<ClientFilters>) => void;
     onApply: () => void;
@@ -810,6 +843,7 @@ function FilterModal({
     form,
     industryOptions,
     engagementOptions,
+    sourceOptions,
     onClose,
     onChange,
     onApply,
@@ -819,6 +853,7 @@ function FilterModal({
         form.status,
         form.industry,
         form.engagement,
+        form.source,
         form.sortBy && form.sortBy !== "createdAt" ? form.sortBy : undefined,
         form.sortOrder && form.sortOrder !== "desc"
             ? form.sortOrder
@@ -884,6 +919,19 @@ function FilterModal({
                     onChange={(v) =>
                         onChange({
                             engagement: v === "Any" ? undefined : v,
+                        })
+                    }
+                    scrollable
+                />
+            </Field>
+
+            <Field label="Source">
+                <PillGroup
+                    options={["Any", ...sourceOptions]}
+                    value={form.source ?? "Any"}
+                    onChange={(v) =>
+                        onChange({
+                            source: v === "Any" ? undefined : v,
                         })
                     }
                     scrollable
@@ -1042,6 +1090,9 @@ function filterLabel(value: string) {
         Any: "Any",
         active: "Active",
         closed: "Closed",
+        prospect: "Prospect",
+        clients: "Clients",
+        partnership: "Partnership",
         createdAt: "Created",
         updatedAt: "Updated",
         payableAmount: "Receivable",

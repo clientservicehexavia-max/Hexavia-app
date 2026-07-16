@@ -1,12 +1,12 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import type { Partner, PartnerListResponse, PartnerState } from "./partner.types";
 import {
-    fetchPartners,
-    fetchPartnerById,
     createPartner,
-    updatePartner,
     deletePartner,
+    fetchPartnerById,
+    fetchPartners,
+    updatePartner,
 } from "./partner.thunks";
+import type { Partner, PartnerState } from "./partner.types";
 
 const initialState: PartnerState = {
     byId: {},
@@ -35,7 +35,7 @@ export const partnerSlice = createSlice({
             action: PayloadAction<{
                 status?: string;
                 search?: string;
-            }>
+            }>,
         ) => {
             state.filters = { ...state.filters, ...action.payload };
             state.pagination.currentPage = 1;
@@ -57,18 +57,37 @@ export const partnerSlice = createSlice({
             })
             .addCase(fetchPartners.fulfilled, (state, action) => {
                 state.loading = false;
-                if (Array.isArray(action.payload)) {
-                    state.byId = {};
-                    state.allIds = [];
-                    action.payload.forEach((partner) => {
+                const page = action.meta.arg?.page ?? 1;
+                const partners = action.payload?.partners ?? [];
+                const pagination = action.payload?.pagination;
+
+                if (Array.isArray(partners)) {
+                    if (page <= 1) {
+                        state.byId = {};
+                        state.allIds = [];
+                    }
+
+                    partners.forEach((partner) => {
                         state.byId[partner._id] = partner;
-                        state.allIds.push(partner._id);
+                        if (!state.allIds.includes(partner._id)) {
+                            state.allIds.push(partner._id);
+                        }
                     });
+                }
+
+                if (pagination) {
+                    state.pagination = {
+                        currentPage: pagination.page,
+                        totalPages: pagination.pages,
+                        totalCount: pagination.total,
+                        limit: pagination.limit,
+                    };
                 }
             })
             .addCase(fetchPartners.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.payload?.message || "Failed to fetch partners";
+                state.error =
+                    action.payload?.message || "Failed to fetch partners";
             });
 
         // Fetch Partner by ID
@@ -87,7 +106,8 @@ export const partnerSlice = createSlice({
             })
             .addCase(fetchPartnerById.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.payload?.message || "Failed to fetch partner";
+                state.error =
+                    action.payload?.message || "Failed to fetch partner";
             });
 
         // Create Partner
@@ -106,7 +126,8 @@ export const partnerSlice = createSlice({
             })
             .addCase(createPartner.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.payload?.message || "Failed to create partner";
+                state.error =
+                    action.payload?.message || "Failed to create partner";
             });
 
         // Update Partner
@@ -122,7 +143,8 @@ export const partnerSlice = createSlice({
             })
             .addCase(updatePartner.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.payload?.message || "Failed to update partner";
+                state.error =
+                    action.payload?.message || "Failed to update partner";
             });
 
         // Delete Partner
@@ -135,14 +157,17 @@ export const partnerSlice = createSlice({
                 state.loading = false;
                 const { id } = action.payload;
                 delete state.byId[id];
-                state.allIds = state.allIds.filter((partnerId) => partnerId !== id);
+                state.allIds = state.allIds.filter(
+                    (partnerId) => partnerId !== id,
+                );
                 if (state.currentPartner?._id === id) {
                     state.currentPartner = null;
                 }
             })
             .addCase(deletePartner.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.payload?.message || "Failed to delete partner";
+                state.error =
+                    action.payload?.message || "Failed to delete partner";
             });
     },
 });

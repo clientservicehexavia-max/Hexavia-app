@@ -1,7 +1,16 @@
 // redux/admin/admin.types.ts
 
-export type AdminRole = "client" | "staff" | "admin" | "super-admin";
-export type PromoteRole = Extract<AdminRole, "admin" | "super-admin">;
+export type AdminRole =
+    | "client"
+    | "staff"
+    | "supervisor"
+    | "clientservice"
+    | "admin"
+    | "super-admin";
+export type PromoteRole = Extract<
+    AdminRole,
+    "staff" | "clientservice" | "admin"
+>;
 
 export interface AdminUser {
     _id: string;

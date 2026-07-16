@@ -167,7 +167,7 @@ export default function OptionSheet({
                                     >
                                         <View className="flex-row items-center justify-between">
                                             <Text
-                                                className={`text-base font-kumbh ${
+                                                className={`text-base font-kumbh capitalize w-full ${
                                                     selected
                                                         ? "text-blue-600 font-kumbhBold"
                                                         : "text-gray-700"

@@ -38,15 +38,56 @@ function safeText(input?: string | number | boolean | null) {
 
 export function getDealFinancialSnapshot(deal: Deal) {
     const financial = deal.financialReconciliation;
-    const dealValue = Number(financial?.dealValue ?? deal.expectedDealValue ?? 0);
-    const expectedPartnerReturn = Number(
-        financial?.agreedAmount ??
-            deal.expectedPartnerReturn ??
-            deal.agreedFixedAmount ??
-            (deal.expectedDealValue && deal.agreedPercentage
-                ? (deal.expectedDealValue * deal.agreedPercentage) / 100
-                : 0),
+    const isRevenueShare = deal.agreementType === "Revenue Share";
+    const revenueSharePercentage = Number(
+        financial?.revenueSharePercentage ?? deal.agreedPercentage ?? 0,
     );
+    const revenueEntries = (financial?.revenueEntries || []).map((entry) => {
+        const investmentAmount = Number(entry.investmentAmount || 0);
+        const commissionPercentage = Number(
+            entry.commissionPercentage ?? revenueSharePercentage,
+        );
+        const calculatedCommission = Number(
+            entry.calculatedCommission ??
+                (investmentAmount * commissionPercentage) / 100,
+        );
+
+        return {
+            ...entry,
+            investmentAmount,
+            commissionPercentage,
+            calculatedCommission,
+        };
+    });
+
+    const totalRevenueGenerated = Number(
+        financial?.totalRevenueGenerated ??
+            revenueEntries.reduce(
+                (sum, entry) => sum + Number(entry.investmentAmount || 0),
+                0,
+            ),
+    );
+    const totalPartnerEarnings = Number(
+        financial?.totalPartnerEarnings ??
+            revenueEntries.reduce(
+                (sum, entry) => sum + Number(entry.calculatedCommission || 0),
+                0,
+            ),
+    );
+
+    const dealValue = isRevenueShare
+        ? totalRevenueGenerated
+        : Number(financial?.dealValue ?? deal.expectedDealValue ?? 0);
+    const expectedPartnerReturn = isRevenueShare
+        ? totalPartnerEarnings
+        : Number(
+              financial?.agreedAmount ??
+                  deal.expectedPartnerReturn ??
+                  deal.agreedFixedAmount ??
+                  (deal.expectedDealValue && deal.agreedPercentage
+                      ? (deal.expectedDealValue * deal.agreedPercentage) / 100
+                      : 0),
+          );
     const amountPaid = Number(financial?.amountPaid || 0);
     const balanceOutstanding =
         financial?.balanceOutstanding !== undefined
@@ -56,6 +97,10 @@ export function getDealFinancialSnapshot(deal: Deal) {
     return {
         dealValue,
         expectedPartnerReturn,
+        revenueSharePercentage,
+        totalRevenueGenerated,
+        totalPartnerEarnings,
+        revenueEntries,
         amountPaid,
         balanceOutstanding,
         paymentStatus: financial?.paymentStatus || "Not Due",
@@ -78,7 +123,9 @@ function getContributionSnapshot(deal: Deal) {
     };
 }
 
-function tableRows(rows: [string, string | number | boolean | undefined | null][]) {
+function tableRows(
+    rows: [string, string | number | boolean | undefined | null][],
+) {
     return rows
         .map(
             ([label, value]) =>
@@ -260,7 +307,8 @@ function documentsForDeal(deal: Deal) {
             docs.push({
                 url: payment.documentUrl,
                 type: "receipt",
-                name: payment.paymentReference || `Payment document ${index + 1}`,
+                name:
+                    payment.paymentReference || `Payment document ${index + 1}`,
                 uploadedAt: payment.createdAt || payment.paymentDate,
             });
         }
@@ -275,7 +323,10 @@ export async function generateDealReportPdf(deal: Deal, partner?: Partner) {
 
     const activityRows = deal.activities?.length
         ? [...deal.activities]
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .sort(
+                  (a, b) =>
+                      new Date(b.date).getTime() - new Date(a.date).getTime(),
+              )
               .map(
                   (activity) =>
                       `<tr><td>${safeText(activity.activityType)}</td><td>${safeText(activity.note)}</td><td>${safeText(activity.createdBy)}</td><td>${safeText(formatReportDate(activity.date))}</td></tr>`,
@@ -291,6 +342,15 @@ export async function generateDealReportPdf(deal: Deal, partner?: Partner) {
               )
               .join("")
         : emptyRow("No payment history available.", 5);
+
+    const revenueRows = financial.revenueEntries?.length
+        ? financial.revenueEntries
+              .map(
+                  (entry) =>
+                      `<tr><td>${safeText(entry.investorName)}</td><td>${safeText(formatReportDate(entry.investmentDate))}</td><td>${safeText(formatReportAmount(entry.investmentAmount))}</td><td>${safeText(`${entry.commissionPercentage}%`)}</td><td>${safeText(formatReportAmount(entry.calculatedCommission))}</td><td>${safeText(entry.notes)}</td></tr>`,
+              )
+              .join("")
+        : emptyRow("No revenue entries available.", 6);
 
     const contributionRows = deal.contributionLogs?.length
         ? deal.contributionLogs
@@ -312,66 +372,142 @@ export async function generateDealReportPdf(deal: Deal, partner?: Partner) {
 
     const body = `
       <div class="stats">
-        <div class="stat"><div class="label">Deal Value</div><div class="value">${safeText(formatReportAmount(financial.dealValue))}</div></div>
-        <div class="stat"><div class="label">Partner Return</div><div class="value">${safeText(formatReportAmount(financial.expectedPartnerReturn))}</div></div>
+                <div class="stat"><div class="label">${
+                    deal.agreementType === "Revenue Share"
+                        ? "Total Revenue Generated"
+                        : "Deal Value"
+                }</div><div class="value">${safeText(formatReportAmount(financial.dealValue))}</div></div>
+                <div class="stat"><div class="label">${
+                    deal.agreementType === "Revenue Share"
+                        ? "Total Partner Earnings"
+                        : "Partner Return"
+                }</div><div class="value">${safeText(formatReportAmount(financial.expectedPartnerReturn))}</div></div>
         <div class="stat"><div class="label">Amount Paid</div><div class="value">${safeText(formatReportAmount(financial.amountPaid))}</div></div>
         <div class="stat"><div class="label">Outstanding</div><div class="value">${safeText(formatReportAmount(financial.balanceOutstanding))}</div></div>
       </div>
 
-      <div class="section"><h2>Deal Overview</h2><div class="table-wrap"><table><tbody>${tableRows([
-          ["Deal title", deal.title],
-          ["Linked partner", partner?.name || deal.partnerId],
-          ["Deal source", deal.dealSource],
-          ["Introduction type", deal.introductionType],
-          ["Current stage/status", deal.stage],
-          ["Agreement type", deal.agreementType],
-          ["Assigned owner/internal manager", deal.assignedOwner],
-          ["Recurring revenue status", deal.recurringRevenue ? "Yes" : "No"],
-          ["Recurring frequency", deal.recurringFrequency],
-          ["Date created", formatReportDate(deal.createdAt)],
-          ["Close date", formatReportDate(deal.closeDate)],
-          ["Notes/description", deal.description],
-      ])}</tbody></table></div></div>
+      <div class="section"><h2>Deal Overview</h2><div class="table-wrap"><table><tbody>${tableRows(
+          [
+              ["Deal title", deal.title],
+              ["Linked partner", partner?.name || deal.partnerId],
+              ["Deal source", deal.dealSource],
+              ["Introduction type", deal.introductionType],
+              ["Current stage/status", deal.stage],
+              ["Agreement type", deal.agreementType],
+              ["Assigned owner/internal manager", deal.assignedOwner],
+              [
+                  "Recurring revenue status",
+                  deal.recurringRevenue ? "Yes" : "No",
+              ],
+              ["Recurring frequency", deal.recurringFrequency],
+              ["Date created", formatReportDate(deal.createdAt)],
+              ["Close date", formatReportDate(deal.closeDate)],
+              ["Notes/description", deal.description],
+          ],
+      )}</tbody></table></div></div>
 
       <div class="section"><h2>Activities</h2><div class="table-wrap"><table><thead><tr><th>Type</th><th>Note</th><th>Created By</th><th>Date</th></tr></thead><tbody>${activityRows}</tbody></table></div></div>
 
-      <div class="section"><h2>Financials</h2><div class="table-wrap"><table><tbody>${tableRows([
-          ["Deal value", formatReportAmount(financial.dealValue)],
-          ["Agreed percentage", deal.agreedPercentage ? `${deal.agreedPercentage}%` : undefined],
-          ["Fixed amount", formatReportAmount(deal.agreedFixedAmount)],
-          ["Expected partner return", formatReportAmount(financial.expectedPartnerReturn)],
-          ["Amount paid", formatReportAmount(financial.amountPaid)],
-          ["Balance outstanding", formatReportAmount(financial.balanceOutstanding)],
-          ["Payment status", financial.paymentStatus],
-          ["Approval status", financial.approvalStatus],
-          ["Invoice", deal.financialReconciliation?.invoiceUrl],
-          ["Receipt", deal.financialReconciliation?.receiptUrl],
-      ])}</tbody></table></div></div>
+      <div class="section"><h2>Financials</h2><div class="table-wrap"><table><tbody>${tableRows(
+          deal.agreementType === "Revenue Share"
+              ? [
+                    [
+                        "Revenue share %",
+                        `${financial.revenueSharePercentage || 0}%`,
+                    ],
+                    [
+                        "Total revenue generated",
+                        formatReportAmount(financial.totalRevenueGenerated),
+                    ],
+                    [
+                        "Total partner earnings",
+                        formatReportAmount(financial.totalPartnerEarnings),
+                    ],
+                    ["Amount paid", formatReportAmount(financial.amountPaid)],
+                    [
+                        "Balance outstanding",
+                        formatReportAmount(financial.balanceOutstanding),
+                    ],
+                    ["Payment status", financial.paymentStatus],
+                    ["Approval status", financial.approvalStatus],
+                    ["Invoice", deal.financialReconciliation?.invoiceUrl],
+                    ["Receipt", deal.financialReconciliation?.receiptUrl],
+                ]
+              : [
+                    ["Deal value", formatReportAmount(financial.dealValue)],
+                    [
+                        "Agreed percentage",
+                        deal.agreedPercentage
+                            ? `${deal.agreedPercentage}%`
+                            : undefined,
+                    ],
+                    [
+                        "Fixed amount",
+                        formatReportAmount(deal.agreedFixedAmount),
+                    ],
+                    [
+                        "Expected partner return",
+                        formatReportAmount(financial.expectedPartnerReturn),
+                    ],
+                    ["Amount paid", formatReportAmount(financial.amountPaid)],
+                    [
+                        "Balance outstanding",
+                        formatReportAmount(financial.balanceOutstanding),
+                    ],
+                    ["Payment status", financial.paymentStatus],
+                    ["Approval status", financial.approvalStatus],
+                    ["Invoice", deal.financialReconciliation?.invoiceUrl],
+                    ["Receipt", deal.financialReconciliation?.receiptUrl],
+                ],
+      )}</tbody></table></div></div>
+
+      ${
+          deal.agreementType === "Revenue Share"
+              ? `<div class="section"><h2>Revenue Entries</h2><div class="table-wrap"><table><thead><tr><th>Investor</th><th>Investment Date</th><th>Investment Amount</th><th>Commission %</th><th>Calculated Commission</th><th>Notes</th></tr></thead><tbody>${revenueRows}</tbody></table></div></div>`
+              : ""
+      }
 
       <div class="section"><h2>Payment History</h2><div class="table-wrap"><table><thead><tr><th>Amount</th><th>Date</th><th>Reference</th><th>Notes</th><th>Document</th></tr></thead><tbody>${paymentRows}</tbody></table></div></div>
 
-      <div class="section"><h2>Contributions</h2><div class="table-wrap"><table><tbody>${tableRows([
-          ["Number of introductions", contribution.introductions],
-          ["Meetings secured", contribution.meetingsSecured],
-          ["Strategic doors opened", contribution.strategicDoorsOpened],
-          ["Brand visibility created", contribution.brandVisibilityCreated],
-          ["Referrals converted", contribution.referralsConverted],
-          ["Follow-up support", contribution.followUpSupport],
-          ["Relationship strength", contribution.relationshipStrength],
-          ["Value rating", contribution.valueRating],
-          ["Contribution notes", contribution.contributionNotes],
-      ])}</tbody></table></div></div>
+      <div class="section"><h2>Contributions</h2><div class="table-wrap"><table><tbody>${tableRows(
+          [
+              ["Number of introductions", contribution.introductions],
+              ["Meetings secured", contribution.meetingsSecured],
+              ["Strategic doors opened", contribution.strategicDoorsOpened],
+              ["Brand visibility created", contribution.brandVisibilityCreated],
+              ["Referrals converted", contribution.referralsConverted],
+              ["Follow-up support", contribution.followUpSupport],
+              ["Relationship strength", contribution.relationshipStrength],
+              ["Value rating", contribution.valueRating],
+              ["Contribution notes", contribution.contributionNotes],
+          ],
+      )}</tbody></table></div></div>
 
       <div class="section"><h2>Contribution Log</h2><div class="table-wrap"><table><thead><tr><th>Type</th><th>Description</th><th>Value Rating</th><th>Date</th><th>Notes</th></tr></thead><tbody>${contributionRows}</tbody></table></div></div>
 
       <div class="section"><h2>Documents</h2><div class="table-wrap"><table><thead><tr><th>Name</th><th>Type</th><th>Uploaded</th><th>URL</th></tr></thead><tbody>${documentRows}</tbody></table></div></div>
 
-      <div class="section"><h2>Summary</h2><div class="table-wrap"><table><tbody>${tableRows([
-          ["Current deal status", deal.stage],
-          ["Financial status", financial.paymentStatus],
-          ["Pending actions", deal.nextActionDate ? `Next action due ${formatReportDate(deal.nextActionDate)}` : financial.balanceOutstanding > 0 ? "Outstanding partner balance" : "No pending actions recorded"],
-          ["Reconciliation status", financial.balanceOutstanding <= 0 && financial.approvalStatus === "Approved" ? "Reconciled" : "Pending reconciliation"],
-      ])}</tbody></table></div></div>`;
+      <div class="section"><h2>Summary</h2><div class="table-wrap"><table><tbody>${tableRows(
+          [
+              ["Current deal status", deal.stage],
+              ["Financial status", financial.paymentStatus],
+              [
+                  "Pending actions",
+                  deal.nextActionDate
+                      ? `Next action due ${formatReportDate(deal.nextActionDate)}`
+                      : financial.balanceOutstanding > 0
+                        ? "Outstanding partner balance"
+                        : "No pending actions recorded",
+              ],
+              [
+                  "Reconciliation status",
+                  financial.balanceOutstanding <= 0 &&
+                  financial.approvalStatus === "Approved"
+                      ? "Reconciled"
+                      : "Pending reconciliation",
+              ],
+          ],
+      )}</tbody></table></div></div>`;
 
     await outputPdf(
         reportShell("Deal Report", deal.title, body),
@@ -389,15 +525,20 @@ export async function generatePartnerReportPdf(
             const snapshot = getDealFinancialSnapshot(deal);
             totals.dealValue += snapshot.dealValue;
             totals.expectedPartnerReturn += snapshot.expectedPartnerReturn;
+            totals.revenueGenerated += snapshot.totalRevenueGenerated;
+            totals.partnerEarnings += snapshot.totalPartnerEarnings;
             totals.paid += snapshot.amountPaid;
             totals.outstanding += snapshot.balanceOutstanding;
             if (snapshot.paymentStatus === "Disputed") totals.disputed += 1;
-            if (snapshot.approvalStatus === "Pending") totals.pendingApprovals += 1;
+            if (snapshot.approvalStatus === "Pending")
+                totals.pendingApprovals += 1;
             return totals;
         },
         {
             dealValue: 0,
             expectedPartnerReturn: 0,
+            revenueGenerated: 0,
+            partnerEarnings: 0,
             paid: 0,
             outstanding: 0,
             disputed: 0,
@@ -412,9 +553,14 @@ export async function generatePartnerReportPdf(
             totals.strategicDoorsOpened += contribution.strategicDoorsOpened;
             totals.referralsConverted += contribution.referralsConverted;
             if (contribution.followUpSupport) totals.followUpSupport += 1;
-            if (contribution.brandVisibilityCreated) totals.brandVisibilityCreated += 1;
-            if (contribution.relationshipStrength) totals.relationshipStrength.push(contribution.relationshipStrength);
-            if (contribution.valueRating) totals.valueRatings.push(contribution.valueRating);
+            if (contribution.brandVisibilityCreated)
+                totals.brandVisibilityCreated += 1;
+            if (contribution.relationshipStrength)
+                totals.relationshipStrength.push(
+                    contribution.relationshipStrength,
+                );
+            if (contribution.valueRating)
+                totals.valueRatings.push(contribution.valueRating);
             return totals;
         },
         {
@@ -454,8 +600,12 @@ export async function generatePartnerReportPdf(
               .join("")
         : emptyRow("No linked deal documents available.", 5);
 
-    const closedWon = linkedDeals.filter((deal) => deal.stage === "Closed Won").length;
-    const closedLost = linkedDeals.filter((deal) => deal.stage === "Closed Lost").length;
+    const closedWon = linkedDeals.filter(
+        (deal) => deal.stage === "Closed Won",
+    ).length;
+    const closedLost = linkedDeals.filter(
+        (deal) => deal.stage === "Closed Lost",
+    ).length;
     const openDeals = linkedDeals.length - closedWon - closedLost;
     const relationshipStrength =
         contributionTotals.relationshipStrength[
@@ -481,61 +631,130 @@ export async function generatePartnerReportPdf(
         <div class="stat"><div class="label">Linked Deals</div><div class="value">${safeText(linkedDeals.length)}</div></div>
         <div class="stat"><div class="label">Closed Won</div><div class="value">${safeText(closedWon)}</div></div>
         <div class="stat"><div class="label">Total Deal Value</div><div class="value">${safeText(formatReportAmount(financialTotals.dealValue))}</div></div>
+                <div class="stat"><div class="label">Revenue Generated</div><div class="value">${safeText(formatReportAmount(financialTotals.revenueGenerated))}</div></div>
+                <div class="stat"><div class="label">Partner Earnings</div><div class="value">${safeText(formatReportAmount(financialTotals.partnerEarnings))}</div></div>
         <div class="stat"><div class="label">Outstanding</div><div class="value">${safeText(formatReportAmount(financialTotals.outstanding))}</div></div>
       </div>
 
-      <div class="section"><h2>Partner Overview</h2><div class="table-wrap"><table><tbody>${tableRows([
-          ["Partner name", partner.name],
-          ["Company name", partner.company],
-          ["Email", partner.contactEmail],
-          ["Phone", partner.contactPhone],
-          ["Address", partner.address],
-          ["Partner type", partner.partnerType],
-          ["Status", partner.status],
-          ["Notes", partner.notes],
-      ])}</tbody></table></div></div>
+      <div class="section"><h2>Partner Overview</h2><div class="table-wrap"><table><tbody>${tableRows(
+          [
+              ["Partner name", partner.name],
+              ["Company name", partner.company],
+              ["Email", partner.contactEmail],
+              ["Phone", partner.contactPhone],
+              ["Address", partner.address],
+              ["Partner type", partner.partnerType],
+              ["Status", partner.status],
+              ["Notes", partner.notes],
+          ],
+      )}</tbody></table></div></div>
 
-      <div class="section"><h2>Partner Performance Summary</h2><div class="table-wrap"><table><tbody>${tableRows([
-          ["Total opportunities/deals linked to partner", linkedDeals.length],
-          ["Total closed won deals", closedWon],
-          ["Total open opportunities", openDeals],
-          ["Total closed lost deals", closedLost],
-          ["Total deal value generated", formatReportAmount(financialTotals.dealValue)],
-          ["Total commissions due", formatReportAmount(financialTotals.expectedPartnerReturn)],
-          ["Total commissions paid", formatReportAmount(financialTotals.paid)],
-          ["Total outstanding balance", formatReportAmount(financialTotals.outstanding)],
-      ])}</tbody></table></div></div>
+      <div class="section"><h2>Partner Performance Summary</h2><div class="table-wrap"><table><tbody>${tableRows(
+          [
+              [
+                  "Total opportunities/deals linked to partner",
+                  linkedDeals.length,
+              ],
+              ["Total closed won deals", closedWon],
+              ["Total open opportunities", openDeals],
+              ["Total closed lost deals", closedLost],
+              [
+                  "Total deal value generated",
+                  formatReportAmount(financialTotals.dealValue),
+              ],
+              [
+                  "Total commissions due",
+                  formatReportAmount(financialTotals.expectedPartnerReturn),
+              ],
+              [
+                  "Total revenue generated",
+                  formatReportAmount(financialTotals.revenueGenerated),
+              ],
+              [
+                  "Total partner earnings",
+                  formatReportAmount(financialTotals.partnerEarnings),
+              ],
+              [
+                  "Total commissions paid",
+                  formatReportAmount(financialTotals.paid),
+              ],
+              [
+                  "Total outstanding balance",
+                  formatReportAmount(financialTotals.outstanding),
+              ],
+          ],
+      )}</tbody></table></div></div>
 
       <div class="section"><h2>Linked Deals</h2><div class="table-wrap"><table><thead><tr><th>Deal</th><th>Status</th><th>Source</th><th>Agreement</th><th>Deal Value</th><th>Partner Return</th><th>Paid</th><th>Outstanding</th><th>Payment</th><th>Approval</th><th>Updated</th></tr></thead><tbody>${linkedDealRows}</tbody></table></div></div>
 
-      <div class="section"><h2>Financial Summary</h2><div class="table-wrap"><table><tbody>${tableRows([
-          ["Total deal value", formatReportAmount(financialTotals.dealValue)],
-          ["Total expected partner returns", formatReportAmount(financialTotals.expectedPartnerReturn)],
-          ["Total paid", formatReportAmount(financialTotals.paid)],
-          ["Total outstanding", formatReportAmount(financialTotals.outstanding)],
-          ["Disputed payments", financialTotals.disputed],
-          ["Pending approvals", financialTotals.pendingApprovals],
-      ])}</tbody></table></div></div>
+      <div class="section"><h2>Financial Summary</h2><div class="table-wrap"><table><tbody>${tableRows(
+          [
+              [
+                  "Total deal value",
+                  formatReportAmount(financialTotals.dealValue),
+              ],
+              [
+                  "Total expected partner returns",
+                  formatReportAmount(financialTotals.expectedPartnerReturn),
+              ],
+              [
+                  "Total revenue generated",
+                  formatReportAmount(financialTotals.revenueGenerated),
+              ],
+              [
+                  "Total partner earnings",
+                  formatReportAmount(financialTotals.partnerEarnings),
+              ],
+              ["Total paid", formatReportAmount(financialTotals.paid)],
+              [
+                  "Total outstanding",
+                  formatReportAmount(financialTotals.outstanding),
+              ],
+              ["Disputed payments", financialTotals.disputed],
+              ["Pending approvals", financialTotals.pendingApprovals],
+          ],
+      )}</tbody></table></div></div>
 
-      <div class="section"><h2>Contribution Summary</h2><div class="table-wrap"><table><tbody>${tableRows([
-          ["Total introductions", contributionTotals.introductions],
-          ["Total meetings secured", contributionTotals.meetingsSecured],
-          ["Total strategic doors opened", contributionTotals.strategicDoorsOpened],
-          ["Total referrals converted", contributionTotals.referralsConverted],
-          ["Follow-up support", contributionTotals.followUpSupport],
-          ["Brand visibility created", contributionTotals.brandVisibilityCreated],
-          ["Overall relationship strength", relationshipStrength],
-          ["Overall value rating", valueRating],
-      ])}</tbody></table></div></div>
+      <div class="section"><h2>Contribution Summary</h2><div class="table-wrap"><table><tbody>${tableRows(
+          [
+              ["Total introductions", contributionTotals.introductions],
+              ["Total meetings secured", contributionTotals.meetingsSecured],
+              [
+                  "Total strategic doors opened",
+                  contributionTotals.strategicDoorsOpened,
+              ],
+              [
+                  "Total referrals converted",
+                  contributionTotals.referralsConverted,
+              ],
+              ["Follow-up support", contributionTotals.followUpSupport],
+              [
+                  "Brand visibility created",
+                  contributionTotals.brandVisibilityCreated,
+              ],
+              ["Overall relationship strength", relationshipStrength],
+              ["Overall value rating", valueRating],
+          ],
+      )}</tbody></table></div></div>
 
       <div class="section"><h2>Documents</h2><div class="table-wrap"><table><thead><tr><th>Deal</th><th>Name</th><th>Type</th><th>Uploaded</th><th>URL</th></tr></thead><tbody>${docsHtml}</tbody></table></div></div>
 
-      <div class="section"><h2>Summary</h2><div class="table-wrap"><table><tbody>${tableRows([
-          ["Partner performance status", partnerPerformance],
-          ["Financial status", financialStatus],
-          ["Contribution value", valueRating],
-          ["Pending actions", financialTotals.outstanding > 0 || financialTotals.pendingApprovals > 0 ? "Review outstanding balances and approvals" : openDeals > 0 ? "Continue active deal follow-up" : "No pending actions recorded"],
-      ])}</tbody></table></div></div>`;
+      <div class="section"><h2>Summary</h2><div class="table-wrap"><table><tbody>${tableRows(
+          [
+              ["Partner performance status", partnerPerformance],
+              ["Financial status", financialStatus],
+              ["Contribution value", valueRating],
+              [
+                  "Pending actions",
+                  financialTotals.outstanding > 0 ||
+                  financialTotals.pendingApprovals > 0
+                      ? "Review outstanding balances and approvals"
+                      : openDeals > 0
+                        ? "Continue active deal follow-up"
+                        : "No pending actions recorded",
+              ],
+          ],
+      )}</tbody></table></div></div>`;
 
     await outputPdf(
         reportShell("Partner Report", partner.name, body),
