@@ -35,9 +35,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as XLSX from "xlsx";
 
+import { api } from "@/api/axios";
 import DatePickerModal from "@/components/admin/DatePickerModal";
 import OptionSheet from "@/components/common/OptionSheet";
-import { api } from "@/api/axios";
 
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -685,7 +685,8 @@ export default function ClientDetails() {
                     onPress: async () => {
                         try {
                             if (documentLink) {
-                                const publicId = extractPublicIdFromUrl(documentLink);
+                                const publicId =
+                                    extractPublicIdFromUrl(documentLink);
                                 if (publicId) {
                                     await api.post("/upload/delete", {
                                         publicId,

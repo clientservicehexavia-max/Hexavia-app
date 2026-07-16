@@ -169,11 +169,15 @@ export const createClient = createAsyncThunk<Client, ClientCreateInput>(
                 | { uri: string; name: string; type?: string }
                 | undefined;
 
-            const requestBody: Record<string, unknown> = { ...(payload as any) };
+            const requestBody: Record<string, unknown> = {
+                ...(payload as any),
+            };
             delete requestBody.documentFile;
 
             if (documentFile?.uri) {
-                const uploaded = await dispatch(uploadSingle(documentFile)).unwrap();
+                const uploaded = await dispatch(
+                    uploadSingle(documentFile),
+                ).unwrap();
                 if (uploaded?.url) {
                     requestBody.document = uploaded.url;
                     requestBody.documentUrl = uploaded.url;
@@ -209,56 +213,64 @@ export const createClient = createAsyncThunk<Client, ClientCreateInput>(
 export const updateClient = createAsyncThunk<
     Client,
     { id: string; body: ClientUpdateInput }
->("client/updateClient", async ({ id, body }, { rejectWithValue, dispatch }) => {
-    try {
-        const documentFile = (body as any)?.documentFile as
-            | { uri: string; name: string; type?: string }
-            | undefined;
+>(
+    "client/updateClient",
+    async ({ id, body }, { rejectWithValue, dispatch }) => {
+        try {
+            const documentFile = (body as any)?.documentFile as
+                | { uri: string; name: string; type?: string }
+                | undefined;
 
-        const requestBody: Record<string, unknown> = { ...(body as any) };
-        delete requestBody.documentFile;
+            const requestBody: Record<string, unknown> = { ...(body as any) };
+            delete requestBody.documentFile;
 
-        if (documentFile?.uri) {
-            const uploaded = await dispatch(uploadSingle(documentFile)).unwrap();
-            if (uploaded?.url) {
-                requestBody.document = uploaded.url;
-                requestBody.documentUrl = uploaded.url;
+            if (documentFile?.uri) {
+                const uploaded = await dispatch(
+                    uploadSingle(documentFile),
+                ).unwrap();
+                if (uploaded?.url) {
+                    requestBody.document = uploaded.url;
+                    requestBody.documentUrl = uploaded.url;
+                }
             }
+
+            if (
+                requestBody.document === null &&
+                requestBody.documentUrl === undefined
+            ) {
+                requestBody.documentUrl = null;
+            }
+
+            const req = api.put<{
+                success: boolean;
+                message: string;
+                client: Client;
+            }>(`/admin/clients/${id}`, requestBody);
+
+            const { data } = await showPromise(
+                req,
+                "Updating Client Details",
+                "Client details updated",
+            );
+            return data.client;
+        } catch (err: any) {
+            const status = err?.response?.status;
+            const retryAfter = err?.response?.headers?.["retry-after"] ?? null;
+
+            // return structured payload; DO NOT toast here
+            return rejectWithValue({
+                code: status ?? 0,
+                message:
+                    err?.response?.data?.message ||
+                    err?.message ||
+                    "Failed to update client",
+                retryAfter,
+                // custom marker set by interceptor when it gave up retrying
+                gaveUpAfterRetries: err?.__gaveUp429 === true,
+            });
         }
-
-        if (requestBody.document === null && requestBody.documentUrl === undefined) {
-            requestBody.documentUrl = null;
-        }
-
-        const req = api.put<{
-            success: boolean;
-            message: string;
-            client: Client;
-        }>(`/admin/clients/${id}`, requestBody);
-
-        const { data } = await showPromise(
-            req,
-            "Updating Client Details",
-            "Client details updated",
-        );
-        return data.client;
-    } catch (err: any) {
-        const status = err?.response?.status;
-        const retryAfter = err?.response?.headers?.["retry-after"] ?? null;
-
-        // return structured payload; DO NOT toast here
-        return rejectWithValue({
-            code: status ?? 0,
-            message:
-                err?.response?.data?.message ||
-                err?.message ||
-                "Failed to update client",
-            retryAfter,
-            // custom marker set by interceptor when it gave up retrying
-            gaveUpAfterRetries: err?.__gaveUp429 === true,
-        });
-    }
-});
+    },
+);
 
 export const patchClient = createAsyncThunk<
     Client,

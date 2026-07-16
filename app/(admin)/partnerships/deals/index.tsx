@@ -199,7 +199,7 @@ function Pill({
     return (
         <Pressable
             onPress={onPress}
-            className={`px-3 py-2 justify-center items-center rounded-full border ${
+            className={`px-3 h-8 justify-center items-center rounded-full border ${
                 active
                     ? "bg-blue-500 border-blue-500"
                     : "bg-white border-gray-200"
@@ -546,8 +546,7 @@ export default function DealsList() {
                     Number(d.expectedDealValue || 0) > 0) ||
                 (dashboardView === "commissionsDue" && commission.due > 0) ||
                 (dashboardView === "commissionsPaid" && commission.paid > 0) ||
-                (dashboardView === "outstanding" &&
-                    commission.outstanding > 0);
+                (dashboardView === "outstanding" && commission.outstanding > 0);
 
             return (
                 matchesQuery &&
@@ -615,14 +614,7 @@ export default function DealsList() {
                 ? safeFirst - safeSecond
                 : safeSecond - safeFirst;
         });
-    }, [
-        dashboardView,
-        deals,
-        debouncedQuery,
-        filters,
-        partnerNameById,
-        stage,
-    ]);
+    }, [dashboardView, deals, debouncedQuery, filters, partnerNameById, stage]);
 
     const renderItem = ({ item }: { item: Deal }) => {
         const paymentStatus =
@@ -754,8 +746,8 @@ export default function DealsList() {
                 )}
             />
 
-            <View className="px-4 pt-1 flex-1">
-                <View className="bg-gray-50 rounded-lg px-3 py-2 mb-3 flex-row items-center">
+            <View className="pt-1 flex-1">
+                <View className="bg-gray-50 rounded-lg px-3 mx-3 py-2 mb-3 flex-row items-center">
                     <TextInput
                         placeholder="Search deals..."
                         value={query}
@@ -791,9 +783,10 @@ export default function DealsList() {
                     contentContainerStyle={{
                         alignItems: "center",
                         paddingRight: 16,
+                        marginHorizontal: 14,
                     }}
                 >
-                    <View className="flex-row gap-1.5">
+                    <View className="flex-row gap-1.5 py-3">
                         {STAGES.map((s) => (
                             <Pill
                                 label={s}
@@ -824,6 +817,7 @@ export default function DealsList() {
                         data={filtered}
                         keyExtractor={(item) => item._id}
                         renderItem={renderItem}
+                        contentContainerClassName="px-3"
                         refreshControl={
                             <RefreshControl
                                 refreshing={refreshing}
