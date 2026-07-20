@@ -231,8 +231,7 @@ export default function FinanceIndex() {
     const [pinError, setPinError] = useState("");
     const [receivablesPage, setReceivablesPage] = useState(1);
     const [filteredReceivables, setFilteredReceivables] = useState<any[]>([]);
-    const [receivablesLoadingMore, setReceivablesLoadingMore] =
-        useState(false);
+    const [receivablesLoadingMore, setReceivablesLoadingMore] = useState(false);
     const RECEIVABLES_LIMIT = 20;
 
     // Check if password was already verified in this session
@@ -294,7 +293,11 @@ export default function FinanceIndex() {
             endDate: financeFilters.endDate,
             limit: financeFilters.limit ?? 20,
         }),
-        [financeFilters.startDate, financeFilters.endDate, financeFilters.limit],
+        [
+            financeFilters.startDate,
+            financeFilters.endDate,
+            financeFilters.limit,
+        ],
     );
 
     /* Clients for Receivables (local paged cache) */
@@ -479,7 +482,9 @@ export default function FinanceIndex() {
                     limit: financeRequestFilters.limit,
                 }),
             );
-            dispatch(fetchFinance({ ...financeRequestFilters, page: 1 }) as any);
+            dispatch(
+                fetchFinance({ ...financeRequestFilters, page: 1 }) as any,
+            );
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tab, dispatch, pinLocked, fetchAndPaginateReceivables]);
@@ -499,11 +504,7 @@ export default function FinanceIndex() {
             if (tab === "Receivables") {
                 fetchAndPaginateReceivables(false);
             }
-        }, [
-            pinLocked,
-            tab,
-            fetchAndPaginateReceivables,
-        ]),
+        }, [pinLocked, tab, fetchAndPaginateReceivables]),
     );
 
     /* Refresh */
@@ -517,7 +518,9 @@ export default function FinanceIndex() {
         } else {
             if (financeLoading) return;
             dispatch(setFinancePage(1));
-            dispatch(fetchFinance({ ...financeRequestFilters, page: 1 }) as any);
+            dispatch(
+                fetchFinance({ ...financeRequestFilters, page: 1 }) as any,
+            );
         }
     }, [
         tab,
@@ -750,64 +753,64 @@ export default function FinanceIndex() {
                     ) : (
                         <View className="flex-1 pt-2">
                             <SectionList<Txn, TxnSection>
-                            sections={sections}
-                            keyExtractor={(item) => item.id}
-                            contentContainerStyle={{ paddingBottom: 24 }}
-                            refreshControl={
-                                <RefreshControl
-                                    refreshing={refreshing}
-                                    onRefresh={onRefresh}
-                                    tintColor="#4C5FAB"
-                                />
-                            }
-                            onEndReachedThreshold={0.2}
-                            onEndReached={loadMore}
-                            renderSectionHeader={({ section }) => (
-                                <View className="bg-white">
-                                    <View className="px-5 py-4 flex-row items-center justify-between">
-                                        <Text className="text-gray-500 font-kumbhBold">
-                                            {section.title}
-                                        </Text>
-                                        <Text className="text-[#111827] font-kumbhBold">
-                                            {NGN(section.bucketTotal)}
-                                        </Text>
+                                sections={sections}
+                                keyExtractor={(item) => item.id}
+                                contentContainerStyle={{ paddingBottom: 24 }}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        tintColor="#4C5FAB"
+                                    />
+                                }
+                                onEndReachedThreshold={0.2}
+                                onEndReached={loadMore}
+                                renderSectionHeader={({ section }) => (
+                                    <View className="bg-white">
+                                        <View className="px-5 py-4 flex-row items-center justify-between">
+                                            <Text className="text-gray-500 font-kumbhBold">
+                                                {section.title}
+                                            </Text>
+                                            <Text className="text-[#111827] font-kumbhBold">
+                                                {NGN(section.bucketTotal)}
+                                            </Text>
+                                        </View>
                                     </View>
-                                </View>
-                            )}
-                            ItemSeparatorComponent={() => (
-                                <View className="h-[1px] bg-gray-200 ml-[76px]" />
-                            )}
-                            renderItem={({ item }) => (
-                                <TxnRow
-                                    item={item}
-                                    onPress={() =>
-                                        item.kind === "expense"
-                                            ? router.push(
-                                                  `/(admin)/finance/${item.id}`,
-                                              )
-                                            : router.push({
-                                                  pathname:
-                                                      "/(admin)/clients/installments",
-                                                  params: {
-                                                      clientId: item.id,
-                                                  },
-                                              })
-                                    }
-                                />
-                            )}
-                            ListFooterComponent={
-                                isLoadingMoreExpenses ||
-                                isLoadingMoreReceivables ? (
-                                    <View className="py-4 items-center">
-                                        <ActivityIndicator
-                                            size="small"
-                                            color="#3b82f6"
-                                        />
-                                    </View>
-                                ) : null
-                            }
-                            stickySectionHeadersEnabled
-                        />
+                                )}
+                                ItemSeparatorComponent={() => (
+                                    <View className="h-[1px] bg-gray-200 ml-[76px]" />
+                                )}
+                                renderItem={({ item }) => (
+                                    <TxnRow
+                                        item={item}
+                                        onPress={() =>
+                                            item.kind === "expense"
+                                                ? router.push(
+                                                      `/(admin)/finance/${item.id}`,
+                                                  )
+                                                : router.push({
+                                                      pathname:
+                                                          "/(admin)/clients/installments",
+                                                      params: {
+                                                          clientId: item.id,
+                                                      },
+                                                  })
+                                        }
+                                    />
+                                )}
+                                ListFooterComponent={
+                                    isLoadingMoreExpenses ||
+                                    isLoadingMoreReceivables ? (
+                                        <View className="py-4 items-center">
+                                            <ActivityIndicator
+                                                size="small"
+                                                color="#3b82f6"
+                                            />
+                                        </View>
+                                    ) : null
+                                }
+                                stickySectionHeadersEnabled
+                            />
                         </View>
                     )
                 }
