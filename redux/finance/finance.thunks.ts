@@ -19,7 +19,9 @@ export const fetchFinance = createAsyncThunk<
     { rejectValue: { message: string } }
 >("finance/fetchFinance", async (filters, { rejectWithValue }) => {
     try {
-        const { data } = await api.get<FinanceListResponse>(BASE, {});
+        const { data } = await api.get<FinanceListResponse>(BASE, {
+            params: filters,
+        });
         return data;
     } catch (err: any) {
         return rejectWithValue({

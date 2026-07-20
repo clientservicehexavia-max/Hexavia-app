@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { ArrowDown, ArrowUp, Eye, Filter, Plus } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
     FlatList,
     Modal,
     Platform,
@@ -230,6 +231,8 @@ export default function FinanceIndex() {
     const [pinError, setPinError] = useState("");
     const [receivablesPage, setReceivablesPage] = useState(1);
     const [filteredReceivables, setFilteredReceivables] = useState<any[]>([]);
+    const [receivablesLoadingMore, setReceivablesLoadingMore] =
+        useState(false);
     const RECEIVABLES_LIMIT = 20;
 
     // Check if password was already verified in this session
@@ -284,6 +287,15 @@ export default function FinanceIndex() {
     const summary = useAppSelector(selectFinanceSummary);
     const financeLoading = useAppSelector(selectFinanceListLoading);
     const financeFilters = useAppSelector(selectFinanceFilters);
+    const financeRequestFilters = useMemo(
+        () => ({
+            type: "expense" as const,
+            startDate: financeFilters.startDate,
+            endDate: financeFilters.endDate,
+            limit: financeFilters.limit ?? 20,
+        }),
+        [financeFilters.startDate, financeFilters.endDate, financeFilters.limit],
+    );
 
     /* Clients for Receivables (local paged cache) */
     const clientFilters = useAppSelector(selectClientFilters);
@@ -409,6 +421,7 @@ export default function FinanceIndex() {
         async (asRefresh = false) => {
             if (asRefresh) setClientsRefreshing(true);
             setClientsLoading(true);
+            setReceivablesLoadingMore(false);
 
             try {
                 // 1) Fetch all clients (probe count, then bulk fetch)
@@ -463,16 +476,10 @@ export default function FinanceIndex() {
                 setFinanceFilters({
                     type: "expense",
                     page: 1,
-                    limit: 20,
+                    limit: financeRequestFilters.limit,
                 }),
             );
-            dispatch(
-                fetchFinance({
-                    type: "expense",
-                    page: 1,
-                    limit: 20,
-                }) as any,
-            );
+            dispatch(fetchFinance({ ...financeRequestFilters, page: 1 }) as any);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tab, dispatch, pinLocked, fetchAndPaginateReceivables]);
@@ -484,29 +491,18 @@ export default function FinanceIndex() {
         }
     }, [showClientPicker, clients?.length, fetchAndPaginateReceivables]);
 
-    // Keep both tabs fresh when returning from child screens.
+    // Keep Receivables fresh when returning from child screens.
     useFocusEffect(
         useCallback(() => {
             if (pinLocked) return;
 
             if (tab === "Receivables") {
                 fetchAndPaginateReceivables(false);
-            } else {
-                dispatch(setFinancePage(1));
-                dispatch(
-                    fetchFinance({
-                        ...financeFilters,
-                        type: "expense",
-                        page: 1,
-                    }) as any,
-                );
             }
         }, [
             pinLocked,
             tab,
             fetchAndPaginateReceivables,
-            dispatch,
-            financeFilters,
         ]),
     );
 
@@ -521,67 +517,13 @@ export default function FinanceIndex() {
         } else {
             if (financeLoading) return;
             dispatch(setFinancePage(1));
-            dispatch(
-                fetchFinance({
-                    ...financeFilters,
-                    type: "expense",
-                    page: 1,
-                }) as any,
-            );
+            dispatch(fetchFinance({ ...financeRequestFilters, page: 1 }) as any);
         }
     }, [
         tab,
         clientsLoading,
         financeLoading,
-        financeFilters,
-        dispatch,
-        pinLocked,
-        fetchAndPaginateReceivables,
-    ]);
-
-    /* Infinite load */
-    const loadMore = useCallback(() => {
-        if (pinLocked) return;
-
-        if (tab === "Receivables") {
-            // Reveal next local page (21-40, 41-60...) from cached filtered list
-            if (clientsLoading) return;
-            if ((clients?.length ?? 0) >= (filteredReceivables?.length ?? 0)) {
-                return;
-            }
-
-            const nextPage = receivablesPage + 1;
-            const nextVisible = (filteredReceivables || []).slice(
-                0,
-                nextPage * RECEIVABLES_LIMIT,
-            );
-            setReceivablesPage(nextPage);
-            setClients(nextVisible);
-            return;
-        }
-
-        // Expenses load more
-        if (financeLoading || !financePagination) return;
-        const { currentPage, totalPages } = financePagination;
-        if (currentPage >= totalPages) return;
-        const next = currentPage + 1;
-        dispatch(setFinancePage(next));
-        dispatch(
-            fetchFinance({
-                ...financeFilters,
-                type: "expense",
-                page: next,
-            }) as any,
-        );
-    }, [
-        tab,
-        clients,
-        clientsLoading,
-        filteredReceivables,
-        receivablesPage,
-        financeLoading,
-        financePagination,
-        financeFilters,
+        financeRequestFilters,
         dispatch,
         pinLocked,
         fetchAndPaginateReceivables,
@@ -591,18 +533,72 @@ export default function FinanceIndex() {
         tab === "Receivables"
             ? clientsRefreshing ||
               (clientsLoading && (clients?.length ?? 0) === 0)
-            : financeLoading && financeFilters.page === 1;
+            : financeLoading && (financePagination?.currentPage ?? 1) === 1;
 
-    const canLoadMore =
+    /* Infinite load */
+    const loadMore = useCallback(() => {
+        if (pinLocked) return;
+
+        if (tab === "Receivables") {
+            // Reveal next local page (21-40, 41-60...) from cached filtered list
+            if (clientsLoading || receivablesLoadingMore) return;
+            if ((clients?.length ?? 0) >= (filteredReceivables?.length ?? 0)) {
+                return;
+            }
+
+            setReceivablesLoadingMore(true);
+            setTimeout(() => {
+                const nextPage = receivablesPage + 1;
+                const nextVisible = (filteredReceivables || []).slice(
+                    0,
+                    nextPage * RECEIVABLES_LIMIT,
+                );
+                setReceivablesPage(nextPage);
+                setClients(nextVisible);
+                setReceivablesLoadingMore(false);
+            }, 0);
+            return;
+        }
+
+        // Expenses load more
+        if (financeLoading || refreshing || !financePagination) return;
+        const { currentPage, totalPages } = financePagination;
+        if (currentPage >= totalPages) return;
+        const next = currentPage + 1;
+        dispatch(setFinancePage(next));
+        dispatch(fetchFinance({ ...financeRequestFilters, page: next }) as any);
+    }, [
+        tab,
+        clients,
+        clientsLoading,
+        receivablesLoadingMore,
+        filteredReceivables,
+        receivablesPage,
+        financeLoading,
+        financePagination,
+        financeRequestFilters,
+        dispatch,
+        pinLocked,
+        fetchAndPaginateReceivables,
+        refreshing,
+    ]);
+
+    const isInitialExpensesLoading =
         tab === "Expenses" &&
-        !!financePagination &&
-        financePagination.currentPage < financePagination.totalPages;
-
-    const isLoadingMore =
         financeLoading &&
+        !refreshing &&
+        (records?.length ?? 0) === 0;
+
+    const isLoadingMoreReceivables =
+        tab === "Receivables" &&
+        receivablesLoadingMore &&
+        (clients?.length ?? 0) > 0;
+
+    const isLoadingMoreExpenses =
         tab === "Expenses" &&
-        (records?.length ?? 0) > 0 &&
-        canLoadMore;
+        financeLoading &&
+        !refreshing &&
+        (records?.length ?? 0) > 0;
 
     const isIOS = Platform.OS === "ios";
 
@@ -746,9 +742,14 @@ export default function FinanceIndex() {
                 onIndexChange={(index) =>
                     setTab(index === 0 ? "Receivables" : "Expenses")
                 }
-                renderScene={() => (
-                    <View className="flex-1 pt-2">
-                        <SectionList<Txn, TxnSection>
+                renderScene={() =>
+                    isInitialExpensesLoading ? (
+                        <View className="flex-1 justify-center items-center">
+                            <ActivityIndicator size="large" color="#3b82f6" />
+                        </View>
+                    ) : (
+                        <View className="flex-1 pt-2">
+                            <SectionList<Txn, TxnSection>
                             sections={sections}
                             keyExtractor={(item) => item.id}
                             contentContainerStyle={{ paddingBottom: 24 }}
@@ -795,16 +796,21 @@ export default function FinanceIndex() {
                                 />
                             )}
                             ListFooterComponent={
-                                isLoadingMore ? (
-                                    <Text className="text-center text-gray-400 font-kumbh my-3">
-                                        Loading more…
-                                    </Text>
+                                isLoadingMoreExpenses ||
+                                isLoadingMoreReceivables ? (
+                                    <View className="py-4 items-center">
+                                        <ActivityIndicator
+                                            size="small"
+                                            color="#3b82f6"
+                                        />
+                                    </View>
                                 ) : null
                             }
                             stickySectionHeadersEnabled
                         />
-                    </View>
-                )}
+                        </View>
+                    )
+                }
                 tabBarProps={{
                     activeColor: "#4C5FAB",
                     inactiveColor: "#6B7280",
