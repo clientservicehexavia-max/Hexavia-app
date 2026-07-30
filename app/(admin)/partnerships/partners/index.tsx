@@ -3,6 +3,7 @@ import {
     BriefcaseBusiness,
     Building2,
     ChevronRight,
+    Landmark,
     Mail,
     Phone,
     Plus,
@@ -160,15 +161,15 @@ export default function PartnersListScreen() {
                         className="text-lg font-kumbhBold text-gray-900"
                         numberOfLines={1}
                     >
-                        {item.name}
+                        {item.company || "No company added"}
                     </Text>
                     <View className="flex-row items-center mt-1">
-                        <Building2 size={14} color="#6B7280" />
+                        <Landmark size={14} color="#6B7280" />
                         <Text
                             className="ml-1 text-sm font-kumbh text-gray-600"
                             numberOfLines={1}
                         >
-                            {item.company || "No company added"}
+                            {item.name}
                         </Text>
                     </View>
                 </View>
