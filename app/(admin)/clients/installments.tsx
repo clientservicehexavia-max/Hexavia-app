@@ -1001,9 +1001,16 @@ export default function ClientInstallments() {
                     <View className="rounded-2xl p-3 bg-[#EEF1FF]">
                         <View className="gap-2">
                             <View className="flex-row justify-between items-end">
-                                <Text className="font-kumbhBold text-[#111827] text-[16px]">
-                                    {loadingClient ? "Loading…" : name || "—"}
-                                </Text>
+                                <View className="flex-1 pr-2">
+                                    <Text className="font-kumbhBold text-[#111827] text-[16px]">
+                                        {loadingClient
+                                            ? "Loading…"
+                                            : project || "—"}
+                                    </Text>
+                                    <Text className="font-kumbh text-[#111827] mt-1">
+                                        {loadingClient ? "" : name || "—"}
+                                    </Text>
+                                </View>
                                 <View
                                     className={clsx(
                                         "px-3 py-1 rounded-full",
@@ -1015,9 +1022,6 @@ export default function ClientInstallments() {
                                     </Text>
                                 </View>
                             </View>
-                            <Text className="font-kumbh text-[#111827] mt-1">
-                                {project || "—"}
-                            </Text>
                         </View>
 
                         <View className="flex-row mt-3" style={{ gap: 12 }}>

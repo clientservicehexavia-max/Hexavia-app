@@ -1,7 +1,7 @@
 import { Channel } from "@/redux/channels/channels.types";
 import * as Clipboard from "expo-clipboard";
 import { Copy } from "lucide-react-native";
-import React from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 import { showSuccess } from "../ui/toast";
 
@@ -13,30 +13,32 @@ type Props = {
     onLongPress?: () => void;
 };
 
-export default function ChannelCard({
+const ChannelCard = memo(function ChannelCard({
     item,
     tint,
     onPress,
     onDelete,
     onLongPress,
 }: Props) {
-    const title = item.name ?? "";
-    const code = item.code ?? "";
-    const description = item.description ?? undefined;
+    const title = useMemo(() => item.name ?? "", [item.name]);
+    const code = useMemo(() => item.code ?? "", [item.code]);
+    const description = useMemo(
+        () => item.description ?? undefined,
+        [item.description],
+    );
 
-    const copyCode = async (code?: string) => {
-        if (!code) {
+    const copyCode = useCallback(async (value?: string) => {
+        if (!value) {
             Alert.alert("No code", "This Project has no code to copy.");
             return;
         }
         try {
-            await Clipboard.setStringAsync(code);
-            // Alert.alert("Copied", "Project code copied to clipboard.");
+            await Clipboard.setStringAsync(value);
             showSuccess("Project code copied to clipboard.");
-        } catch (e) {
+        } catch {
             Alert.alert("Error", "Failed to copy Project code.");
         }
-    };
+    }, []);
 
     return (
         <Pressable
@@ -77,7 +79,7 @@ export default function ChannelCard({
                         {title}
                     </Text>
                     <Pressable
-                        onPress={() => copyCode(item.code)}
+                        onPress={() => copyCode(code)}
                         style={{
                             alignItems: "center",
                             justifyContent: "center",
@@ -99,4 +101,6 @@ export default function ChannelCard({
             </View>
         </Pressable>
     );
-}
+});
+
+export default ChannelCard;

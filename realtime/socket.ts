@@ -1,5 +1,5 @@
-import { io, Socket } from 'socket.io-client';
-import { WS_URL } from '@/config/chat';
+import { io, Socket } from "socket.io-client";
+import { WS_URL } from "@/config/chat";
 
 let socket: Socket | null = null;
 
@@ -17,7 +17,6 @@ export function connectSocket() {
   socket = io(WS_URL, {
     transports: ["websocket"],
     autoConnect: true,
-    // path: WS_PATH ?? "/socket.io",
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 500,
@@ -27,6 +26,8 @@ export function connectSocket() {
 }
 
 export function closeSocket() {
-  try { socket?.close(); } catch {}
+  try {
+    socket?.close();
+  } catch {}
   socket = null;
 }

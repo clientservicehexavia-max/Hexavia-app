@@ -2,7 +2,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import clsx from "clsx";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
-import { ArrowLeft, ChevronDown, Home, Plus } from "lucide-react-native";
+import { ChevronDown, Plus } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -20,6 +20,7 @@ import * as yup from "yup";
 import Field from "@/components/admin/Field";
 import Input from "@/components/admin/Input";
 import OptionSheet from "@/components/common/OptionSheet";
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 
 import { selectClientMutationLoading } from "@/redux/client/client.selectors";
 import { createClient } from "@/redux/client/client.thunks";
@@ -168,6 +169,7 @@ export default function CreateClient() {
     const router = useRouter();
     const dispatch = useAppDispatch();
     const loading = useAppSelector(selectClientMutationLoading);
+    const isIOS = Platform.OS === "ios";
 
     const [showStatusMenu, setShowStatusMenu] = useState(false);
     const [showStaffSizeSheet, setShowStaffSizeSheet] = useState(false);
@@ -293,53 +295,28 @@ export default function CreateClient() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-background">
-            {/* Header */}
-            <View className="px-5 pt-6 pb-4 flex-row items-center justify-between">
-                <View className="flex-row items-center gap-4">
-                    <Pressable
-                        onPress={() => router.back()}
-                        className="w-10 h-10 rounded-full items-center justify-center"
-                        disabled={loading}
-                    >
-                        <ArrowLeft size={24} color="#111827" />
-                    </Pressable>
-                    <Text className="text-xl font-kumbhBold text-text">
-                        Add New Prospect
-                    </Text>
-                </View>
-
-                <View className="flex-row items-center gap-2">
-                    <Pressable
-                        onPress={() => router.push("/(admin)")}
-                        className="w-10 h-10 rounded-full items-center justify-center"
-                        disabled={loading}
-                    >
-                        <Home size={24} color="#111827" />
-                    </Pressable>
-
-                    {/* Add (top-right) */}
+        <SafeAreaView
+            edges={
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
+            }
+            className="flex-1 bg-white"
+        >
+            <PlatformAdaptiveHeader
+                title="Add New Prospect"
+                headerRight={({ tintColor }) => (
                     <Pressable
                         onPress={handleSubmit(onSubmit)}
                         disabled={!isValid || loading}
-                        className={clsx(
-                            "flex-row items-center gap-2 px-4 py-2 rounded-xl active:opacity-90",
-                            !isValid || loading
-                                ? "bg-gray-300"
-                                : "bg-primary-500",
-                        )}
+                        className="w-10 h-10 rounded-full items-center justify-center"
                     >
                         {loading ? (
-                            <ActivityIndicator size="small" color="#fff" />
+                            <ActivityIndicator size="small" color={tintColor} />
                         ) : (
-                            <Plus size={16} color="#fff" />
+                            <Plus size={28} color={tintColor} />
                         )}
-                        <Text className="text-white font-kumbhBold">
-                            {loading ? "Adding..." : "Add"}
-                        </Text>
                     </Pressable>
-                </View>
-            </View>
+                )}
+            />
 
             <KeyboardAvoidingView
                 className="flex-1"

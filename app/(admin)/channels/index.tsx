@@ -28,6 +28,8 @@ import type { Channel } from "@/redux/channels/channels.types";
 import { useAppDispatch } from "@/store/hooks";
 import clsx from "clsx";
 
+const PAGE_SIZE = 15;
+
 const TINTS = [
     "#707fbc",
     "#60A5FA",
@@ -59,7 +61,8 @@ export default function ChannelsIndex() {
     const dispatch = useAppDispatch();
     const isIOS = Platform.OS === "ios";
 
-    const [channels, setChannels] = useState<Channel[]>([]);
+    const [allChannels, setAllChannels] = useState<Channel[]>([]);
+    const [visibleChannels, setVisibleChannels] = useState<Channel[]>([]);
     const [status, setStatus] = useState<
         "idle" | "loading" | "succeeded" | "failed"
     >("idle");
@@ -67,60 +70,92 @@ export default function ChannelsIndex() {
 
     const [query, setQuery] = useState("");
     const [refreshing, setRefreshing] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [sheetOpen, setSheetOpen] = useState(false);
     const [actionTarget, setActionTarget] = useState<Channel | null>(null);
     const [editChannel, setEditChannel] = useState<Channel | null>(null);
     const [editOpen, setEditOpen] = useState(false);
 
-    const loadChannels = useCallback(async () => {
-        setStatus("loading");
-        setError(null);
+    const loadChannels = useCallback(async (page = 1) => {
+        if (page === 1) {
+            setStatus("loading");
+            setError(null);
+        }
+
         try {
-            const { data } = await api.get<AdminChannelsResponse>("/channel");
+            const { data } = await api.get<AdminChannelsResponse>(
+                `/channel?page=${page}&limit=${PAGE_SIZE}`,
+            );
             const list = Array.isArray(data?.data)
                 ? data.data
                 : Array.isArray(data?.channels)
                   ? data.channels
                   : [];
-            setChannels(list);
+
+            if (page === 1) {
+                setAllChannels(list);
+                setVisibleChannels(list);
+                setHasMore(list.length === PAGE_SIZE);
+            } else {
+                setVisibleChannels((prev) => [...prev, ...list]);
+                setHasMore(list.length === PAGE_SIZE);
+            }
+
             setStatus("succeeded");
         } catch (err: any) {
-            setChannels([]);
-            setStatus("failed");
-            setError(
-                err?.response?.data?.message ||
-                    err?.message ||
-                    "Failed to load projects.",
-            );
+            if (page === 1) {
+                setAllChannels([]);
+                setVisibleChannels([]);
+                setHasMore(false);
+                setStatus("failed");
+                setError(
+                    err?.response?.data?.message ||
+                        err?.message ||
+                        "Failed to load projects.",
+                );
+            }
         }
     }, []);
 
     useEffect(() => {
-        loadChannels();
+        loadChannels(1);
     }, [loadChannels]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
-            await loadChannels();
+            await loadChannels(1);
         } finally {
             setRefreshing(false);
         }
     }, [loadChannels]);
 
+    const loadMoreChannels = useCallback(async () => {
+        if (loadingMore || !hasMore) return;
+
+        setLoadingMore(true);
+        try {
+            const nextPage = Math.floor(visibleChannels.length / PAGE_SIZE) + 1;
+            await loadChannels(nextPage);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [hasMore, loadingMore, loadChannels, visibleChannels.length]);
+
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
-        if (!q) return channels;
-        return channels.filter((c) => {
+        if (!q) return visibleChannels;
+        return visibleChannels.filter((c) => {
             const name = (c.name || "").toLowerCase();
             const code = (c.code || "").toLowerCase();
             const desc = (c.description || "").toLowerCase();
             return name.includes(q) || code.includes(q) || desc.includes(q);
         });
-    }, [channels, query]);
+    }, [visibleChannels, query]);
 
-    const initialLoading = status === "loading" && channels.length === 0;
+    const initialLoading = status === "loading" && visibleChannels.length === 0;
 
     const copyCode = async (code?: string) => {
         if (!code) {
@@ -251,6 +286,18 @@ export default function ChannelsIndex() {
                             refreshing={refreshing}
                             onRefresh={onRefresh}
                         />
+                    }
+                    onEndReached={loadMoreChannels}
+                    onEndReachedThreshold={0.2}
+                    ListFooterComponent={
+                        loadingMore ? (
+                            <View className="py-4 items-center">
+                                <ActivityIndicator
+                                    size="small"
+                                    color={PRIMARY}
+                                />
+                            </View>
+                        ) : null
                     }
                     renderItem={({ item, index }) => (
                         <ChannelCard

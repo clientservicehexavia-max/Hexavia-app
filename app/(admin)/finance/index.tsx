@@ -112,9 +112,24 @@ function getTotalPaid(client: any) {
         : 0;
 }
 
-function buildFilteredReceivables(clients: any[]) {
+function buildFilteredReceivables(
+    clients: any[],
+    sourceFilter: ReceivableSourceFilter = "All",
+) {
     return (clients || [])
         .filter((c: any) => {
+            const source = String(c?.engagement ?? "").trim();
+            const matchesSource =
+                sourceFilter === "All" ||
+                (sourceFilter === "Others"
+                    ? !source ||
+                      !RECEIVABLE_SOURCE_FILTER_OPTIONS.slice(1).includes(
+                          source as any,
+                      )
+                    : source === sourceFilter);
+
+            if (!matchesSource) return false;
+
             // Include clients with payment activity, plus all external receivables
             // that have been paid (including fully paid ones).
             const paid = getTotalPaid(c);
@@ -200,6 +215,7 @@ const ENGAGEMENT_BADGES: Record<string, string> = {
     Consulting: "bg-emerald-500",
     Partnerships: "bg-rose-500",
     Retreat: "bg-cyan-500",
+    Books: "bg-sky-500",
 };
 
 function getEngagementBadge(engagement?: string) {
@@ -212,11 +228,26 @@ const ENGAGEMENT_TEXT_COLORS: Record<string, string> = {
     Consulting: "text-emerald-500",
     Partnerships: "text-rose-500",
     Retreat: "text-cyan-500",
+    Books: "text-sky-500",
 };
 
 function getEngagementTextColor(engagement?: string) {
     return ENGAGEMENT_TEXT_COLORS[engagement || ""] || "text-[#4C5FAB]";
 }
+
+const RECEIVABLE_SOURCE_FILTER_OPTIONS = [
+    "All",
+    "BWE",
+    "Inner Circle",
+    "Consulting",
+    "Books",
+    "Partnerships",
+    "Retreat",
+    "Internal Transfer",
+    "Others",
+] as const;
+
+type ReceivableSourceFilter = (typeof RECEIVABLE_SOURCE_FILTER_OPTIONS)[number];
 
 const ADMIN_FINANCE_PIN = "1473695";
 
@@ -230,6 +261,9 @@ export default function FinanceIndex() {
     const [pinInput, setPinInput] = useState("");
     const [pinError, setPinError] = useState("");
     const [receivablesPage, setReceivablesPage] = useState(1);
+    const [allReceivablesClients, setAllReceivablesClients] = useState<any[]>(
+        [],
+    );
     const [filteredReceivables, setFilteredReceivables] = useState<any[]>([]);
     const [receivablesLoadingMore, setReceivablesLoadingMore] = useState(false);
     const RECEIVABLES_LIMIT = 20;
@@ -309,8 +343,10 @@ export default function FinanceIndex() {
 
     const [tab, setTab] = useState<Flow>("Receivables");
     const [groupingMode, setGroupingMode] = useState<GroupingMode>("monthly");
+    const [selectedReceivableSource, setSelectedReceivableSource] =
+        useState<ReceivableSourceFilter>("All");
     const [hidden, setHidden] = useState(false);
-    const [showGroupingPicker, setShowGroupingPicker] = useState(false);
+    const [showFilterModal, setShowFilterModal] = useState(false);
 
     // client picker modal
     const [showClientPicker, setShowClientPicker] = useState(false);
@@ -374,24 +410,34 @@ export default function FinanceIndex() {
         };
 
         if (tab === "Receivables") {
-            const clientTxns: Txn[] = (clients || []).map((c: any) => ({
-                id: c._id,
-                title: c?.isExternal ? c?.engagement || "External" : "Receive",
-                amount: getTotalPaid(c),
-                description: `${c?.projectName || "Unnamed project"}\n${c?.name || "Unnamed client"}`,
-                projectName: c?.projectName || "Unnamed project",
-                clientName: c?.name || "Unnamed client",
-                engagement: c?.engagement,
-                isExternal: Boolean(c?.isExternal),
-                isFullyPaid: getOutstandingReceivable(c) === 0,
-                status: "Pending",
-                dir: "down",
-                isoDate: c?.createdAt || "",
-                dateKey: dateBucket(c?.createdAt || ""),
-                monthKey: monthKey(c?.createdAt || ""),
-                monthLabel: monthLabel(c?.createdAt || ""),
-                kind: "clientReceivable",
-            }));
+            const clientTxns: Txn[] = (clients || []).map((c: any) => {
+                const engagement = String(c?.engagement || "").trim();
+                const title =
+                    !c?.isExternal && engagement === "Consulting"
+                        ? "Consulting - Internal"
+                        : c?.isExternal
+                          ? engagement || "External"
+                          : "Receive";
+
+                return {
+                    id: c._id,
+                    title,
+                    amount: getTotalPaid(c),
+                    description: `${c?.projectName || "Unnamed project"}\n${c?.name || "Unnamed client"}`,
+                    projectName: c?.projectName || "Unnamed project",
+                    clientName: c?.name || "Unnamed client",
+                    engagement: c?.engagement,
+                    isExternal: Boolean(c?.isExternal),
+                    isFullyPaid: getOutstandingReceivable(c) === 0,
+                    status: "Pending",
+                    dir: "down",
+                    isoDate: c?.createdAt || "",
+                    dateKey: dateBucket(c?.createdAt || ""),
+                    monthKey: monthKey(c?.createdAt || ""),
+                    monthLabel: monthLabel(c?.createdAt || ""),
+                    kind: "clientReceivable",
+                };
+            });
 
             return buildSections(clientTxns, groupingMode);
         }
@@ -449,7 +495,12 @@ export default function FinanceIndex() {
                 ).unwrap();
 
                 const all = payload?.clients ?? [];
-                const filtered = buildFilteredReceivables(all);
+                setAllReceivablesClients(all);
+
+                const filtered = buildFilteredReceivables(
+                    all,
+                    selectedReceivableSource,
+                );
 
                 // Keep full filtered set and show first local page
                 const visible = filtered.slice(0, RECEIVABLES_LIMIT);
@@ -464,8 +515,28 @@ export default function FinanceIndex() {
                 setClientsRefreshing(false);
             }
         },
-        [dispatch, clientFilters?.sortOrder],
+        [dispatch, clientFilters?.sortOrder, selectedReceivableSource],
     );
+
+    useEffect(() => {
+        if (tab !== "Receivables") return;
+        if (!allReceivablesClients.length) return;
+
+        const filtered = buildFilteredReceivables(
+            allReceivablesClients,
+            selectedReceivableSource,
+        );
+        const visible = filtered.slice(0, RECEIVABLES_LIMIT);
+
+        setFilteredReceivables(filtered);
+        setReceivablesPage(1);
+        setClients(visible);
+    }, [
+        allReceivablesClients,
+        RECEIVABLES_LIMIT,
+        selectedReceivableSource,
+        tab,
+    ]);
 
     /* First load + tab switching */
     useEffect(() => {
@@ -688,7 +759,7 @@ export default function FinanceIndex() {
                 headerRight={({ tintColor }) => (
                     <View className="flex-row items-center" style={{ gap: 6 }}>
                         <Pressable
-                            onPress={() => setShowGroupingPicker(true)}
+                            onPress={() => setShowFilterModal(true)}
                             className="w-10 h-10 rounded-full items-center justify-center"
                         >
                             <Filter size={21} color={tintColor} />
@@ -821,20 +892,23 @@ export default function FinanceIndex() {
             />
 
             <Modal
-                visible={showGroupingPicker}
+                visible={showFilterModal}
                 transparent
                 animationType="fade"
-                onRequestClose={() => setShowGroupingPicker(false)}
+                onRequestClose={() => setShowFilterModal(false)}
             >
                 <Pressable
                     className="flex-1 bg-black/30 justify-end"
-                    onPress={() => setShowGroupingPicker(false)}
+                    onPress={() => setShowFilterModal(false)}
                 >
                     <Pressable className="bg-white rounded-t-3xl px-5 pt-5 pb-8">
-                        <Text className="text-lg font-kumbhBold text-[#111827] mb-3">
-                            Sectioning
+                        <Text className="text-lg font-kumbhBold text-[#111827] mb-4">
+                            Filters
                         </Text>
 
+                        <Text className="text-sm font-kumbhBold text-gray-500 mb-2">
+                            Sectioning
+                        </Text>
                         {(
                             [
                                 ["daily", "Daily"],
@@ -847,7 +921,7 @@ export default function FinanceIndex() {
                                     key={value}
                                     onPress={() => {
                                         setGroupingMode(value);
-                                        setShowGroupingPicker(false);
+                                        setShowFilterModal(false);
                                     }}
                                     className={clsx(
                                         "h-12 rounded-xl px-4 mb-2 flex-row items-center justify-between",
@@ -870,6 +944,56 @@ export default function FinanceIndex() {
                                 </Pressable>
                             );
                         })}
+
+                        {tab === "Receivables" ? (
+                            <View className="mt-4">
+                                <Text className="text-sm font-kumbhBold text-gray-500 mb-2">
+                                    Receivable Source
+                                </Text>
+                                <View
+                                    className="flex-row flex-wrap"
+                                    style={{ gap: 8 }}
+                                >
+                                    {RECEIVABLE_SOURCE_FILTER_OPTIONS.map(
+                                        (option) => {
+                                            const active =
+                                                selectedReceivableSource ===
+                                                option;
+                                            return (
+                                                <Pressable
+                                                    key={option}
+                                                    onPress={() => {
+                                                        setSelectedReceivableSource(
+                                                            option,
+                                                        );
+                                                        setShowFilterModal(
+                                                            false,
+                                                        );
+                                                    }}
+                                                    className={clsx(
+                                                        "px-3 py-2 rounded-full border",
+                                                        active
+                                                            ? "bg-[#EEF1FF] border-[#4C5FAB]"
+                                                            : "bg-white border-gray-200",
+                                                    )}
+                                                >
+                                                    <Text
+                                                        className={clsx(
+                                                            "font-kumbh text-sm",
+                                                            active
+                                                                ? "text-[#4C5FAB]"
+                                                                : "text-[#111827]",
+                                                        )}
+                                                    >
+                                                        {option}
+                                                    </Text>
+                                                </Pressable>
+                                            );
+                                        },
+                                    )}
+                                </View>
+                            </View>
+                        ) : null}
                     </Pressable>
                 </Pressable>
             </Modal>
@@ -1049,7 +1173,7 @@ function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
     const iconBg =
         item.kind === "expense"
             ? "bg-emerald-500"
-            : item.isExternal && item.engagement
+            : item.engagement
               ? getEngagementBadge(item.engagement)
               : "bg-blue-500";
     const isPending = item.status === "Pending";
@@ -1076,7 +1200,7 @@ function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
                 <Text
                     className={clsx(
                         "text-base font-kumbhBold",
-                        item.isExternal
+                        item.engagement
                             ? getEngagementTextColor(item.engagement)
                             : "text-text",
                     )}

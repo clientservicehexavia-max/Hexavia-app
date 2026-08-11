@@ -7,6 +7,7 @@ import {
     Handshake,
     UserPlus,
     Users,
+    BriefcaseBusiness,
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -127,6 +128,14 @@ export default function AdminDashboard() {
                             title="Partnerships"
                             icon={<Handshake size={22} color="white" />}
                             onPress={() => router.push("/(admin)/partnerships")}
+                        />
+                    </View>
+
+                    <View className="flex-row gap-2">
+                        <Tile
+                            title="Recruitment"
+                            icon={<BriefcaseBusiness size={22} color="white" />}
+                            onPress={() => router.push("/(admin)/recruitment")}
                         />
                     </View>
                 </View>
