@@ -9,7 +9,6 @@ import {
 } from "@/redux/channels/channels.selectors";
 import {
     assignChannelTaskMembers,
-    deleteChannelTask,
     fetchChannelById,
     fetchChannelTasks,
     unassignChannelTaskMember,
@@ -20,7 +19,6 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Keyboard,
     KeyboardAvoidingView,
     Modal,
@@ -28,7 +26,6 @@ import {
     Pressable,
     Text,
     TextInput,
-    TouchableWithoutFeedback,
     View,
 } from "react-native";
 
@@ -44,6 +41,10 @@ export default function TaskDetailModal({
     const dispatch = useAppDispatch();
 
     const isPersonal = task.channelCode === "personal";
+    const role = useAppSelector(
+        (s) => s.auth.user?.role ?? s.user.user?.role ?? null,
+    );
+    const canManageAssignments = !isPersonal && role !== "staff";
 
     const codeIndex = useAppSelector(selectCodeIndex);
 
@@ -77,7 +78,6 @@ export default function TaskDetailModal({
     const [showMemberPicker, setShowMemberPicker] = useState(false);
     const [assigning, setAssigning] = useState(false);
     const [unassigningId, setUnassigningId] = useState<string | null>(null);
-    const [deleting, setDeleting] = useState(false);
     const [noMembers, setNoMembers] = useState(false);
 
     useEffect(() => {
@@ -188,9 +188,77 @@ export default function TaskDetailModal({
     }, [isPersonal, resolvedChannelId]);
 
     useEffect(() => {
-        if (!visible || isPersonal || !resolvedChannelId) return;
+        if (!visible || !canManageAssignments || !resolvedChannelId) return;
         loadMembers();
-    }, [visible, isPersonal, resolvedChannelId, loadMembers]);
+    }, [visible, canManageAssignments, resolvedChannelId, loadMembers]);
+
+    const memberOptions = useMemo(
+        () =>
+            channelMembers.map((m) => ({
+                label: `${m.name || m.email || "Member"}${m.type ? ` · ${m.type}` : ""}`,
+                value: m.id,
+            })),
+        [channelMembers],
+    );
+
+    const handleAssignMember = async (memberId: string) => {
+        if (!resolvedChannelId) {
+            showError("Could not resolve channel id for this task.");
+            return;
+        }
+        if (assigning) return;
+        setAssigning(true);
+        try {
+            await dispatch(
+                assignChannelTaskMembers({
+                    channelId: resolvedChannelId,
+                    taskId: task.id,
+                    members: [memberId],
+                }),
+            ).unwrap();
+            const member = channelMembers.find((m) => m.id === memberId);
+            setAssignedMembers((prev) => {
+                if (prev.some((p) => p.id === memberId)) return prev;
+                return [
+                    ...prev,
+                    {
+                        id: memberId,
+                        name: member?.name ?? null,
+                        email: member?.email ?? null,
+                    },
+                ];
+            });
+            await dispatch(fetchChannelTasks(resolvedChannelId));
+        } catch {
+            // error already surfaced
+        } finally {
+            setAssigning(false);
+        }
+    };
+
+    const handleUnassignMember = async (memberId: string) => {
+        if (!resolvedChannelId) {
+            showError("Could not resolve channel id for this task.");
+            return;
+        }
+        if (unassigningId) return;
+        setUnassigningId(memberId);
+        try {
+            await dispatch(
+                unassignChannelTaskMember({
+                    channelId: resolvedChannelId,
+                    taskId: task.id,
+                    userId: memberId,
+                }),
+            ).unwrap();
+            setAssignedMembers((prev) => prev.filter((m) => m.id !== memberId));
+            await dispatch(fetchChannelTasks(resolvedChannelId));
+        } catch {
+            // error already surfaced
+        } finally {
+            setUnassigningId(null);
+        }
+    };
 
     const canSave = useMemo(() => {
         const changedText =
@@ -262,106 +330,6 @@ export default function TaskDetailModal({
         }
     };
 
-    const memberOptions = useMemo(
-        () =>
-            channelMembers.map((m) => ({
-                label: `${m.name || m.email || "Member"}${m.type ? ` · ${m.type}` : ""}`,
-                value: m.id,
-            })),
-        [channelMembers],
-    );
-
-    const handleAssignMember = async (memberId: string) => {
-        if (!resolvedChannelId) {
-            showError("Could not resolve channel id for this task.");
-            return;
-        }
-        if (assigning) return;
-        setAssigning(true);
-        try {
-            await dispatch(
-                assignChannelTaskMembers({
-                    channelId: resolvedChannelId,
-                    taskId: task.id,
-                    members: [memberId],
-                }),
-            ).unwrap();
-            const member = channelMembers.find((m) => m.id === memberId);
-            setAssignedMembers((prev) => {
-                if (prev.some((p) => p.id === memberId)) return prev;
-                return [
-                    ...prev,
-                    {
-                        id: memberId,
-                        name: member?.name ?? null,
-                        email: member?.email ?? null,
-                    },
-                ];
-            });
-            await dispatch(fetchChannelTasks(resolvedChannelId));
-        } catch {
-            // error already surfaced
-        } finally {
-            setAssigning(false);
-        }
-    };
-
-    const handleUnassignMember = async (memberId: string) => {
-        if (!resolvedChannelId) {
-            showError("Could not resolve channel id for this task.");
-            return;
-        }
-        if (unassigningId) return;
-        setUnassigningId(memberId);
-        try {
-            await dispatch(
-                unassignChannelTaskMember({
-                    channelId: resolvedChannelId,
-                    taskId: task.id,
-                    userId: memberId,
-                }),
-            ).unwrap();
-            setAssignedMembers((prev) => prev.filter((m) => m.id !== memberId));
-            await dispatch(fetchChannelTasks(resolvedChannelId));
-        } catch {
-            // error already surfaced
-        } finally {
-            setUnassigningId(null);
-        }
-    };
-
-    const confirmDelete = () => {
-        if (!resolvedChannelId) {
-            showError("Could not resolve channel id for this task.");
-            return;
-        }
-        Alert.alert("Delete Task", "Remove this task from the channel?", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete",
-                style: "destructive",
-                onPress: async () => {
-                    if (deleting) return;
-                    setDeleting(true);
-                    try {
-                        await dispatch(
-                            deleteChannelTask({
-                                channelId: resolvedChannelId,
-                                taskId: task.id,
-                            }),
-                        ).unwrap();
-                        await dispatch(fetchChannelTasks(resolvedChannelId));
-                        onClose();
-                    } catch {
-                        // error already surfaced
-                    } finally {
-                        setDeleting(false);
-                    }
-                },
-            },
-        ]);
-    };
-
     return (
         <Modal
             visible={visible}
@@ -376,209 +344,199 @@ export default function TaskDetailModal({
                     Platform.select({ ios: 70, android: 0 }) as number
                 }
             >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View className="flex-1 bg-black/40 justify-end">
-                        <View className="bg-white rounded-t-3xl px-5 py-8">
-                            <Text className="font-kumbhBold text-[20px] text-[#111827]">
-                                Task Details
-                            </Text>
+                <Pressable
+                    className="flex-1 bg-black/40 justify-end"
+                    onPress={() => {
+                        Keyboard.dismiss();
+                        onClose();
+                    }}
+                >
+                    <Pressable
+                        onPress={(e) => e.stopPropagation()}
+                        className="bg-white rounded-t-3xl px-4 py-8"
+                    >
+                        <Text className="font-kumbhBold text-[20px] text-[#111827]">
+                            Task Details
+                        </Text>
 
-                            <Text className="font-kumbh text-[#6B7280] mt-2">
-                                {isPersonal
-                                    ? "Type: Personal"
-                                    : `Channel: ${task.channelCode}`}
-                            </Text>
+                        <Text className="font-kumbh text-[#6B7280] mt-2">
+                            {isPersonal
+                                ? "Type: Personal"
+                                : `Channel: ${task.channelCode}`}
+                        </Text>
 
-                            <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
-                                Name
-                            </Text>
-                            <TextInput
-                                value={name}
-                                onChangeText={setName}
-                                placeholder="Enter task name"
-                                className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
-                            />
+                        <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                            Name
+                        </Text>
+                        <TextInput
+                            value={name}
+                            onChangeText={setName}
+                            placeholder="Enter task name"
+                            className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
+                        />
 
-                            <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
-                                Description
-                            </Text>
-                            <TextInput
-                                value={desc}
-                                onChangeText={setDesc}
-                                multiline
-                                numberOfLines={4}
-                                textAlignVertical="top"
-                                placeholder="Add a short description"
-                                className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
-                                style={{ minHeight: 120 }}
-                            />
+                        <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                            Description
+                        </Text>
+                        <TextInput
+                            value={desc}
+                            onChangeText={setDesc}
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                            placeholder="Add a short description"
+                            className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
+                            style={{ minHeight: 120 }}
+                        />
 
-                            <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
-                                Change Status
-                            </Text>
-                            <View
-                                className="flex-row flex-wrap"
-                                style={{ gap: 8 }}
-                            >
-                                {TAB_ORDER.map((s) => {
-                                    const selected = pending === s;
-                                    return (
-                                        <Pressable
-                                            key={s}
-                                            onPress={() => setPending(s)}
-                                            className="rounded-full py-[6px]"
+                        <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                            Change Status
+                        </Text>
+                        <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+                            {TAB_ORDER.map((s) => {
+                                const selected = pending === s;
+                                return (
+                                    <Pressable
+                                        key={s}
+                                        onPress={() => setPending(s)}
+                                        className="rounded-full py-[6px]"
+                                        style={{
+                                            backgroundColor: selected
+                                                ? "#111827"
+                                                : "#E5E7EB",
+                                        }}
+                                    >
+                                        <Text
+                                            className="font-kumbh text-[12px] capitalize px-3"
                                             style={{
-                                                backgroundColor: selected
-                                                    ? "#111827"
-                                                    : "#E5E7EB",
+                                                color: selected
+                                                    ? "#fff"
+                                                    : "#111827",
                                             }}
                                         >
-                                            <Text
-                                                className="font-kumbh text-[12px] capitalize px-3"
-                                                style={{
-                                                    color: selected
-                                                        ? "#fff"
-                                                        : "#111827",
-                                                }}
-                                            >
-                                                {s.replace("-", " ")}
-                                            </Text>
-                                        </Pressable>
-                                    );
-                                })}
-                            </View>
-
-                            {!isPersonal && (
-                                <View className="mt-4">
-                                    <Text className="font-kumbh text-[#6B7280] mb-2">
-                                        Assigned members
-                                    </Text>
-                                    {assignedMembers.length ? (
-                                        <View style={{ gap: 8 }}>
-                                            {assignedMembers.map((m) => (
-                                                <View
-                                                    key={m.id}
-                                                    className="flex-row items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2"
-                                                >
-                                                    <View className="flex-1 mr-2">
-                                                        <Text className="font-kumbh text-[#111827]">
-                                                            {m.name ||
-                                                                m.email ||
-                                                                m.id}
-                                                        </Text>
-                                                        {!!m.email && (
-                                                            <Text className="font-kumbh text-[12px] text-[#6B7280]">
-                                                                {m.email}
-                                                            </Text>
-                                                        )}
-                                                    </View>
-                                                    <Pressable
-                                                        onPress={() =>
-                                                            handleUnassignMember(
-                                                                m.id,
-                                                            )
-                                                        }
-                                                        disabled={
-                                                            !!unassigningId
-                                                        }
-                                                        className="rounded-lg px-3 py-1"
-                                                        style={{
-                                                            backgroundColor:
-                                                                "#FEE2E2",
-                                                            opacity:
-                                                                unassigningId ===
-                                                                m.id
-                                                                    ? 0.6
-                                                                    : 1,
-                                                        }}
-                                                    >
-                                                        <Text className="font-kumbh text-[12px] text-[#B91C1C]">
-                                                            {unassigningId ===
-                                                            m.id
-                                                                ? "Removing…"
-                                                                : "Remove"}
-                                                        </Text>
-                                                    </Pressable>
-                                                </View>
-                                            ))}
-                                        </View>
-                                    ) : (
-                                        <Text className="font-kumbh text-[12px] text-[#9CA3AF]">
-                                            No members assigned yet.
-                                        </Text>
-                                    )}
-
-                                    <Pressable
-                                        onPress={async () => {
-                                            if (membersLoading) return;
-                                            if (!memberOptions.length) {
-                                                const fetched =
-                                                    await loadMembers();
-                                                if (!fetched.length) return;
-                                            }
-                                            setShowMemberPicker(true);
-                                        }}
-                                        className="mt-3 rounded-xl border border-[#E5E7EB] px-4 py-3"
-                                    >
-                                        <View className="flex-row items-center justify-between">
-                                            <Text className="font-kumbh text-[#111827]">
-                                                Assign member
-                                            </Text>
-                                            {membersLoading ? (
-                                                <ActivityIndicator
-                                                    size="small"
-                                                    color="#4C5FAB"
-                                                />
-                                            ) : null}
-                                        </View>
-                                    </Pressable>
-                                    {noMembers && !membersLoading ? (
-                                        <Text className="mt-2 font-kumbh text-[12px] text-[#9CA3AF]">
-                                            No members found for this channel.
-                                        </Text>
-                                    ) : null}
-                                </View>
-                            )}
-
-                            <View
-                                className="flex-row justify-end items-center mt-6"
-                                style={{ gap: 12 }}
-                            >
-                                <Pressable disabled={saving} onPress={onClose}>
-                                    <Text className="font-kumbh text-[#6B7280]">
-                                        Close
-                                    </Text>
-                                </Pressable>
-                                {!isPersonal && (
-                                    <Pressable
-                                        onPress={confirmDelete}
-                                        disabled={deleting || saving}
-                                    >
-                                        <Text className="font-kumbh text-[#B91C1C]">
-                                            {deleting ? "Deleting…" : "Delete"}
+                                            {s.replace("-", " ")}
                                         </Text>
                                     </Pressable>
-                                )}
-                                <Pressable
-                                    onPress={save}
-                                    disabled={!canSave || saving}
-                                    className="rounded-xl px-5 py-3"
-                                    style={{
-                                        backgroundColor:
-                                            !canSave || saving
-                                                ? "#9CA3AF"
-                                                : "#4C5FAB",
-                                        opacity: saving ? 0.8 : 1,
-                                    }}
-                                >
-                                    <Text className="font-kumbh text-white">
-                                        {saving ? "Saving…" : "Save"}
-                                    </Text>
-                                </Pressable>
-                            </View>
+                                );
+                            })}
                         </View>
-                    </View>
-                </TouchableWithoutFeedback>
+
+                        {canManageAssignments ? (
+                            <View className="mt-4">
+                                <Text className="font-kumbh text-[#6B7280] mb-2">
+                                    Assigned members
+                                </Text>
+                                {assignedMembers.length ? (
+                                    <View style={{ gap: 8 }}>
+                                        {assignedMembers.map((m) => (
+                                            <View
+                                                key={m.id}
+                                                className="flex-row items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2"
+                                            >
+                                                <View className="flex-1 mr-2">
+                                                    <Text className="font-kumbh text-[#111827]">
+                                                        {m.name ||
+                                                            m.email ||
+                                                            m.id}
+                                                    </Text>
+                                                    {!!m.email && (
+                                                        <Text className="font-kumbh text-[12px] text-[#6B7280]">
+                                                            {m.email}
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                                <Pressable
+                                                    onPress={() =>
+                                                        handleUnassignMember(
+                                                            m.id,
+                                                        )
+                                                    }
+                                                    disabled={!!unassigningId}
+                                                    className="rounded-lg px-3 py-1"
+                                                    style={{
+                                                        backgroundColor:
+                                                            "#FEE2E2",
+                                                        opacity:
+                                                            unassigningId ===
+                                                            m.id
+                                                                ? 0.6
+                                                                : 1,
+                                                    }}
+                                                >
+                                                    <Text className="font-kumbh text-[12px] text-[#B91C1C]">
+                                                        {unassigningId === m.id
+                                                            ? "Removing…"
+                                                            : "Remove"}
+                                                    </Text>
+                                                </Pressable>
+                                            </View>
+                                        ))}
+                                    </View>
+                                ) : (
+                                    <Text className="font-kumbh text-[12px] text-[#9CA3AF]">
+                                        No members assigned yet.
+                                    </Text>
+                                )}
+
+                                <Pressable
+                                    onPress={async () => {
+                                        if (membersLoading) return;
+                                        if (!memberOptions.length) {
+                                            const fetched = await loadMembers();
+                                            if (!fetched.length) return;
+                                        }
+                                        setShowMemberPicker(true);
+                                    }}
+                                    className="mt-3 rounded-xl border border-[#E5E7EB] px-4 py-3"
+                                >
+                                    <View className="flex-row items-center justify-between">
+                                        <Text className="font-kumbh text-[#111827]">
+                                            Assign member
+                                        </Text>
+                                        {membersLoading ? (
+                                            <ActivityIndicator
+                                                size="small"
+                                                color="#4C5FAB"
+                                            />
+                                        ) : null}
+                                    </View>
+                                </Pressable>
+                                {noMembers && !membersLoading ? (
+                                    <Text className="mt-2 font-kumbh text-[12px] text-[#9CA3AF]">
+                                        No members found for this channel.
+                                    </Text>
+                                ) : null}
+                            </View>
+                        ) : null}
+
+                        <View
+                            className="flex-row justify-end items-center mt-6"
+                            style={{ gap: 12 }}
+                        >
+                            <Pressable disabled={saving} onPress={onClose}>
+                                <Text className="font-kumbh text-[#6B7280]">
+                                    Close
+                                </Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={save}
+                                disabled={!canSave || saving}
+                                className="rounded-xl px-5 py-3"
+                                style={{
+                                    backgroundColor:
+                                        !canSave || saving
+                                            ? "#9CA3AF"
+                                            : "#4C5FAB",
+                                    opacity: saving ? 0.8 : 1,
+                                }}
+                            >
+                                <Text className="font-kumbh text-white">
+                                    {saving ? "Saving…" : "Save"}
+                                </Text>
+                            </Pressable>
+                        </View>
+                    </Pressable>
+                </Pressable>
             </KeyboardAvoidingView>
             <OptionSheet
                 visible={showMemberPicker}
