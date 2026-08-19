@@ -31,6 +31,18 @@ const mimeFromExt: Record<string, string> = {
     aac: "audio/aac",
 };
 
+const isGenericMimeType = (value?: string) => {
+    const normalized = String(value || "")
+        .trim()
+        .toLowerCase();
+    return (
+        !normalized ||
+        normalized === "application/octet-stream" ||
+        normalized === "binary/octet-stream" ||
+        normalized === "*/*"
+    );
+};
+
 const extractPublicId = (body: any) => {
     return (
         body?.data?.public_id ??
@@ -62,8 +74,10 @@ export const uploadSingle = createAsyncThunk<
 >("upload/uploadSingle", async (input, { dispatch, rejectWithValue }) => {
     try {
         const ext = inferExt(input.name || input.uri);
-        const type =
-            input.type || mimeFromExt[ext] || "application/octet-stream";
+        const inferredType = mimeFromExt[ext];
+        const type = isGenericMimeType(input.type)
+            ? inferredType || "application/octet-stream"
+            : input.type!;
         const name = input.name || `upload_${Date.now()}.${ext}`;
 
         const form = new FormData();

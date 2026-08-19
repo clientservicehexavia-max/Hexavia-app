@@ -1,11 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Tabs, useRouter } from "expo-router";
+import { Tabs, usePathname, useRouter, useSegments } from "expo-router";
 import React, { useEffect } from "react";
 import { Text, View } from "react-native";
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { selectFirstChannelId } from "@/redux/channels/channels.selectors";
 import { fetchChannels } from "@/redux/channels/channels.thunks";
+import { selectUser } from "@/redux/user/user.slice";
 
 const PRIMARY = "#4C5FAB";
 const INACTIVE = "#9CA3AF";
@@ -54,6 +54,8 @@ function TabButton({
 
 export default function StaffTabsLayout() {
   const router = useRouter();
+  const pathname = usePathname();
+  const segments = useSegments();
   const dispatch = useAppDispatch();
 
   // ✅ make sure channels exist so "first id" is not null
@@ -61,7 +63,17 @@ export default function StaffTabsLayout() {
     dispatch(fetchChannels());
   }, [dispatch]);
 
-  const firstChannelId = useAppSelector(selectFirstChannelId);
+  const user = useAppSelector(selectUser);
+  const linkedChannelId =
+    typeof (user as any)?.linkedChannelId === "string"
+      ? (user as any).linkedChannelId
+      : (user as any)?.linkedChannelId?._id
+        ? String((user as any).linkedChannelId._id)
+        : null;
+  const isChatRouteActive =
+    segments.includes("chats") ||
+    pathname === "/chats" ||
+    pathname.startsWith("/chats/");
 
   return (
     <Tabs
@@ -111,27 +123,36 @@ export default function StaffTabsLayout() {
       />
 
       <Tabs.Screen
-        name="chats/[channelId]"
+        name="chats/index"
         listeners={{
           tabPress: (e) => {
-            if (!firstChannelId) return;
             e.preventDefault();
-            router.push({
-              pathname: "/(client)/(tabs)/chats/[channelId]",
-              params: { channelId: firstChannelId },
-            });
+            if (linkedChannelId) {
+              router.push({
+                pathname: "/(client)/(tabs)/chats/[channelId]",
+                params: { channelId: linkedChannelId },
+              });
+              return;
+            }
+
+            router.push("/(client)/(tabs)/chats");
           },
         }}
         options={{
           tabBarIcon: ({ focused }) => (
             <TabButton
-              focused={focused}
+              focused={focused || isChatRouteActive}
               label="Chat"
               activeName="chatbubble"
               inactiveName="chatbubble-outline"
             />
           ),
         }}
+      />
+
+      <Tabs.Screen
+        name="chats/[channelId]"
+        options={{ href: null }}
       />
 
       <Tabs.Screen

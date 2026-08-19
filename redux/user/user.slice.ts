@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { UserPhase, UserState } from "./user.types";
-import { fetchProfile, updateProfile } from "./user.thunks";
+import { fetchProfile, linkProjectCode, updateProfile } from "./user.thunks";
 import { RootState } from "@/store";
 
 const initialState: UserState = {
@@ -71,6 +71,15 @@ const slice = createSlice({
       })
       .addCase(updateProfile.rejected, (state, { payload }) => {
         state.error = (payload as string) || "Failed to update profile";
+      })
+      .addCase(linkProjectCode.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(linkProjectCode.fulfilled, (state, { payload }) => {
+        state.user = payload;
+      })
+      .addCase(linkProjectCode.rejected, (state, { payload }) => {
+        state.error = (payload as string) || "Failed to link project";
       });
   },
 });

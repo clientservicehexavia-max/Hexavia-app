@@ -1,13 +1,12 @@
 import { useRouter } from "expo-router";
 import {
     BarChart3,
-    Bell,
+    BriefcaseBusiness,
     ChevronRight,
     FolderKanban,
     Handshake,
     UserPlus,
     Users,
-    BriefcaseBusiness,
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -20,10 +19,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import AdminHeader from "@/components/admin/AdminHeader";
 import SectionCard from "@/components/admin/SectionCard";
 import Tile from "@/components/admin/Tile";
 import BotpressFab from "@/components/common/BotpressFab";
+import { AdminHeader } from "@/components/common/UserHeader";
 import { selectUser } from "@/redux/user/user.slice";
 import { fetchProfile } from "@/redux/user/user.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -42,7 +41,9 @@ export default function AdminDashboard() {
     const showTeam = canAccessTeamManagement(user?.role);
     const showFinance = canAccessFinanceManagement(user?.role);
     const subtitleBadge =
-        normalizeRole(user?.role) === "clientservice" ? "Clientservice" : "Admin";
+        normalizeRole(user?.role) === "clientservice"
+            ? "Clientservice"
+            : "Admin";
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -55,7 +56,7 @@ export default function AdminDashboard() {
 
     return (
         <SafeAreaView
-            edges={isIOS ? ["top", "left", "right"] : ["top", "left", "right"]}
+            edges={["top", "left", "right"]}
             className="flex-1 bg-white"
         >
             <ScrollView
@@ -68,12 +69,7 @@ export default function AdminDashboard() {
                     />
                 }
             >
-                <AdminHeader
-                    title="Hi Hexavia!"
-                    subtitleBadge={subtitleBadge}
-                    rightIcon={<Bell size={20} color="#111827" />}
-                    onRightPress={() => router.push("/(admin)/notifications")}
-                />
+                <AdminHeader />
 
                 <View className="gap-2 mb-2">
                     <View className="flex-row gap-2">

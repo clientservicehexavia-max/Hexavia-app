@@ -37,8 +37,8 @@ export const STATUS_META: Record<
     },
     "not-started": {
         title: "Not Started",
-        bgColor: "#EF4444", // red
-        arrowBg: "#DC2626", // darker red
+        bgColor: "#9CA3AF", // grey
+        arrowBg: "#6B7280", // darker grey
     },
     completed: {
         title: "Completed",
@@ -47,7 +47,7 @@ export const STATUS_META: Record<
     },
     canceled: {
         title: "Canceled",
-        bgColor: "#9CA3AF", // grey
-        arrowBg: "#6B7280", // darker grey
+        bgColor: "#EF4444", // red
+        arrowBg: "#DC2626", // darker red
     },
 };

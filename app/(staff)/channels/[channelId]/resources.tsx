@@ -74,6 +74,7 @@ import React, {
 } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Animated,
     FlatList,
     Image,
@@ -83,6 +84,7 @@ import {
     Modal,
     Platform,
     Pressable,
+    RefreshControl,
     ScrollView,
     SectionList,
     Text,
@@ -231,8 +233,6 @@ export default function ChannelResourcesScreen() {
     const [editingNote, setEditingNote] = useState<ChannelNote | null>(null);
     const [noteSubmitting, setNoteSubmitting] = useState(false);
     const [noteToDelete, setNoteToDelete] = useState<ChannelNote | null>(null);
-    const [resourceToDelete, setResourceToDelete] =
-        useState<ChannelResource | null>(null);
     const [resourceDeleting, setResourceDeleting] = useState(false);
     const [previewNote, setPreviewNote] = useState<ChannelNote | null>(null);
     const [previewMedia, setPreviewMedia] = useState<{
@@ -241,6 +241,7 @@ export default function ChannelResourcesScreen() {
         name?: string;
         mime?: string;
     } | null>(null);
+    const [resourceRefreshing, setResourceRefreshing] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [sortOrder, setSortOrder] = useState<{
@@ -357,12 +358,14 @@ export default function ChannelResourcesScreen() {
         await api.post("/channel/upload-resources", form, {
             headers: {
                 Accept: "application/json",
+                "Content-Type": "multipart/form-data",
             },
             onUploadProgress: (evt) => {
                 if (!evt.total) return;
                 const pct = Math.round((evt.loaded / evt.total) * 100);
                 setUploadProgress(pct);
             },
+            timeout: 120_000,
             transformRequest: (v) => v,
         });
     };
@@ -779,12 +782,11 @@ export default function ChannelResourcesScreen() {
         }
     };
 
-    const handleDeleteResource = async () => {
-        if (!channelId || !resourceToDelete || resourceDeleting) return;
-        const resourceId = resourceToDelete._id;
+    const handleDeleteResource = async (resource: ChannelResource) => {
+        if (!channelId || resourceDeleting) return;
+        const resourceId = resource._id;
         if (!resourceId) {
             showError("Resource ID is missing. Unable to delete.");
-            setResourceToDelete(null);
             return;
         }
 
@@ -806,9 +808,28 @@ export default function ChannelResourcesScreen() {
             showError(String(message));
         } finally {
             setResourceDeleting(false);
-            setResourceToDelete(null);
         }
     };
+
+    const confirmDeleteResource = useCallback(
+        (resource: ChannelResource) => {
+            Alert.alert(
+                "Delete resource",
+                "This will remove the resource from this project permanently.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => {
+                            void handleDeleteResource(resource);
+                        },
+                    },
+                ],
+            );
+        },
+        [handleDeleteResource],
+    );
 
     const downloadResource = async (r: ChannelResource) => {
         try {
@@ -1023,6 +1044,16 @@ export default function ChannelResourcesScreen() {
         await dispatch(fetchChannelNotes(channelId));
     }, [channelId, dispatch]);
 
+    const refreshResources = useCallback(async () => {
+        if (!channelId || resourceRefreshing) return;
+        try {
+            setResourceRefreshing(true);
+            await dispatch(fetchChannelById(channelId)).unwrap();
+        } finally {
+            setResourceRefreshing(false);
+        }
+    }, [channelId, dispatch, resourceRefreshing]);
+
     const toggleSortOrder = useCallback((tab: ChannelTab) => {
         setSortOrder((prev) => ({
             ...prev,
@@ -1159,7 +1190,24 @@ export default function ChannelResourcesScreen() {
                                         <SkeletonCard width={170} />
                                     </View>
                                 ) : sections.length === 0 ? (
-                                    <View className="flex-1 px-5 pt-8">
+                                    <ScrollView
+                                        className="flex-1"
+                                        contentContainerStyle={{
+                                            flexGrow: 1,
+                                            paddingLeft: 20,
+                                            paddingRight: 20,
+                                            paddingTop: 32,
+                                            paddingBottom: 110,
+                                        }}
+                                        refreshControl={
+                                            <RefreshControl
+                                                refreshing={resourceRefreshing}
+                                                onRefresh={refreshResources}
+                                                tintColor={PRIMARY}
+                                                colors={[PRIMARY]}
+                                            />
+                                        }
+                                    >
                                         <View className="rounded-[28px] bg-white border border-gray-100 px-5 py-10 items-center">
                                             <View className="h-14 w-14 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-4">
                                                 <CloudUpload
@@ -1247,10 +1295,18 @@ export default function ChannelResourcesScreen() {
                                                 </View>
                                             )}
                                         </View>
-                                    </View>
+                                    </ScrollView>
                                 ) : (
                                     <SectionList
                                         sections={sections}
+                                        refreshControl={
+                                            <RefreshControl
+                                                refreshing={resourceRefreshing}
+                                                onRefresh={refreshResources}
+                                                tintColor={PRIMARY}
+                                                colors={[PRIMARY]}
+                                            />
+                                        }
                                         keyExtractor={(item, idx) =>
                                             (item._id || item.resourceUpload) +
                                             ":" +
@@ -1655,17 +1711,6 @@ export default function ChannelResourcesScreen() {
                 onConfirm={handleDeleteNote}
             />
 
-            <ConfirmModal
-                visible={Boolean(resourceToDelete)}
-                title="Delete resource"
-                message="This will remove the resource from this project permanently."
-                onCancel={() => {
-                    if (resourceDeleting) return;
-                    setResourceToDelete(null);
-                }}
-                onConfirm={handleDeleteResource}
-            />
-
             <Modal
                 visible={Boolean(previewNote)}
                 animationType="slide"
@@ -1789,7 +1834,7 @@ export default function ChannelResourcesScreen() {
                                     setActionFor(null);
                                     return;
                                 }
-                                setResourceToDelete(actionFor);
+                                confirmDeleteResource(actionFor);
                                 setActionFor(null);
                             }}
                             className="py-3"

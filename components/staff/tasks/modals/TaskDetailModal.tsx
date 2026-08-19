@@ -9,6 +9,7 @@ import {
 } from "@/redux/channels/channels.selectors";
 import {
     assignChannelTaskMembers,
+    deleteChannelTask,
     fetchChannelById,
     fetchChannelTasks,
     unassignChannelTaskMember,
@@ -19,6 +20,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Keyboard,
     KeyboardAvoidingView,
     Modal,
@@ -33,10 +35,12 @@ export default function TaskDetailModal({
     visible,
     onClose,
     task,
+    onTaskDeleted,
 }: {
     visible: boolean;
     onClose: () => void;
     task: Task;
+    onTaskDeleted?: (taskId: string) => void;
 }) {
     const dispatch = useAppDispatch();
 
@@ -78,6 +82,7 @@ export default function TaskDetailModal({
     const [showMemberPicker, setShowMemberPicker] = useState(false);
     const [assigning, setAssigning] = useState(false);
     const [unassigningId, setUnassigningId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
     const [noMembers, setNoMembers] = useState(false);
 
     useEffect(() => {
@@ -269,7 +274,7 @@ export default function TaskDetailModal({
     }, [name, desc, pending, task]);
 
     const save = async () => {
-        if (!canSave || saving) return;
+        if (!canSave || saving || deleting) return;
 
         try {
             setSaving(true);
@@ -328,6 +333,44 @@ export default function TaskDetailModal({
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleDeleteTask = () => {
+        if (isPersonal) {
+            showError("Delete from this view is only available for channel tasks.");
+            return;
+        }
+        if (!resolvedChannelId) {
+            showError("Could not resolve channel id for this task.");
+            return;
+        }
+        if (deleting || saving) return;
+
+        Alert.alert("Delete task?", "This action cannot be undone.", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete",
+                style: "destructive",
+                onPress: async () => {
+                    try {
+                        setDeleting(true);
+                        await dispatch(
+                            deleteChannelTask({
+                                channelId: resolvedChannelId,
+                                taskId: task.id,
+                            }),
+                        ).unwrap();
+                        await dispatch(fetchChannelTasks(resolvedChannelId));
+                        onTaskDeleted?.(task.id);
+                        onClose();
+                    } catch {
+                        // error already surfaced by thunk
+                    } finally {
+                        setDeleting(false);
+                    }
+                },
+            },
+        ]);
     };
 
     return (
@@ -513,18 +556,31 @@ export default function TaskDetailModal({
                             className="flex-row justify-end items-center mt-6"
                             style={{ gap: 12 }}
                         >
-                            <Pressable disabled={saving} onPress={onClose}>
+                            {!isPersonal ? (
+                                <Pressable
+                                    disabled={saving || deleting}
+                                    onPress={handleDeleteTask}
+                                >
+                                    <Text className="font-kumbh text-[#B91C1C]">
+                                        {deleting ? "Deleting..." : "Delete"}
+                                    </Text>
+                                </Pressable>
+                            ) : null}
+                            <Pressable
+                                disabled={saving || deleting}
+                                onPress={onClose}
+                            >
                                 <Text className="font-kumbh text-[#6B7280]">
                                     Close
                                 </Text>
                             </Pressable>
                             <Pressable
                                 onPress={save}
-                                disabled={!canSave || saving}
+                                disabled={!canSave || saving || deleting}
                                 className="rounded-xl px-5 py-3"
                                 style={{
                                     backgroundColor:
-                                        !canSave || saving
+                                        !canSave || saving || deleting
                                             ? "#9CA3AF"
                                             : "#4C5FAB",
                                     opacity: saving ? 0.8 : 1,

@@ -1209,7 +1209,7 @@ export default function ChatScreen() {
         <SafeAreaView
             className="flex-1 bg-white"
             edges={
-                user?.role === "staff"
+                user?.role === "staff" || user?.role === "client"
                     ? isIOS
                         ? ["left", "right"]
                         : ["top", "left", "right"]

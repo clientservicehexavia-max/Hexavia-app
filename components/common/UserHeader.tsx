@@ -4,6 +4,7 @@ import { fetchProfile } from "@/redux/user/user.thunks";
 import type { RootState } from "@/store";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useRouter } from "expo-router";
+import { Bell } from "lucide-react-native";
 import React, { useEffect } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
@@ -61,13 +62,9 @@ function routesFor(variant: Variant) {
 
 function UserHeaderCore({
     variant,
-    title,
-    subtitleBadge,
     rightIcon,
     onRightPress,
     onAvatarPress,
-    rightExtra,
-    containerClassName,
 }: VariantProps) {
     const dispatch = useAppDispatch();
     const router = useRouter();
@@ -90,7 +87,7 @@ function UserHeaderCore({
     }
 
     const greetingName = firstNameOf(user?.fullname);
-    const computedRoleText = prettyRole(user?.role || undefined);
+    const roleText = prettyRole(user?.role || "Hexavia Staff");
 
     const { profile, notifications } = routesFor(variant);
 
@@ -105,46 +102,32 @@ function UserHeaderCore({
     };
 
     return (
-        <View
-            className={`px-1 pt-8 pb-4 flex-row items-center justify-between ${containerClassName ?? ""}`}
-        >
+        <View className="pt-5 pb-4 flex-row items-center justify-between">
             <View className="flex-row items-center gap-3">
                 <Pressable onPress={handleAvatarPress}>
                     <AvatarPlaceholder avatar={user?.profilePicture} />
                 </Pressable>
 
                 <View>
-                    {/* Optional small title line above greeting */}
-                    {title ? (
-                        <Text className="text-xs text-gray-500 font-kumbhBold mb-1">
-                            {title}
-                        </Text>
-                    ) : null}
-
                     <Text className="text-2xl ios:font-bold font-kumbh text-text">
                         {greetingName ? `Hi ${greetingName}` : "Hi there!"}
                     </Text>
-
-                    {/* Prefer explicit subtitleBadge; fall back to computed role text */}
-                    {subtitleBadge || computedRoleText ? (
-                        <View className="self-start rounded-full border border-emerald-300 px-3 py-1">
+                    {roleText ? (
+                        <View className="self-start rounded-full border border-emerald-300 px-3 ios:py-1 android:py-[1px]">
                             <Text className="text-emerald-600 text-[12px] font-kumbhBold">
-                                {subtitleBadge ?? computedRoleText}
+                                {roleText}
                             </Text>
                         </View>
                     ) : null}
                 </View>
             </View>
 
-            <View className="flex-row items-center gap-2">
-                {rightExtra}
-                <Pressable
-                    onPress={handleRightPress}
-                    className="w-11 h-11 rounded-2xl bg-white shadow-sm items-center justify-center"
-                >
-                    {rightIcon}
-                </Pressable>
-            </View>
+            <Pressable
+                onPress={handleRightPress}
+                className="w-11 h-11 rounded-2xl bg-white shadow-sm items-center justify-center"
+            >
+                <Bell size={20} color="#111827" />
+            </Pressable>
         </View>
     );
 }

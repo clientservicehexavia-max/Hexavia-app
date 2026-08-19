@@ -99,6 +99,7 @@ export default function CreateTaskModal({
     const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
         null,
     );
+    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
     const creatingLockRef = useRef(false);
     const [creatingTask, setCreatingTask] = useState(false);
 
@@ -263,6 +264,25 @@ export default function CreateTaskModal({
         }
     }, [visible]);
 
+    useEffect(() => {
+        const showEvent =
+            Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+        const hideEvent =
+            Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+        const showSub = Keyboard.addListener(showEvent, () => {
+            setIsKeyboardOpen(true);
+        });
+        const hideSub = Keyboard.addListener(hideEvent, () => {
+            setIsKeyboardOpen(false);
+        });
+
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
+
     const modes: Mode[] = forcePersonalForUserId
         ? ["personal"]
         : allowPersonal
@@ -290,16 +310,27 @@ export default function CreateTaskModal({
             >
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    behavior={Platform.OS === "ios" ? "padding" : undefined}
+                    keyboardVerticalOffset={
+                        Platform.select({ ios: 0, android: 0 }) as number
+                    }
                 >
                     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                         <View className="flex-1 bg-black/40 justify-end">
-                            <View className="bg-white rounded-t-3xl py-8 px-5 max-h-[85%]">
+                            <View
+                                className="bg-white rounded-t-3xl py-8 px-5"
+                                style={{
+                                    maxHeight: isKeyboardOpen ? "100%" : "80%",
+                                    height: isKeyboardOpen ? "100%" : undefined,
+                                }}
+                            >
                                 <ScrollView
                                     keyboardShouldPersistTaps="handled"
                                     contentContainerStyle={{
+                                        flexGrow: 1,
                                         paddingBottom: 12,
                                     }}
+                                    keyboardDismissMode="interactive"
                                     showsVerticalScrollIndicator={false}
                                 >
                                     <Text className="font-kumbhBold text-[20px] text-[#111827]">

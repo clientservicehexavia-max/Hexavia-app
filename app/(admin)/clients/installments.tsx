@@ -149,16 +149,16 @@ function makeFriendlyFileName(s: string) {
 
 function ordinalWord(index: number) {
     const ordinals = [
-        "first",
-        "second",
-        "third",
-        "fourth",
-        "fifth",
-        "sixth",
-        "seventh",
-        "eighth",
-        "ninth",
-        "tenth",
+        "First",
+        "Second",
+        "Third",
+        "Fourth",
+        "Fifth",
+        "Sixth",
+        "Seventh",
+        "Eighth",
+        "Ninth",
+        "Tenth",
     ];
     return ordinals[index] || `${index + 1}th`;
 }
@@ -771,7 +771,7 @@ export default function ClientInstallments() {
 
             const fileTitle = mode === "receipt" ? "Receipt" : "Invoice";
             const filename = `${makeFriendlyFileName(COMPANY_NAME)} ${makeFriendlyFileName(
-                name || "Client",
+                project || "Company",
             )} ${fileTitle}.pdf`;
 
             const result = await Print.printToFileAsync({
@@ -835,7 +835,7 @@ export default function ClientInstallments() {
         });
 
         const filename = `${makeFriendlyFileName(COMPANY_NAME)} ${makeFriendlyFileName(
-            name || "Client",
+            project || "Company",
         )} ${receiptLabel} Receipt.pdf`;
 
         const result = await Print.printToFileAsync({

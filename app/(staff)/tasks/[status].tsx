@@ -64,11 +64,11 @@ const STATUS_BGS: Record<
   },
   "not-started": {
     title: "Not Started",
-    bgColor: "#EF4444",
-    arrowBg: "#DC2626",
+    bgColor: "#9CA3AF",
+    arrowBg: "#6B7280",
   },
   completed: { title: "Completed", bgColor: "#10B981", arrowBg: "#059669" },
-  canceled: { title: "Canceled", bgColor: "#9CA3AF", arrowBg: "#6B7280" },
+  canceled: { title: "Canceled", bgColor: "#EF4444", arrowBg: "#DC2626" },
 };
 
 export default function StatusScreen() {

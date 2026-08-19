@@ -125,6 +125,11 @@ export default function PlatformAdaptiveHeader({
                     multilineTitle={multilineTitle}
                     onTitlePress={onTitlePress}
                     backgroundColor={backgroundColor}
+                    left={
+                        headerLeft
+                            ? headerLeft({ tintColor: "#111827" })
+                            : undefined
+                    }
                     right={
                         headerRight
                             ? headerRight({ tintColor: "#111827" })

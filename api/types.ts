@@ -17,5 +17,8 @@ export type User = {
   phoneNumber?: string | null;
   profilePicture?: string | null;
   channelCode?: string | null;
+  linkedChannelId?: string | null;
+  linkedProjectCode?: string | null;
+  linkedAt?: string | null;
   expoPushToken?: string | null;
 };

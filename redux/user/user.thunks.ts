@@ -81,3 +81,40 @@ export const updateProfile = createAsyncThunk<
         return rejectWithValue(msg);
     }
 });
+
+export const linkProjectCode = createAsyncThunk<
+    User,
+    { projectCode: string },
+    { rejectValue: string }
+>("user/linkProjectCode", async ({ projectCode }, { rejectWithValue }) => {
+    try {
+        const code = String(projectCode || "").trim();
+        if (!code) {
+            throw new Error("Project code is required");
+        }
+
+        const res = await showPromise(
+            api.post<ApiEnvelope<{ user: User }>>("/users/link-project-code", {
+                projectCode: code,
+            }),
+            "Linking project…",
+            "Project linked",
+        );
+
+        const user =
+            (res.data.data as any)?.user ??
+            (res.data as any)?.user ??
+            (res.data.data as unknown as User);
+
+        if (!user) throw new Error("No user returned");
+        await saveUser(user);
+        return user;
+    } catch (err: any) {
+        const msg =
+            err?.response?.data?.message ||
+            err?.message ||
+            "Could not link project code";
+        showError(msg);
+        return rejectWithValue(msg);
+    }
+});

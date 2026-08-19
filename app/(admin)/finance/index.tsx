@@ -3,7 +3,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import clsx from "clsx";
 import { useRouter } from "expo-router";
-import { ArrowDown, ArrowUp, Eye, Filter, Plus } from "lucide-react-native";
+import {
+    ArrowDown,
+    ArrowUp,
+    Eye,
+    Filter,
+    Plus,
+    Search,
+} from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -39,7 +46,6 @@ import { fetchFinance } from "@/redux/finance/finance.thunks";
 /* ───────── Clients (for Receivables) ───────── */
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { SwipeableTabView } from "@/components/ui/SwipeableTabView";
-import { selectClientFilters } from "@/redux/client/client.selectors";
 import { fetchClients } from "@/redux/client/client.thunks";
 
 type Flow = "Receivables" | "Expenses";
@@ -112,6 +118,36 @@ function getTotalPaid(client: any) {
         : 0;
 }
 
+function getReceivableActivityDate(client: any) {
+    const directActivity =
+        client?.receivableUpdatedAt || client?.updatedAt || client?.createdAt;
+    const directTs = new Date(directActivity || "").getTime();
+    if (!Number.isNaN(directTs) && directTs > 0) {
+        return new Date(directTs).toISOString();
+    }
+
+    if (!Array.isArray(client?.installmentalPayment)) {
+        return client?.createdAt || "";
+    }
+
+    let latestPaidTs = 0;
+    for (const payment of client.installmentalPayment) {
+        if (payment?.isPaid === false) continue;
+        const paymentTs = new Date(
+            payment?.paymentUpdatedAt || payment?.date || "",
+        ).getTime();
+        if (!Number.isNaN(paymentTs) && paymentTs > latestPaidTs) {
+            latestPaidTs = paymentTs;
+        }
+    }
+
+    if (latestPaidTs > 0) {
+        return new Date(latestPaidTs).toISOString();
+    }
+
+    return client?.createdAt || "";
+}
+
 function buildFilteredReceivables(
     clients: any[],
     sourceFilter: ReceivableSourceFilter = "All",
@@ -153,8 +189,8 @@ function buildFilteredReceivables(
         })
         .sort(
             (a: any, b: any) =>
-                new Date(b?.createdAt || 0).getTime() -
-                new Date(a?.createdAt || 0).getTime(),
+                new Date(getReceivableActivityDate(b) || 0).getTime() -
+                new Date(getReceivableActivityDate(a) || 0).getTime(),
         );
 }
 
@@ -249,6 +285,41 @@ const RECEIVABLE_SOURCE_FILTER_OPTIONS = [
 
 type ReceivableSourceFilter = (typeof RECEIVABLE_SOURCE_FILTER_OPTIONS)[number];
 
+const normalizeSearchText = (value: unknown) =>
+    String(value ?? "")
+        .trim()
+        .toLowerCase();
+
+function filterReceivablesBySearch(clients: any[], query: string) {
+    const q = normalizeSearchText(query);
+    if (!q) return clients;
+
+    return (clients || []).filter((client: any) => {
+        const companyName = normalizeSearchText(client?.projectName);
+        const clientName = normalizeSearchText(client?.name);
+        const source = normalizeSearchText(client?.engagement);
+
+        return (
+            companyName.includes(q) ||
+            clientName.includes(q) ||
+            source.includes(q)
+        );
+    });
+}
+
+function filterExpensesBySearch(records: any[], query: string) {
+    const q = normalizeSearchText(query);
+    if (!q) return records;
+
+    return (records || []).filter((record: any) => {
+        const description = normalizeSearchText(record?.description);
+        const notes = normalizeSearchText(record?.notes);
+        const date = normalizeSearchText(record?.date);
+
+        return description.includes(q) || notes.includes(q) || date.includes(q);
+    });
+}
+
 const ADMIN_FINANCE_PIN = "1473695";
 
 export default function FinanceIndex() {
@@ -335,7 +406,7 @@ export default function FinanceIndex() {
     );
 
     /* Clients for Receivables (local paged cache) */
-    const clientFilters = useAppSelector(selectClientFilters);
+    const RECEIVABLES_SORT_ORDER = "desc" as const;
 
     const [clients, setClients] = useState<any[]>([]);
     const [clientsLoading, setClientsLoading] = useState(false);
@@ -345,6 +416,8 @@ export default function FinanceIndex() {
     const [groupingMode, setGroupingMode] = useState<GroupingMode>("monthly");
     const [selectedReceivableSource, setSelectedReceivableSource] =
         useState<ReceivableSourceFilter>("All");
+    const [financeSearch, setFinanceSearch] = useState("");
+    const [showFinanceSearch, setShowFinanceSearch] = useState(false);
     const [hidden, setHidden] = useState(false);
     const [showFilterModal, setShowFilterModal] = useState(false);
 
@@ -355,18 +428,45 @@ export default function FinanceIndex() {
         null,
     );
 
+    const searchedReceivables = useMemo(
+        () => filterReceivablesBySearch(filteredReceivables, financeSearch),
+        [filteredReceivables, financeSearch],
+    );
+    const searchedExpenses = useMemo(
+        () => filterExpensesBySearch(records || [], financeSearch),
+        [records, financeSearch],
+    );
+
+    const totalReceivablesAll = useMemo(() => {
+        const filtered = buildFilteredReceivables(
+            allReceivablesClients,
+            selectedReceivableSource,
+        );
+        return filtered.reduce((acc: number, c: any) => acc + getTotalPaid(c), 0);
+    }, [allReceivablesClients, selectedReceivableSource]);
+
+    useEffect(() => {
+        setReceivablesPage(1);
+        setClients(searchedReceivables.slice(0, RECEIVABLES_LIMIT));
+    }, [searchedReceivables]);
+
     /* Totals */
     const total = useMemo(() => {
         if (tab === "Receivables") {
-            const clientSum = (filteredReceivables || []).reduce(
-                (acc, c: any) => acc + getTotalPaid(c),
-                0,
-            );
-            return clientSum;
+            return totalReceivablesAll;
         }
-        // Expenses: keep your existing summary behavior
-        return summary?.totalExpenses || 0;
-    }, [summary, tab, filteredReceivables, records]);
+        // Expenses: use backend summary (all matching records, not just current page)
+        if (Number.isFinite(Number(summary?.totalExpenses))) {
+            return Number(summary?.totalExpenses || 0);
+        }
+
+        // Fallback if summary is temporarily unavailable.
+        return (records || []).reduce(
+            (acc, r: any) =>
+                acc + (r?.type === "expense" ? Number(r?.amount || 0) : 0),
+            0,
+        );
+    }, [summary, tab, totalReceivablesAll, records]);
 
     /* Section builder */
     const sections = useMemo<TxnSection[]>(() => {
@@ -411,6 +511,7 @@ export default function FinanceIndex() {
 
         if (tab === "Receivables") {
             const clientTxns: Txn[] = (clients || []).map((c: any) => {
+                const activityIso = getReceivableActivityDate(c);
                 const engagement = String(c?.engagement || "").trim();
                 const title =
                     !c?.isExternal && engagement === "Consulting"
@@ -431,10 +532,10 @@ export default function FinanceIndex() {
                     isFullyPaid: getOutstandingReceivable(c) === 0,
                     status: "Pending",
                     dir: "down",
-                    isoDate: c?.createdAt || "",
-                    dateKey: dateBucket(c?.createdAt || ""),
-                    monthKey: monthKey(c?.createdAt || ""),
-                    monthLabel: monthLabel(c?.createdAt || ""),
+                    isoDate: activityIso,
+                    dateKey: dateBucket(activityIso),
+                    monthKey: monthKey(activityIso),
+                    monthLabel: monthLabel(activityIso),
                     kind: "clientReceivable",
                 };
             });
@@ -443,7 +544,7 @@ export default function FinanceIndex() {
         }
 
         // Expenses
-        const txns: Txn[] = (records || [])
+        const txns: Txn[] = searchedExpenses
             .filter((r) => r.type === "expense")
             .sort(
                 (a, b) =>
@@ -464,7 +565,7 @@ export default function FinanceIndex() {
             }));
 
         return buildSections(txns, groupingMode);
-    }, [tab, clients, records, groupingMode]);
+    }, [tab, clients, searchedExpenses, groupingMode]);
 
     const fetchAndPaginateReceivables = useCallback(
         async (asRefresh = false) => {
@@ -478,7 +579,7 @@ export default function FinanceIndex() {
                     fetchClients({
                         page: 1,
                         limit: 1,
-                        sortOrder: clientFilters?.sortOrder ?? "desc",
+                        sortOrder: RECEIVABLES_SORT_ORDER,
                     }) as any,
                 ).unwrap();
 
@@ -490,24 +591,12 @@ export default function FinanceIndex() {
                     fetchClients({
                         page: 1,
                         limit: Math.max(totalClients, 1),
-                        sortOrder: clientFilters?.sortOrder ?? "desc",
+                        sortOrder: RECEIVABLES_SORT_ORDER,
                     }) as any,
                 ).unwrap();
 
                 const all = payload?.clients ?? [];
                 setAllReceivablesClients(all);
-
-                const filtered = buildFilteredReceivables(
-                    all,
-                    selectedReceivableSource,
-                );
-
-                // Keep full filtered set and show first local page
-                const visible = filtered.slice(0, RECEIVABLES_LIMIT);
-
-                setFilteredReceivables(filtered);
-                setReceivablesPage(1);
-                setClients(visible);
             } catch {
                 // swallow here: global error handling remains in redux slices/toasts
             } finally {
@@ -515,7 +604,7 @@ export default function FinanceIndex() {
                 setClientsRefreshing(false);
             }
         },
-        [dispatch, clientFilters?.sortOrder, selectedReceivableSource],
+        [dispatch],
     );
 
     useEffect(() => {
@@ -526,7 +615,8 @@ export default function FinanceIndex() {
             allReceivablesClients,
             selectedReceivableSource,
         );
-        const visible = filtered.slice(0, RECEIVABLES_LIMIT);
+        const searched = filterReceivablesBySearch(filtered, financeSearch);
+        const visible = searched.slice(0, RECEIVABLES_LIMIT);
 
         setFilteredReceivables(filtered);
         setReceivablesPage(1);
@@ -534,6 +624,7 @@ export default function FinanceIndex() {
     }, [
         allReceivablesClients,
         RECEIVABLES_LIMIT,
+        financeSearch,
         selectedReceivableSource,
         tab,
     ]);
@@ -541,6 +632,17 @@ export default function FinanceIndex() {
     /* First load + tab switching */
     useEffect(() => {
         if (pinLocked) return;
+
+        // Preload expense summary so total amount is not tied to paginated rows.
+        dispatch(
+            fetchFinance({
+                type: "expense",
+                startDate: financeRequestFilters.startDate,
+                endDate: financeRequestFilters.endDate,
+                page: 1,
+                limit: 1,
+            }) as any,
+        );
 
         if (tab === "Receivables") {
             fetchAndPaginateReceivables(false);
@@ -562,10 +664,14 @@ export default function FinanceIndex() {
 
     useEffect(() => {
         if (!showClientPicker) return;
-        if ((clients?.length ?? 0) === 0) {
+        if ((allReceivablesClients?.length ?? 0) === 0) {
             fetchAndPaginateReceivables(false);
         }
-    }, [showClientPicker, clients?.length, fetchAndPaginateReceivables]);
+    }, [
+        showClientPicker,
+        allReceivablesClients?.length,
+        fetchAndPaginateReceivables,
+    ]);
 
     // Keep Receivables fresh when returning from child screens.
     useFocusEffect(
@@ -616,14 +722,14 @@ export default function FinanceIndex() {
         if (tab === "Receivables") {
             // Reveal next local page (21-40, 41-60...) from cached filtered list
             if (clientsLoading || receivablesLoadingMore) return;
-            if ((clients?.length ?? 0) >= (filteredReceivables?.length ?? 0)) {
+            if ((clients?.length ?? 0) >= (searchedReceivables?.length ?? 0)) {
                 return;
             }
 
             setReceivablesLoadingMore(true);
             setTimeout(() => {
                 const nextPage = receivablesPage + 1;
-                const nextVisible = (filteredReceivables || []).slice(
+                const nextVisible = (searchedReceivables || []).slice(
                     0,
                     nextPage * RECEIVABLES_LIMIT,
                 );
@@ -646,14 +752,13 @@ export default function FinanceIndex() {
         clients,
         clientsLoading,
         receivablesLoadingMore,
-        filteredReceivables,
+        searchedReceivables,
         receivablesPage,
         financeLoading,
         financePagination,
         financeRequestFilters,
         dispatch,
         pinLocked,
-        fetchAndPaginateReceivables,
         refreshing,
     ]);
 
@@ -766,16 +871,21 @@ export default function FinanceIndex() {
                         </Pressable>
 
                         <Pressable
-                            onPress={() => {
-                                if (tab === "Receivables") {
-                                    router.push("/(admin)/finance/receivable");
-                                } else {
-                                    router.push("/(admin)/finance/form");
-                                }
-                            }}
+                            onPress={() =>
+                                setShowFinanceSearch((current) => !current)
+                            }
                             className="w-10 h-10 rounded-full items-center justify-center"
+                            accessibilityRole="button"
+                            accessibilityLabel="Toggle finance search"
                         >
-                            <Plus size={28} color={tintColor} />
+                            <Search
+                                size={21}
+                                color={
+                                    showFinanceSearch
+                                        ? "#4C5FAB"
+                                        : (tintColor ?? "#111827")
+                                }
+                            />
                         </Pressable>
                     </View>
                 )}
@@ -805,6 +915,30 @@ export default function FinanceIndex() {
             </View>
 
             {/* Tabs with content */}
+            {showFinanceSearch ? (
+                <View className="px-5 mt-3">
+                    <View
+                        className="rounded-xl border border-gray-200 px-3"
+                        style={{
+                            paddingVertical:
+                                Platform.OS === "android" ? 1 : 12,
+                        }}
+                    >
+                        <TextInput
+                            value={financeSearch}
+                            onChangeText={setFinanceSearch}
+                            placeholder={
+                                tab === "Receivables"
+                                    ? "Search by company, client, or source"
+                                    : "Search expenses by description, notes, or date"
+                            }
+                            placeholderTextColor="#9CA3AF"
+                            className="font-kumbh text-[#111827]"
+                        />
+                    </View>
+                </View>
+            ) : null}
+
             <SwipeableTabView
                 navigationState={{
                     index: tab === "Receivables" ? 0 : 1,
@@ -890,6 +1024,33 @@ export default function FinanceIndex() {
                     inactiveColor: "#6B7280",
                 }}
             />
+
+            <Pressable
+                onPress={() => {
+                    if (tab === "Receivables") {
+                        router.push("/(admin)/finance/receivable");
+                    } else {
+                        router.push("/(admin)/finance/form");
+                    }
+                }}
+                className="absolute right-5 h-14 w-14 items-center justify-center rounded-full bg-[#4C5FAB]"
+                style={{
+                    bottom: isIOS ? 34 : 24,
+                    shadowColor: "#000",
+                    shadowOpacity: 0.2,
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowRadius: 12,
+                    elevation: 8,
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={
+                    tab === "Receivables"
+                        ? "Add receivable"
+                        : "Add expense record"
+                }
+            >
+                <Plus size={24} color="#FFFFFF" />
+            </Pressable>
 
             <Modal
                 visible={showFilterModal}
@@ -1045,7 +1206,7 @@ export default function FinanceIndex() {
                         {/* Client list */}
                         <View className="max-h-[50vh]">
                             <FlatList
-                                data={(clients || []).filter((c: any) =>
+                                data={allReceivablesClients.filter((c: any) =>
                                     String(c?.name || "")
                                         .toLowerCase()
                                         .includes(clientSearch.toLowerCase()),

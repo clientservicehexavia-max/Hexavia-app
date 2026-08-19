@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Bell, ChevronRight } from "lucide-react-native";
+import { ChevronRight } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     FlatList,
@@ -61,7 +61,7 @@ function prettyRole(role?: string | null) {
 
 export default function StaffHome() {
     const [showCreate, setShowCreate] = useState(false);
-        const [refreshing, setRefreshing] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const isIOS = Platform.OS === "ios";
 
     const router = useRouter();
@@ -136,7 +136,7 @@ export default function StaffHome() {
     return (
         <SafeAreaView
             className="flex-1 bg-white"
-            edges={isIOS ? ["top", "left", "right"] : ["top", "left", "right"]}
+            edges={["top", "left", "right"]}
         >
             <StatusBar style="dark" />
             <ScrollView
@@ -150,7 +150,7 @@ export default function StaffHome() {
                 }
             >
                 {/* Top Bar */}
-                <StaffHeader rightIcon={<Bell size={20} color="#111827" />} />
+                <StaffHeader />
 
                 {/* Channels */}
                 <View className="mt-6 flex-row items-center justify-between">

@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Platform, RefreshControl, Text, View } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
@@ -13,6 +14,7 @@ import { StatusBar } from "expo-status-bar";
 
 import {
   selectAllChannels,
+  makeSelectDefaultChannelId,
   selectMyChannelsByUserId,
 } from "@/redux/channels/channels.selectors"; // NOTE: bring selectAllChannels
 import { fetchChannelByCode, fetchChannels, joinChannel } from "@/redux/channels/channels.thunks";
@@ -48,6 +50,7 @@ const normalizeCodeLoose = (s: string) =>
     .toLowerCase();
 
 export default function AllChannelsScreen() {
+  const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
 
   const status = useSelector((s: RootState) => s.channels.status);
@@ -64,6 +67,9 @@ export default function AllChannelsScreen() {
   }, [dispatch]);
 
   const userId = user?._id ?? null;
+  const defaultChannelId = useAppSelector(
+    makeSelectDefaultChannelId(userId ?? null, "recent"),
+  );
 
   // My channels (existing list)
   const myChannels = useAppSelector((s) => selectMyChannelsByUserId(s, userId));
@@ -76,6 +82,14 @@ export default function AllChannelsScreen() {
   useEffect(() => {
     if (status === "idle") dispatch(fetchChannels());
   }, [status, dispatch]);
+
+  useEffect(() => {
+    if (!defaultChannelId) return;
+    router.replace({
+      pathname: "/(client)/(tabs)/chats/[channelId]",
+      params: { channelId: defaultChannelId },
+    });
+  }, [defaultChannelId, router]);
 
   // Effect for code search
   useEffect(() => {
