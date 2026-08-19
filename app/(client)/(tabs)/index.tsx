@@ -1,11 +1,11 @@
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import LinkProjectCodeModal from "@/components/client/LinkProjectCodeModal";
 import BotpressFab from "@/components/common/BotpressFab";
 import { ClientHeader } from "@/components/common/UserHeader";
-import LinkProjectCodeModal from "@/components/client/LinkProjectCodeModal";
 import SanctionCard from "@/components/staff/SanctionCard";
 import TaskOverview from "@/components/staff/TaskOverviewCard";
 import { selectUser } from "@/redux/user/user.slice";
@@ -82,7 +82,8 @@ export default function StaffHome() {
                         <Pressable
                             onPress={() =>
                                 router.push({
-                                    pathname: "/(client)/(tabs)/chats/[channelId]",
+                                    pathname:
+                                        "/(client)/(tabs)/chats/[channelId]",
                                     params: {
                                         channelId: String(linkedChannelId),
                                     },
@@ -101,7 +102,8 @@ export default function StaffHome() {
                             Project not linked
                         </Text>
                         <Text className="text-gray-500 font-kumbh mt-1">
-                            Add your project code to access your project chat and resources.
+                            Add your project code to access your project chat
+                            and resources.
                         </Text>
                     </View>
                 )}

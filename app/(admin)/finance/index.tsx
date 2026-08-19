@@ -442,7 +442,10 @@ export default function FinanceIndex() {
             allReceivablesClients,
             selectedReceivableSource,
         );
-        return filtered.reduce((acc: number, c: any) => acc + getTotalPaid(c), 0);
+        return filtered.reduce(
+            (acc: number, c: any) => acc + getTotalPaid(c),
+            0,
+        );
     }, [allReceivablesClients, selectedReceivableSource]);
 
     useEffect(() => {
@@ -920,8 +923,7 @@ export default function FinanceIndex() {
                     <View
                         className="rounded-xl border border-gray-200 px-3"
                         style={{
-                            paddingVertical:
-                                Platform.OS === "android" ? 1 : 12,
+                            paddingVertical: Platform.OS === "android" ? 1 : 12,
                         }}
                     >
                         <TextInput

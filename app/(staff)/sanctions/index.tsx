@@ -170,7 +170,9 @@ export default function SanctionsScreen() {
                                 <Value>{item.date}</Value>
                             </Row>
 
-                            <Row icon={<ShieldAlert size={16} color="#6366F1" />}>
+                            <Row
+                                icon={<ShieldAlert size={16} color="#6366F1" />}
+                            >
                                 <Label>Reason</Label>
                                 <Value>{item.reason}</Value>
                             </Row>
@@ -179,7 +181,9 @@ export default function SanctionsScreen() {
                     ListEmptyComponent={
                         <View className="px-5 py-12">
                             <Text className="text-center text-gray-500 font-kumbh">
-                                {error ? `Error: ${error}` : "No sanctions found."}
+                                {error
+                                    ? `Error: ${error}`
+                                    : "No sanctions found."}
                             </Text>
                         </View>
                     }
@@ -221,7 +225,11 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 
 function Value({ children }: { children: React.ReactNode }) {
-    return <Text className="text-sm text-gray-900 font-kumbh mt-0.5">{children}</Text>;
+    return (
+        <Text className="text-sm text-gray-900 font-kumbh mt-0.5">
+            {children}
+        </Text>
+    );
 }
 
 function ShieldBadge({ status }: { status: RowStatus }) {

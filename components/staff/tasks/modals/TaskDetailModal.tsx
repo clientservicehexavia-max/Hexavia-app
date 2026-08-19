@@ -337,7 +337,9 @@ export default function TaskDetailModal({
 
     const handleDeleteTask = () => {
         if (isPersonal) {
-            showError("Delete from this view is only available for channel tasks.");
+            showError(
+                "Delete from this view is only available for channel tasks.",
+            );
             return;
         }
         if (!resolvedChannelId) {
