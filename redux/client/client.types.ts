@@ -37,6 +37,7 @@ export interface Client {
     weakness?: string;
     threats?: string;
     deliverables?: string;
+    dateOfBirth?: string | null;
     payableAmount?: number;
     isExternal?: boolean;
     document?: string | null;
@@ -96,6 +97,7 @@ export interface ClientCreateInput {
     weakness?: string;
     threats?: string;
     deliverables?: string;
+    dateOfBirth?: string | null;
     payableAmount?: number;
     isExternal?: boolean;
     document?: string | null;

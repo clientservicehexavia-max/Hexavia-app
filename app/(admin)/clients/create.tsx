@@ -2,7 +2,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import clsx from "clsx";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
-import { ChevronDown, Plus } from "lucide-react-native";
+import { CalendarDays, ChevronDown, Plus } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as yup from "yup";
 
 import Field from "@/components/admin/Field";
+import DatePickerModal from "@/components/admin/DatePickerModal";
 import Input from "@/components/admin/Input";
 import OptionSheet from "@/components/common/OptionSheet";
 
@@ -26,6 +27,7 @@ import { selectClientMutationLoading } from "@/redux/client/client.selectors";
 import { createClient } from "@/redux/client/client.thunks";
 import type { ClientCreateInput } from "@/redux/client/client.types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { birthdayInputFromDate, birthdayPickerDate } from "@/utils/birthday";
 
 type FormValues = {
     name?: string;
@@ -52,6 +54,7 @@ type FormValues = {
     threats?: string;
     engagement?: string;
     deliverables?: string;
+    dateOfBirth?: string;
     payableAmount?: string;
     status: "pending" | "active" | "closed";
 };
@@ -102,6 +105,7 @@ const schema: yup.ObjectSchema<FormValues> = yup.object({
     threats: yup.string().trim().optional(),
     engagement: yup.string().trim().optional(),
     deliverables: yup.string().trim().optional(),
+    dateOfBirth: yup.string().trim().optional(),
     payableAmount: yup
         .string()
         .matches(/^\d*$/, "Amount must be a number")
@@ -245,6 +249,7 @@ export default function CreateClient() {
             status: "pending",
         },
     });
+    const [birthdayPickerVisible, setBirthdayPickerVisible] = useState(false);
 
     const onSubmit = async (values: FormValues) => {
         const industryValue = values.industry?.trim();
@@ -272,6 +277,7 @@ export default function CreateClient() {
             opportunities: values.opportunities?.trim() || undefined,
             threats: values.threats?.trim() || undefined,
             deliverables: values.deliverables?.trim() || undefined,
+            dateOfBirth: values.dateOfBirth || undefined,
             documentFile: documentFile ?? undefined,
             payableAmount: values.payableAmount
                 ? Number(values.payableAmount)
@@ -413,6 +419,32 @@ export default function CreateClient() {
                     {errors.phoneNumber?.message ? (
                         <ErrorText msg={errors.phoneNumber.message} />
                     ) : null}
+
+                    <Field label="Date of Birth">
+                        <Controller
+                            control={control}
+                            name="dateOfBirth"
+                            render={({ field: { value, onChange } }) => (
+                                <Pressable
+                                    onPress={() => setBirthdayPickerVisible(true)}
+                                    className="flex-row items-center justify-between rounded-2xl bg-gray-200 px-4 py-4"
+                                >
+                                    <Text className={`font-kumbh ${value ? "text-text" : "text-gray-500"}`}>
+                                        {value || "Select date of birth"}
+                                    </Text>
+                                    <CalendarDays size={18} color="#4C5FAB" />
+                                    <DatePickerModal
+                                        visible={birthdayPickerVisible}
+                                        value={birthdayPickerDate(value)}
+                                        maximumDate={new Date()}
+                                        onCancel={() => setBirthdayPickerVisible(false)}
+                                        onDone={() => setBirthdayPickerVisible(false)}
+                                        onDateChange={(date) => onChange(birthdayInputFromDate(date))}
+                                    />
+                                </Pressable>
+                            )}
+                        />
+                    </Field>
 
                     {/* Source */}
                     <Field label="Source (optional)">

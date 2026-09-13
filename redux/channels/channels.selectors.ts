@@ -177,11 +177,11 @@ export type ChannelTask = {
     channelCode: string;
     channelId?: string;
     createdAt: number;
-    assignees?: Array<{
+    assignee?: {
         id?: string;
         name?: string;
         email?: string;
-    }>;
+    };
 };
 
 // All Channel tasks for a channel (normalized)

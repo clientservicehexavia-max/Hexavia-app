@@ -7,7 +7,7 @@ export function getSocket() {
   return socket;
 }
 
-export function connectSocket() {
+export function connectSocket(token?: string | null) {
   if (socket?.connected) return socket;
 
   if (!WS_URL) {
@@ -15,6 +15,7 @@ export function connectSocket() {
   }
 
   socket = io(WS_URL, {
+    auth: { token: token || undefined },
     transports: ["websocket"],
     autoConnect: true,
     reconnection: true,

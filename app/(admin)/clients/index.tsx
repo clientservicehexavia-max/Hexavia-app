@@ -1,7 +1,9 @@
+import { fetchBirthdaySummary } from "@/api/birthdays";
 import BottomSheetModal from "@/components/ui/BottomSheetModal";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
     Filter as FilterIcon,
+    Gift,
     Mail,
     MessageCircle,
     Phone,
@@ -137,6 +139,7 @@ export default function ClientsIndex() {
     const [refreshing, setRefreshing] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [query, setQuery] = useState("");
+    const [birthdayCount, setBirthdayCount] = useState(0);
     const debouncedQuery = useDebounced(query, 300);
     const didBootstrapRef = useRef(false);
 
@@ -189,6 +192,14 @@ export default function ClientsIndex() {
         didBootstrapRef.current = true;
         dispatch(fetchAllClients());
     }, [dispatch]);
+
+    useFocusEffect(
+        useCallback(() => {
+            void fetchBirthdaySummary("clients")
+                .then((summary) => setBirthdayCount(summary.counts.month))
+                .catch(() => setBirthdayCount(0));
+        }, []),
+    );
 
     const switchTab = useCallback(
         (next: TabKey) => {
@@ -446,29 +457,53 @@ export default function ClientsIndex() {
                 <PlatformAdaptiveHeader
                     title="Clients"
                     headerRight={({ tintColor }) => (
-                        <Pressable
-                            onPress={() => setShowFilters(true)}
-                            className={clsx(
-                                "w-10 h-10 rounded-full items-center justify-center ios:mr-3",
-                                hasAppliedFilters
-                                    ? "bg-blue-50"
-                                    : "bg-transparent",
-                            )}
-                        >
-                            <FilterIcon
-                                size={22}
-                                color={
-                                    hasAppliedFilters ? "#2563EB" : tintColor
+                        <View className="flex-row items-center gap-1 ios:mr-3">
+                            <Pressable
+                                onPress={() =>
+                                    router.push({
+                                        pathname: "/(admin)/birthdays",
+                                        params: { filter: "clients" },
+                                    })
                                 }
-                            />
-                            {hasAppliedFilters ? (
-                                <View className="absolute right-1.5 top-1.5 min-w-4 h-4 rounded-full bg-blue-600 px-1 items-center justify-center">
-                                    <Text className="text-[9px] leading-3 font-kumbhBold text-white">
-                                        {appliedFilterCount}
-                                    </Text>
-                                </View>
-                            ) : null}
-                        </Pressable>
+                                className="h-10 w-10 items-center justify-center rounded-full"
+                            >
+                                <Gift size={24} color={tintColor} />
+                                {birthdayCount > 0 ? (
+                                    <View className="absolute right-0.5 top-0.5 min-w-4 h-4 rounded-full bg-amber-500 px-1 items-center justify-center">
+                                        <Text className="text-[9px] leading-3 font-kumbhBold text-white">
+                                            {birthdayCount > 99
+                                                ? "99+"
+                                                : birthdayCount}
+                                        </Text>
+                                    </View>
+                                ) : null}
+                            </Pressable>
+                            <Pressable
+                                onPress={() => setShowFilters(true)}
+                                className={clsx(
+                                    "w-10 h-10 rounded-full items-center justify-center",
+                                    hasAppliedFilters
+                                        ? "bg-blue-50"
+                                        : "bg-transparent",
+                                )}
+                            >
+                                <FilterIcon
+                                    size={22}
+                                    color={
+                                        hasAppliedFilters
+                                            ? "#2563EB"
+                                            : tintColor
+                                    }
+                                />
+                                {hasAppliedFilters ? (
+                                    <View className="absolute right-1.5 top-1.5 min-w-4 h-4 rounded-full bg-blue-600 px-1 items-center justify-center">
+                                        <Text className="text-[9px] leading-3 font-kumbhBold text-white">
+                                            {appliedFilterCount}
+                                        </Text>
+                                    </View>
+                                ) : null}
+                            </Pressable>
+                        </View>
                     )}
                     headerLeft={() => null}
                 />

@@ -3,7 +3,9 @@ import { RootState } from "@/store";
 import { useAppSelector } from "@/store/hooks";
 import {
     canAccessFinanceManagement,
+    canAccessHbcMembers,
     canAccessTeamManagement,
+    isAdminLikeRole,
 } from "@/utils/roles";
 import { Stack, router, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -21,6 +23,13 @@ export default function AdminLayout() {
 
         const isTeamRoute = currentPath.includes("/team");
         const isFinanceRoute = currentPath.includes("/finance");
+        const isHbcRoute = currentPath.includes("/hbc");
+        const isBirthdayRoute = currentPath.includes("/birthdays");
+
+        if (isBirthdayRoute && !isAdminLikeRole(role)) {
+            router.replace("/(admin)/(tabs)");
+            return;
+        }
 
         if (isTeamRoute && !canAccessTeamManagement(role)) {
             router.replace("/(admin)/(tabs)");
@@ -28,6 +37,11 @@ export default function AdminLayout() {
         }
 
         if (isFinanceRoute && !canAccessFinanceManagement(role)) {
+            router.replace("/(admin)/(tabs)");
+            return;
+        }
+
+        if (isHbcRoute && !canAccessHbcMembers(role)) {
             router.replace("/(admin)/(tabs)");
         }
     }, [pathname, role]);

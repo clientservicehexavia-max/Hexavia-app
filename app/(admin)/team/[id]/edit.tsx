@@ -4,11 +4,14 @@ import React, { useEffect, useState } from "react";
 import {
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     ScrollView,
+    Text,
     TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import DatePickerModal from "@/components/admin/DatePickerModal";
 import Field from "@/components/admin/Field";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import HexButton from "@/components/ui/HexButton";
@@ -16,6 +19,8 @@ import { showError } from "@/components/ui/toast";
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
 import { updateAdminUser } from "@/redux/admin/admin.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { birthdayInputFromDate, birthdayPickerDate } from "@/utils/birthday";
+import { CalendarDays } from "lucide-react-native";
 
 export default function EditStaff() {
     const router = useRouter();
@@ -30,12 +35,19 @@ export default function EditStaff() {
     const [fullname, setFullname] = useState(existing?.fullname ?? "");
     const [username, setUsername] = useState(existing?.username ?? "");
     const [email, setEmail] = useState(existing?.email ?? "");
+    const [dateOfBirth, setDateOfBirth] = useState(
+        existing?.dateOfBirth ? String(existing.dateOfBirth) : "",
+    );
+    const [birthdayPickerVisible, setBirthdayPickerVisible] = useState(false);
 
     useEffect(() => {
         if (existing) {
             setFullname(existing.fullname ?? "");
             setUsername(existing.username ?? "");
             setEmail(existing.email ?? "");
+            setDateOfBirth(
+                existing.dateOfBirth ? String(existing.dateOfBirth) : "",
+            );
         }
     }, [existing]);
 
@@ -51,6 +63,7 @@ export default function EditStaff() {
                     fullname: fullname.trim(),
                     username: username.trim(),
                     email: email.trim().toLowerCase(),
+                    dateOfBirth: dateOfBirth || null,
                 }),
             ).unwrap();
 
@@ -67,7 +80,7 @@ export default function EditStaff() {
             }
             className="flex-1 bg-white px-4"
         >
-            <PlatformAdaptiveHeader title="Edit Staff" />
+            <PlatformAdaptiveHeader title="Edit Team Member" />
 
             <KeyboardAvoidingView
                 className="flex-1"
@@ -115,7 +128,34 @@ export default function EditStaff() {
                         />
                     </Field>
 
+                    <Field label="Date of birth">
+                        <Pressable
+                            onPress={() => setBirthdayPickerVisible(true)}
+                            className="flex-row items-center justify-between rounded-2xl bg-gray-200 px-4 py-4"
+                        >
+                            <Text className="font-kumbh text-text">
+                                {dateOfBirth.length === 0
+                                    ? "Select date of birth"
+                                    : new Date(
+                                          dateOfBirth,
+                                      ).toLocaleDateString()}
+                            </Text>
+                            <CalendarDays size={18} color="#6B7280" />
+                        </Pressable>
+                    </Field>
+
                     <HexButton title="Save" onPress={onSave} />
+                    <DatePickerModal
+                        visible={birthdayPickerVisible}
+                        value={birthdayPickerDate(dateOfBirth || undefined)}
+                        maximumDate={new Date()}
+                        onCancel={() => setBirthdayPickerVisible(false)}
+                        onDone={() => setBirthdayPickerVisible(false)}
+                        onDateChange={(date) => {
+                            setDateOfBirth(birthdayInputFromDate(date));
+                            setBirthdayPickerVisible(false);
+                        }}
+                    />
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>

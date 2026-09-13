@@ -1,4 +1,11 @@
-export type NotificationKind = "project" | "finance" | "mention" | "task" | "channel" | "mass";
+export type NotificationKind =
+  | "project"
+  | "finance"
+  | "mention"
+  | "task"
+  | "channel"
+  | "mass"
+  | "birthday";
 
 export type AppNotification = {
   id: string;

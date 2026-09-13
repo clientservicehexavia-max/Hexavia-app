@@ -8,9 +8,13 @@ export interface Channel {
     isActive?: boolean;
     createdAt?: string;
     createdBy?: string;
+    clientRole?: "project_owner" | "project_member";
     members: Array<{
-        userId: string;
-        type: "pm" | "staff" | "client";
+        userId?: string;
+        _id?: string | { _id?: string; fullname?: string; username?: string; profilePicture?: string | null };
+        fullname?: string;
+        profilePicture?: string | null;
+        type: "pm" | "staff" | "client" | "normal" | "project_owner" | "project_member";
     }>;
     tasks: Array<{
         _id: string;
@@ -20,6 +24,7 @@ export interface Channel {
         createdAt: string;
         updatedAt?: string;
         status: "not-started" | "in-progress" | "completed" | "canceled";
+        visibility?: "internal" | "client";
         members?: Array<
             | string
             | {
@@ -36,6 +41,7 @@ export interface Channel {
         description?: string | null;
         resourceUpload: string;
         uploadedAt: string;
+        visibility?: "internal" | "client";
     }>;
     updatedAt?: string;
 }
@@ -155,6 +161,8 @@ export interface CreateTaskBody {
     name: string;
     description?: string | null;
     status?: string;
+    visibility?: "internal" | "client";
+    members?: string[];
 }
 export interface CreateTaskResponse {
     message: string;
@@ -176,6 +184,7 @@ export interface UpdateTaskBody {
     name?: string;
     status?: string;
     description?: string | null;
+    visibility?: "internal" | "client";
 }
 export interface UpdateTaskResponse {
     message: string;
@@ -240,4 +249,9 @@ export interface JoinChannelResponse {
     success: boolean;
     message: string;
     channel?: Channel;
+}
+
+export interface InviteClientProjectMemberBody {
+    channelId: string;
+    email: string;
 }

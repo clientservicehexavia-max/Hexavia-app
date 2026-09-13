@@ -6,20 +6,11 @@ import { useDispatch, useSelector } from "react-redux";
 import FilterModal, { Filters } from "@/components/FIlterModal";
 import SearchBar from "@/components/SearchBar";
 import ChannelCard from "@/components/staff/channels/ChannelCard";
-import JoinableChannelCard from "@/components/staff/channels/JoinableChannelCard"; // NEW
 import useDebounced from "@/hooks/useDebounced";
 import { StatusBar } from "expo-status-bar";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
-import {
-    selectAllChannels,
-    selectMyChannelsByUserId,
-} from "@/redux/channels/channels.selectors"; // NOTE: bring selectAllChannels
-import {
-    fetchChannelByCode,
-    fetchChannels,
-    joinChannel,
-} from "@/redux/channels/channels.thunks";
+import { selectMyChannelsByUserId } from "@/redux/channels/channels.selectors";
 import { selectUser } from "@/redux/user/user.slice";
 import { fetchProfile } from "@/redux/user/user.thunks";
 import type { AppDispatch, RootState } from "@/store";
@@ -62,11 +53,6 @@ export default function AllChannelsScreen() {
     const [query, setQuery] = useState("");
     const debouncedQuery = useDebounced(query, 250);
 
-    const [codeSearchResult, setCodeSearchResult] = useState<any>(null);
-    const [codeSearchStatus, setCodeSearchStatus] = useState<
-        "idle" | "loading" | "succeeded" | "failed"
-    >("idle");
-
     useEffect(() => {
         dispatch(fetchProfile());
     }, [dispatch]);
@@ -81,38 +67,9 @@ export default function AllChannelsScreen() {
         myChannels.map((c: any) => String(c?._id ?? c?.id)),
     );
 
-    // All channels (for the code-based search)
-    const allChannels = useAppSelector(selectAllChannels);
-    // console.log(allChannels)
-
-    useEffect(() => {
-        if (status === "idle") dispatch(fetchChannels());
-    }, [status, dispatch]);
-
-    // Effect for code search
-    useEffect(() => {
-        const normalized = normalizeCodeLoose(debouncedQuery);
-        if (normalized.length === 4) {
-            setCodeSearchStatus("loading");
-            dispatch(fetchChannelByCode(normalized))
-                .unwrap()
-                .then((channel) => {
-                    setCodeSearchResult(channel);
-                    setCodeSearchStatus("succeeded");
-                })
-                .catch(() => {
-                    setCodeSearchResult(null);
-                    setCodeSearchStatus("failed");
-                });
-        } else {
-            setCodeSearchResult(null);
-            setCodeSearchStatus("idle");
-        }
-    }, [debouncedQuery, dispatch]);
-
     const onRefresh = useCallback(() => {
-        dispatch(fetchChannels());
-    }, [dispatch]);
+        // refresh is handled by the channel slice fetch for the current user only
+    }, []);
 
     const [filters, setFilters] = useState<Filters>({
         department: "All",
@@ -121,29 +78,8 @@ export default function AllChannelsScreen() {
     });
     const [filterOpen, setFilterOpen] = useState(false);
 
-    // ----- code lookup via API (when exactly 4 chars normalized)
-    const codeMatch = useMemo(() => {
-        const normalized = normalizeCodeLoose(debouncedQuery);
-        if (normalized.length === 4 && codeSearchStatus === "succeeded") {
-            return codeSearchResult;
-        }
-        return null;
-    }, [debouncedQuery, codeSearchResult, codeSearchStatus]);
-
-    const alreadyMember = useMemo(() => {
-        if (!codeMatch || !userId) return false;
-        const myIds = new Set(
-            myChannels.map((c: any) => String(c?._id ?? c?.id)),
-        );
-        const targetId = String(
-            (codeMatch as any)?._id ?? (codeMatch as any)?.id,
-        );
-        return myIds.has(targetId);
-    }, [codeMatch, myChannels, userId]);
-
-    // ------- existing data list (for MY channels), still searchable by name
     const data = useMemo(() => {
-        const keyed = allChannels
+        const keyed = myChannels
             .filter(Boolean)
             .map((c: any) => ({ ...c, __key: makeKey(c) }))
             .filter((c: any) => c.__key.length > 0);
@@ -157,25 +93,12 @@ export default function AllChannelsScreen() {
             }
         }
 
-        let list = deduped
-            .filter((c) => {
-                if (codeMatch && !alreadyMember) {
-                    const targetId = String(
-                        (codeMatch as any)?._id ?? (codeMatch as any)?.id,
-                    );
-                    const cId = String(c?._id ?? c?.id);
-                    return cId !== targetId;
-                }
-                return true;
-            })
-            .map((c) => ({
-                ...c,
-                isMember: myChannelIds.has(String(c._id ?? c.id)),
-            }));
+        let list = deduped.map((c) => ({
+            ...c,
+            isMember: myChannelIds.has(String(c._id ?? c.id)),
+        }));
 
         const q = debouncedQuery.trim().toLowerCase();
-
-        // keep existing behavior: name/desc/department search for MY list
         if (q) {
             list = list.filter((c) =>
                 [
@@ -205,29 +128,11 @@ export default function AllChannelsScreen() {
             );
         }
         return list;
-    }, [
-        debouncedQuery,
-        filters,
-        allChannels,
-        codeMatch,
-        alreadyMember,
-        myChannelIds,
-    ]);
+    }, [debouncedQuery, filters, myChannels, myChannelIds]);
 
     const viewStyle = {
         flex: 1,
     };
-
-    // click handler for the join button
-    const handleJoin = useCallback(
-        (channel: any) => {
-            const code = normalizeCodeLoose(channel?.code || "");
-            if (code) {
-                dispatch(joinChannel(code));
-            }
-        },
-        [dispatch],
-    );
 
     return (
         <SafeAreaView
@@ -243,46 +148,6 @@ export default function AllChannelsScreen() {
                     onOpenFilter={() => setFilterOpen(true)}
                 />
 
-                {/* --- CODE MATCH AREA: shows when user typed a code that matches any channel --- */}
-                {!!debouncedQuery &&
-                    normalizeCodeLoose(debouncedQuery).length === 4 && (
-                        <View>
-                            {codeSearchStatus === "loading" ? (
-                                <View className="mx-4 mt-4 px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200">
-                                    <Text className="text-gray-700 font-kumbh">
-                                        Searching for project...
-                                    </Text>
-                                </View>
-                            ) : codeMatch ? (
-                                <JoinableChannelCard
-                                    item={{
-                                        id: String(
-                                            (codeMatch as any)?._id ??
-                                                (codeMatch as any)?.id,
-                                        ),
-                                        name: (codeMatch as any)?.name,
-                                        description: (codeMatch as any)
-                                            ?.description,
-                                        code: (codeMatch as any)?.code,
-                                    }}
-                                    onJoin={handleJoin}
-                                    disabled={alreadyMember}
-                                />
-                            ) : codeSearchStatus === "failed" ? (
-                                <View className="mx-4 mt-4 px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200">
-                                    <Text className="text-gray-700 font-kumbh">
-                                        No Project found with that code.
-                                    </Text>
-                                    <Text className="text-gray-500 mt-1 text-[12px] font-kumbh">
-                                        Tip: Try pasting the exact code (with or
-                                        without #, any case).
-                                    </Text>
-                                </View>
-                            ) : null}
-                        </View>
-                    )}
-
-                {/* --- EXISTING LIST: my channels --- */}
                 <FlatList
                     data={data}
                     keyExtractor={(item: any) => item.__key}
@@ -293,7 +158,6 @@ export default function AllChannelsScreen() {
                                 (item as any)?.color || colorFor(item.__key)
                             }
                             isMember={item.isMember}
-                            onJoin={handleJoin}
                         />
                     )}
                     contentContainerStyle={{ paddingBottom: 24, paddingTop: 0 }}

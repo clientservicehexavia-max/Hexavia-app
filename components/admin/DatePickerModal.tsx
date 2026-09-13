@@ -9,17 +9,19 @@ type IOSDatePickerModalProps = {
     onCancel: () => void;
     onDone: () => void;
     onDateChange: (date: Date) => void;
+    minimumDate?: Date;
+    maximumDate?: Date;
 };
 
-const MIN_DATE = new Date(2000, 0, 1);
+const MIN_DATE = new Date(1900, 0, 1);
 const MAX_DATE = new Date(2100, 11, 31);
 
-function isUsableDate(value?: Date) {
+function isUsableDate(value?: Date, minDate = MIN_DATE, maxDate = MAX_DATE) {
     return (
         value instanceof Date &&
         !Number.isNaN(value.getTime()) &&
-        value >= MIN_DATE &&
-        value <= MAX_DATE
+        value >= minDate &&
+        value <= maxDate
     );
 }
 
@@ -29,10 +31,12 @@ export default function DatePickerModal({
     onCancel,
     onDone,
     onDateChange,
+    minimumDate = MIN_DATE,
+    maximumDate = MAX_DATE,
 }: IOSDatePickerModalProps) {
     const safeValue = useMemo(
-        () => (isUsableDate(value) ? value : new Date()),
-        [value],
+        () => (isUsableDate(value, minimumDate, maximumDate) ? value : new Date()),
+        [value, minimumDate, maximumDate],
     );
     const [draftDate, setDraftDate] = useState(safeValue);
 
@@ -50,14 +54,14 @@ export default function DatePickerModal({
                 value={draftDate}
                 mode="date"
                 display="default"
-                minimumDate={MIN_DATE}
-                maximumDate={MAX_DATE}
+                minimumDate={minimumDate}
+                maximumDate={maximumDate}
                 onChange={(e, d) => {
                     if (!d || e?.type === "dismissed") {
                         onCancel();
                         return;
                     }
-                    if (!isUsableDate(d)) return;
+                    if (!isUsableDate(d, minimumDate, maximumDate)) return;
                     setDraftDate(d);
                     onDateChange(d);
                     onDone();
@@ -77,8 +81,8 @@ export default function DatePickerModal({
                     value={draftDate}
                     mode="date"
                     display="spinner"
-                    minimumDate={MIN_DATE}
-                    maximumDate={MAX_DATE}
+                    minimumDate={minimumDate}
+                    maximumDate={maximumDate}
                     themeVariant="light"
                     style={{ backgroundColor: "transparent" }}
                     onChange={(e, d) => {
@@ -86,7 +90,7 @@ export default function DatePickerModal({
                             onCancel();
                             return;
                         }
-                        if (!isUsableDate(d)) return;
+                        if (!isUsableDate(d, minimumDate, maximumDate)) return;
                         setDraftDate(d);
                         onDateChange(d);
                     }}

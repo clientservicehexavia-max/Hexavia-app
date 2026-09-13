@@ -1,12 +1,13 @@
 import { api } from "@/api/axios";
 import OptionSheet from "@/components/common/OptionSheet";
 import { showError } from "@/components/ui/toast";
-import { toApiStatus } from "@/features/client/statusMap";
+import { fromApiStatus, toApiStatus } from "@/features/client/statusMap";
 import { StatusKey, TAB_ORDER, Task } from "@/features/staff/types";
 import {
     normalizeCode,
     selectCodeIndex,
 } from "@/redux/channels/channels.selectors";
+import { selectChannelById } from "@/redux/channels/channels.slice";
 import {
     assignChannelTaskMembers,
     deleteChannelTask,
@@ -63,13 +64,46 @@ export default function TaskDetailModal({
         return viaIndex ? String(viaIndex) : undefined;
     }, [isPersonal, task, codeIndex]);
 
-    const [name, setName] = useState<string>(task.title);
-    const [desc, setDesc] = useState<string>(task.description ?? "");
-    const [pending, setPending] = useState<StatusKey>(task.status);
+    const freshChannel = useAppSelector((s) =>
+        resolvedChannelId ? selectChannelById(resolvedChannelId)(s) : null,
+    ) as any;
+
+    const liveTask: any = useMemo(() => {
+        if (!resolvedChannelId || !freshChannel?.tasks?.length) return task;
+
+        const freshTask = (freshChannel.tasks as any[]).find(
+            (entry: any) => String(entry?._id ?? entry?.id) === String(task.id),
+        );
+
+        if (!freshTask) return task;
+
+        const freshTaskAny = freshTask as any;
+        const rawAssignee = Array.isArray(freshTaskAny?.members)
+            ? freshTaskAny.members[0]
+            : Array.isArray((task as any)?.assignees)
+              ? (task as any).assignees[0]
+              : (task as any)?.assignee ?? null;
+
+        const hydratedTask: any = {
+            ...task,
+            title: freshTaskAny?.name ?? task.title,
+            description:
+                freshTaskAny?.description ?? task.description ?? null,
+            status: fromApiStatus(freshTaskAny?.status) as StatusKey,
+        };
+        hydratedTask.assignee = rawAssignee ?? null;
+        return hydratedTask;
+    }, [freshChannel, resolvedChannelId, task]);
+
+    const [name, setName] = useState<string>(liveTask.title);
+    const [desc, setDesc] = useState<string>(liveTask.description ?? "");
+    const [pending, setPending] = useState<StatusKey>(liveTask.status);
     const [saving, setSaving] = useState(false);
-    const [assignedMembers, setAssignedMembers] = useState<
-        Array<{ id: string; name?: string | null; email?: string | null }>
-    >([]);
+    const [assignedMember, setAssignedMember] = useState<{
+        id: string;
+        name?: string | null;
+        email?: string | null;
+    } | null>(null);
     const [channelMembers, setChannelMembers] = useState<
         Array<{
             id: string;
@@ -87,69 +121,75 @@ export default function TaskDetailModal({
 
     useEffect(() => {
         if (visible) {
-            setName(task.title);
-            setDesc(task.description ?? "");
-            setPending(task.status);
+            setName(liveTask.title);
+            setDesc(liveTask.description ?? "");
+            setPending(liveTask.status);
         }
-    }, [visible, task]);
+    }, [visible, liveTask]);
+
+    useEffect(() => {
+        if (!visible || isPersonal || !resolvedChannelId) return;
+        dispatch(fetchChannelById(resolvedChannelId));
+    }, [visible, isPersonal, resolvedChannelId, dispatch]);
 
     const deriveAssigned = useMemo(() => {
         const raw =
-            (task as any)?.assignees ??
-            (task as any)?.assignedTo ??
-            (task as any)?.assignee ??
-            (task as any)?.members ??
+            (liveTask as any)?.assignee ??
+            (liveTask as any)?.assignees ??
+            (liveTask as any)?.assignedTo ??
+            (liveTask as any)?.members ??
             [];
         const arr = Array.isArray(raw) ? raw : raw ? [raw] : [];
-        return arr
-            .map((a: any, idx: number) => {
-                const base = typeof a === "string" ? { _id: a } : (a ?? {});
-                const entry =
-                    base?.user ?? base?.member ?? base?.assignee ?? base ?? {};
-                const id =
-                    entry?._id ??
-                    entry?.id ??
-                    base?._id ??
-                    base?.id ??
-                    base?.userId ??
-                    base?.memberId ??
-                    (typeof a === "string" ? a : null) ??
-                    `assignee-${idx}`;
-                const name =
-                    entry?.name ??
-                    entry?.fullname ??
-                    entry?.username ??
-                    entry?.email ??
-                    base?.name ??
-                    base?.email ??
-                    null;
-                const email = entry?.email ?? base?.email ?? null;
-                return {
-                    id: id ? String(id) : "",
-                    name: name ? String(name) : null,
-                    email: email ? String(email) : null,
-                };
-            })
-            .filter((a: any) => a.id);
-    }, [task]);
+        const candidate = arr[0];
+        if (!candidate) return null;
+
+        const base =
+            typeof candidate === "string" ? { _id: candidate } : (candidate ?? {});
+        const entry =
+            base?.user ?? base?.member ?? base?.assignee ?? base ?? {};
+        const id =
+            entry?._id ??
+            entry?.id ??
+            base?._id ??
+            base?.id ??
+            base?.userId ??
+            base?.memberId ??
+            (typeof candidate === "string" ? candidate : null);
+        const name =
+            entry?.name ??
+            entry?.fullname ??
+            entry?.username ??
+            entry?.email ??
+            base?.name ??
+            base?.email ??
+            null;
+        const email = entry?.email ?? base?.email ?? null;
+        return {
+            id: id ? String(id) : "",
+            name: name ? String(name) : null,
+            email: email ? String(email) : null,
+        };
+    }, [liveTask]);
 
     const resolvedAssigned = useMemo(() => {
+        if (!deriveAssigned) return null;
         if (!channelMembers.length) return deriveAssigned;
-        const byId = new Map(channelMembers.map((m) => [m.id, m]));
-        return deriveAssigned.map((a) => {
-            if (a.name || a.email) return a;
-            const member = byId.get(a.id);
-            if (!member) return a;
-            return {
-                ...a,
-                name: member.name ?? a.name ?? null,
-                email: member.email ?? a.email ?? null,
-            };
-        });
+        const member = channelMembers.find((m) => m.id === deriveAssigned.id);
+        if (!member) return deriveAssigned;
+        return {
+            ...deriveAssigned,
+            name: deriveAssigned.name ?? member.name ?? null,
+            email: deriveAssigned.email ?? member.email ?? null,
+        };
     }, [deriveAssigned, channelMembers]);
 
     useEffect(() => {
-        setAssignedMembers(resolvedAssigned);
+        if (!visible) return;
+        setAssignedMember((prev) => {
+            if (resolvedAssigned) return resolvedAssigned;
+            if (prev) return prev;
+            return null;
+        });
     }, [resolvedAssigned, visible]);
 
     const loadMembers = React.useCallback(async () => {
@@ -212,6 +252,22 @@ export default function TaskDetailModal({
             return;
         }
         if (assigning) return;
+
+        const currentAssignedId = assignedMember?.id;
+        if (currentAssignedId && currentAssignedId !== memberId) {
+            try {
+                await dispatch(
+                    unassignChannelTaskMember({
+                        channelId: resolvedChannelId,
+                        taskId: task.id,
+                        userId: currentAssignedId,
+                    }),
+                ).unwrap();
+            } catch {
+                // keep going so the new assignment can still retry
+            }
+        }
+
         setAssigning(true);
         try {
             await dispatch(
@@ -222,18 +278,15 @@ export default function TaskDetailModal({
                 }),
             ).unwrap();
             const member = channelMembers.find((m) => m.id === memberId);
-            setAssignedMembers((prev) => {
-                if (prev.some((p) => p.id === memberId)) return prev;
-                return [
-                    ...prev,
-                    {
-                        id: memberId,
-                        name: member?.name ?? null,
-                        email: member?.email ?? null,
-                    },
-                ];
+            setAssignedMember({
+                id: memberId,
+                name: member?.name ?? null,
+                email: member?.email ?? null,
             });
-            await dispatch(fetchChannelTasks(resolvedChannelId));
+            await Promise.all([
+                dispatch(fetchChannelById(resolvedChannelId)),
+                dispatch(fetchChannelTasks(resolvedChannelId)),
+            ]);
         } catch {
             // error already surfaced
         } finally {
@@ -256,8 +309,11 @@ export default function TaskDetailModal({
                     userId: memberId,
                 }),
             ).unwrap();
-            setAssignedMembers((prev) => prev.filter((m) => m.id !== memberId));
-            await dispatch(fetchChannelTasks(resolvedChannelId));
+            setAssignedMember(null);
+            await Promise.all([
+                dispatch(fetchChannelById(resolvedChannelId)),
+                dispatch(fetchChannelTasks(resolvedChannelId)),
+            ]);
         } catch {
             // error already surfaced
         } finally {
@@ -469,83 +525,79 @@ export default function TaskDetailModal({
                         {canManageAssignments ? (
                             <View className="mt-4">
                                 <Text className="font-kumbh text-[#6B7280] mb-2">
-                                    Assigned members
+                                    Assigned member
                                 </Text>
-                                {assignedMembers.length ? (
-                                    <View style={{ gap: 8 }}>
-                                        {assignedMembers.map((m) => (
-                                            <View
-                                                key={m.id}
-                                                className="flex-row items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2"
-                                            >
-                                                <View className="flex-1 mr-2">
-                                                    <Text className="font-kumbh text-[#111827]">
-                                                        {m.name ||
-                                                            m.email ||
-                                                            m.id}
-                                                    </Text>
-                                                    {!!m.email && (
-                                                        <Text className="font-kumbh text-[12px] text-[#6B7280]">
-                                                            {m.email}
-                                                        </Text>
-                                                    )}
-                                                </View>
-                                                <Pressable
-                                                    onPress={() =>
-                                                        handleUnassignMember(
-                                                            m.id,
-                                                        )
-                                                    }
-                                                    disabled={!!unassigningId}
-                                                    className="rounded-lg px-3 py-1"
-                                                    style={{
-                                                        backgroundColor:
-                                                            "#FEE2E2",
-                                                        opacity:
-                                                            unassigningId ===
-                                                            m.id
-                                                                ? 0.6
-                                                                : 1,
-                                                    }}
-                                                >
-                                                    <Text className="font-kumbh text-[12px] text-[#B91C1C]">
-                                                        {unassigningId === m.id
-                                                            ? "Removing…"
-                                                            : "Remove"}
-                                                    </Text>
-                                                </Pressable>
-                                            </View>
-                                        ))}
+                                {assignedMember ? (
+                                    <View className="flex-row items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2">
+                                        <View className="flex-1 mr-2">
+                                            <Text className="font-kumbh text-[#111827]">
+                                                {assignedMember.name ||
+                                                    assignedMember.email ||
+                                                    assignedMember.id}
+                                            </Text>
+                                            {!!assignedMember.email && (
+                                                <Text className="font-kumbh text-[12px] text-[#6B7280]">
+                                                    {assignedMember.email}
+                                                </Text>
+                                            )}
+                                        </View>
+                                        <Pressable
+                                            onPress={() =>
+                                                handleUnassignMember(
+                                                    assignedMember.id,
+                                                )
+                                            }
+                                            disabled={!!unassigningId}
+                                            className="rounded-lg px-3 py-1"
+                                            style={{
+                                                backgroundColor: "#FEE2E2",
+                                                opacity:
+                                                    unassigningId ===
+                                                    assignedMember.id
+                                                        ? 0.6
+                                                        : 1,
+                                            }}
+                                        >
+                                            <Text className="font-kumbh text-[12px] text-[#B91C1C]">
+                                                {unassigningId ===
+                                                assignedMember.id
+                                                    ? "Removing…"
+                                                    : "Remove"}
+                                            </Text>
+                                        </Pressable>
                                     </View>
                                 ) : (
                                     <Text className="font-kumbh text-[12px] text-[#9CA3AF]">
-                                        No members assigned yet.
+                                        No member assigned yet.
                                     </Text>
                                 )}
 
-                                <Pressable
-                                    onPress={async () => {
-                                        if (membersLoading) return;
-                                        if (!memberOptions.length) {
-                                            const fetched = await loadMembers();
-                                            if (!fetched.length) return;
-                                        }
-                                        setShowMemberPicker(true);
-                                    }}
-                                    className="mt-3 rounded-xl border border-[#E5E7EB] px-4 py-3"
-                                >
-                                    <View className="flex-row items-center justify-between">
-                                        <Text className="font-kumbh text-[#111827]">
-                                            Assign member
-                                        </Text>
-                                        {membersLoading ? (
-                                            <ActivityIndicator
-                                                size="small"
-                                                color="#4C5FAB"
-                                            />
-                                        ) : null}
-                                    </View>
-                                </Pressable>
+                                {!assignedMember ? (
+                                    <Pressable
+                                        onPress={async () => {
+                                            if (membersLoading) return;
+                                            if (!memberOptions.length) {
+                                                const fetched =
+                                                    await loadMembers();
+                                                if (!fetched.length) return;
+                                            }
+                                            setShowMemberPicker(true);
+                                        }}
+                                        className="mt-3 rounded-xl border border-[#E5E7EB] px-4 py-3"
+                                    >
+                                        <View className="flex-row items-center justify-between">
+                                            <Text className="font-kumbh text-[#111827]">
+                                                Assign member
+                                            </Text>
+                                            {membersLoading ? (
+                                                <ActivityIndicator
+                                                    size="small"
+                                                    color="#4C5FAB"
+                                                />
+                                            ) : null}
+                                        </View>
+                                    </Pressable>
+                                ) : null}
                                 {noMembers && !membersLoading ? (
                                     <Text className="mt-2 font-kumbh text-[12px] text-[#9CA3AF]">
                                         No members found for this channel.

@@ -1,3 +1,4 @@
+import { api } from "@/api/axios";
 import OptionSheet from "@/components/common/OptionSheet";
 import { showError, showSuccess } from "@/components/ui/toast";
 import { toApiStatus } from "@/features/client/statusMap";
@@ -9,6 +10,7 @@ import {
     selectMyChannelsByUserId,
 } from "@/redux/channels/channels.selectors";
 import {
+    assignChannelTaskMembers,
     createChannelTask,
     fetchChannelById,
     fetchChannels,
@@ -35,8 +37,6 @@ import {
     View,
 } from "react-native";
 
-type Mode = "channel" | "personal";
-
 export default function CreateTaskModal({
     visible,
     onClose,
@@ -55,6 +55,7 @@ export default function CreateTaskModal({
     const loggedInUserId = user?._id ?? null;
 
     const role = (user?.role || "").toLowerCase();
+    const isClientRole = role === "client";
     const allowPersonalByRole = [
         "staff",
         "supervisor",
@@ -72,7 +73,7 @@ export default function CreateTaskModal({
     const codeIndex = useAppSelector(selectCodeIndex);
     const allChannels = useAppSelector(selectAllChannels);
 
-    const [mode, setMode] = useState<Mode>("channel");
+    const [mode, setMode] = useState<"channel" | "personal">("channel");
     const isAdminish = isAdminLikeRole(user?.role);
 
     useEffect(() => {
@@ -99,9 +100,21 @@ export default function CreateTaskModal({
     const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
         null,
     );
+    const [selectedMemberId, setSelectedMemberId] = useState<string | null>(
+        null,
+    );
+    const [projectMembers, setProjectMembers] = useState<
+        Array<{ id: string; name?: string | null; email?: string | null }>
+    >([]);
+    const [showMemberPicker, setShowMemberPicker] = useState(false);
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
     const creatingLockRef = useRef(false);
     const [creatingTask, setCreatingTask] = useState(false);
+    const hideProjectSelector =
+        mode === "channel" &&
+        !forcePersonalForUserId &&
+        isClientRole &&
+        channels.length <= 1;
 
     // if user isn't allowed personal, force channel mode on open/role change
     useEffect(() => {
@@ -117,6 +130,8 @@ export default function CreateTaskModal({
         setStatus("in-progress");
         setShowChannelPicker(false);
         setSelectedChannelId(null);
+        setSelectedMemberId(null);
+        setProjectMembers([]);
         setMode("channel");
     };
 
@@ -152,6 +167,25 @@ export default function CreateTaskModal({
 
     useEffect(() => {
         if (!visible) return;
+
+        const onlyClientChannel =
+            isClientRole &&
+            !forcePersonalForUserId &&
+            mode === "channel" &&
+            channels.length === 1
+                ? channels[0]
+                : null;
+
+        if (onlyClientChannel) {
+            const onlyId = String(
+                (onlyClientChannel as any)._id ?? (onlyClientChannel as any).id ?? "",
+            );
+            const onlyCode = String((onlyClientChannel as any).code ?? "");
+            setSelectedChannelId(onlyId || null);
+            setChannelCode(onlyCode);
+            return;
+        }
+
         if (!defaultChannelId) return;
         if (selectedChannelId && selectedChannelId !== defaultChannelId) return;
         if (channelCode) return;
@@ -164,12 +198,76 @@ export default function CreateTaskModal({
         defaultChannel?.code,
         selectedChannelId,
         channelCode,
+        isClientRole,
+        forcePersonalForUserId,
+        mode,
+        channels,
     ]);
 
     const selectedChannel = useMemo(
         () => allChannels.find((c) => c._id === selectedChannelId),
         [allChannels, selectedChannelId],
     );
+
+    const selectedMember = useMemo(
+        () => projectMembers.find((member) => member.id === selectedMemberId),
+        [projectMembers, selectedMemberId],
+    );
+
+    const memberOptions = useMemo(
+        () =>
+            projectMembers.map((member) => ({
+                label: member.name || member.email || "Member",
+                value: member.id,
+            })),
+        [projectMembers],
+    );
+
+    const loadProjectMembers = React.useCallback(async () => {
+        if (!selectedChannelId || mode !== "channel") return;
+
+        try {
+            const res = await api.get(`/channel/${selectedChannelId}/members`);
+            const members = Array.isArray(res.data?.members)
+                ? res.data.members
+                : [];
+
+            const mapped = members
+                .map((member: any) => ({
+                    id: String(
+                        member?.id ??
+                            member?._id ??
+                            member?.userId ??
+                            member?.user?._id ??
+                            member?.user?.id ??
+                            "",
+                    ),
+                    name:
+                        member?.name ??
+                        member?.fullname ??
+                        member?.username ??
+                        member?.user?.name ??
+                        null,
+                    email: member?.email ?? member?.user?.email ?? null,
+                }))
+                .filter((member: { id: string }) => member.id);
+
+            setProjectMembers(mapped);
+            if (!selectedMemberId && mapped.length) {
+                setSelectedMemberId(mapped[0].id);
+            }
+        } catch {
+            setProjectMembers([]);
+        }
+    }, [mode, selectedChannelId, selectedMemberId]);
+
+    useEffect(() => {
+        if (!visible || mode !== "channel" || !selectedChannelId) {
+            return;
+        }
+
+        loadProjectMembers();
+    }, [visible, mode, selectedChannelId, loadProjectMembers]);
 
     const handleChannelSelect = (value: string | number) => {
         const codeValue = String(value);
@@ -241,6 +339,7 @@ export default function CreateTaskModal({
                         name,
                         description,
                         status: toApiStatus(status),
+                        members: selectedMemberId ? [selectedMemberId] : undefined,
                     }),
                 ).unwrap();
 
@@ -283,7 +382,7 @@ export default function CreateTaskModal({
         };
     }, []);
 
-    const modes: Mode[] = forcePersonalForUserId
+    const modes: Array<"channel" | "personal"> = forcePersonalForUserId
         ? ["personal"]
         : allowPersonal
           ? ["channel", "personal"]
@@ -337,7 +436,7 @@ export default function CreateTaskModal({
                                         Create Task
                                     </Text>
 
-                                    {!hideModeToggle && (
+                                    {!hideModeToggle && false && (
                                         <View
                                             className="mt-4 flex-row"
                                             style={{ gap: 8 }}
@@ -376,34 +475,44 @@ export default function CreateTaskModal({
                                         </View>
                                     )}
 
-                                    {!allowPersonal && (
+                                    {!allowPersonal && false && (
                                         <Text className="font-kumbh text-[12px] text-[#9CA3AF] mt-2">
                                             Personal tasks are reserved for
                                             staff and client roles.
                                         </Text>
                                     )}
 
+                                    <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                                        Name
+                                    </Text>
                                     <TextInput
                                         value={title}
                                         onChangeText={setTitle}
-                                        placeholder="Task title"
+                                        placeholder="Enter task name"
                                         placeholderTextColor="#9CA3AF"
-                                        className="font-kumbh mt-4 rounded-xl bg-[#F3F4F6] px-4 py-3 text-[#111827]"
+                                        className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
                                     />
 
+                                    <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                                        Description
+                                    </Text>
                                     <TextInput
                                         value={desc}
                                         onChangeText={setDesc}
-                                        placeholder="Task Description"
+                                        placeholder="Add a short description"
                                         placeholderTextColor="#9CA3AF"
-                                        className="font-kumbh mt-3 rounded-xl bg-[#F3F4F6] px-4 py-3 text-[#111827]"
+                                        className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
                                         multiline
+                                        numberOfLines={4}
+                                        textAlignVertical="top"
+                                        style={{ minHeight: 120 }}
                                     />
 
-                                    {mode === "channel" &&
+                                    {!hideProjectSelector &&
+                                        mode === "channel" &&
                                         !forcePersonalForUserId && (
-                                            <View className="mt-3">
-                                                <Text className="font-kumbh text-[#6B7280] mb-1">
+                                            <View className="mt-4">
+                                                <Text className="font-kumbh text-[#6B7280] mb-2">
                                                     Project Code
                                                 </Text>
                                                 <Pressable
@@ -431,10 +540,64 @@ export default function CreateTaskModal({
                                             </View>
                                         )}
 
+                                    {mode === "channel" &&
+                                        !forcePersonalForUserId && (
+                                            <View className="mt-4">
+                                                <Text className="font-kumbh text-[#6B7280] mb-2">
+                                                    Assigned member
+                                                </Text>
+                                                {selectedMember ? (
+                                                    <View className="flex-row items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2">
+                                                        <View className="flex-1 mr-2">
+                                                            <Text className="font-kumbh text-[#111827]">
+                                                                {selectedMember.name ||
+                                                                    selectedMember.email ||
+                                                                    selectedMember.id}
+                                                            </Text>
+                                                            {!!selectedMember.email && (
+                                                                <Text className="font-kumbh text-[12px] text-[#6B7280]">
+                                                                    {selectedMember.email}
+                                                                </Text>
+                                                            )}
+                                                        </View>
+                                                        <Pressable
+                                                            onPress={() =>
+                                                                setSelectedMemberId(
+                                                                    null,
+                                                                )
+                                                            }
+                                                            className="rounded-lg px-3 py-1"
+                                                            style={{
+                                                                backgroundColor:
+                                                                    "#FEE2E2",
+                                                            }}
+                                                        >
+                                                            <Text className="font-kumbh text-[12px] text-[#B91C1C]">
+                                                                Remove
+                                                            </Text>
+                                                        </Pressable>
+                                                    </View>
+                                                ) : (
+                                                    <Pressable
+                                                        onPress={() =>
+                                                            setShowMemberPicker(
+                                                                true,
+                                                            )
+                                                        }
+                                                        className="rounded-xl border border-[#E5E7EB] px-4 py-3"
+                                                    >
+                                                        <Text className="font-kumbh text-[#111827]">
+                                                            Assign member
+                                                        </Text>
+                                                    </Pressable>
+                                                )}
+                                            </View>
+                                        )}
+
                                     {/* Status */}
                                     <View className="mt-4">
                                         <Text className="font-kumbh text-[#6B7280] mb-2">
-                                            Status
+                                            Change Status
                                         </Text>
                                         <View
                                             className="flex-row flex-wrap"
@@ -448,7 +611,7 @@ export default function CreateTaskModal({
                                                         onPress={() =>
                                                             setStatus(s)
                                                         }
-                                                        className="rounded-full px-4 py-2"
+                                                        className="rounded-full px-3 py-2"
                                                         style={{
                                                             backgroundColor:
                                                                 selected
@@ -457,7 +620,7 @@ export default function CreateTaskModal({
                                                         }}
                                                     >
                                                         <Text
-                                                            className="font-kumbh text-[12px]"
+                                                            className="font-kumbh text-[12px] capitalize"
                                                             style={{
                                                                 color: selected
                                                                     ? "#FFFFFF"
@@ -513,6 +676,17 @@ export default function CreateTaskModal({
                     title="Select project"
                     options={channelOptions}
                     selectedValue={channelCode || undefined}
+                />
+                <OptionSheet
+                    visible={showMemberPicker}
+                    onClose={() => setShowMemberPicker(false)}
+                    onSelect={(value) => {
+                        setShowMemberPicker(false);
+                        setSelectedMemberId(String(value));
+                    }}
+                    title="Assign member"
+                    options={memberOptions}
+                    selectedValue={selectedMemberId || undefined}
                 />
             </Modal>
         </>

@@ -23,6 +23,7 @@ import type {
     GetChannelTasksResponse,
     GetDeletedChannelsResponse,
     ImportTasksBody,
+    InviteClientProjectMemberBody,
     JoinChannelResponse,
     RemoveMemberBody,
     RemoveMemberResponse,
@@ -203,6 +204,46 @@ export const removeMemberFromChannel = createAsyncThunk<
             api.post<RemoveMemberResponse>("/channel/remove-member", body),
             "Removing member…",
             "Member removed",
+        );
+        return res.data.channel as Channel;
+    } catch (err) {
+        const msg = extractErrorMessage(err);
+        showError(msg);
+        return rejectWithValue(msg);
+    }
+});
+
+export const inviteClientProjectMember = createAsyncThunk<
+    Channel,
+    InviteClientProjectMemberBody,
+    { rejectValue: string }
+>("channels/inviteClientProjectMember", async (body, { rejectWithValue }) => {
+    try {
+        const res = await showPromise(
+            api.post(`/channel/${body.channelId}/client-members/invite`, {
+                email: body.email,
+            }),
+            "Inviting member…",
+            "Project member invited",
+        );
+        return res.data.channel as Channel;
+    } catch (err) {
+        const msg = extractErrorMessage(err);
+        showError(msg);
+        return rejectWithValue(msg);
+    }
+});
+
+export const removeClientProjectMember = createAsyncThunk<
+    Channel,
+    { channelId: string; userId: string },
+    { rejectValue: string }
+>("channels/removeClientProjectMember", async (body, { rejectWithValue }) => {
+    try {
+        const res = await showPromise(
+            api.delete(`/channel/${body.channelId}/client-members/${body.userId}`),
+            "Removing member…",
+            "Project member removed",
         );
         return res.data.channel as Channel;
     } catch (err) {

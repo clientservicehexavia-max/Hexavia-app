@@ -4,6 +4,12 @@ export type StatusKey =
     | "completed"
     | "canceled";
 
+export type TaskAssignee = {
+    id?: string;
+    name?: string;
+    email?: string;
+};
+
 export type Task = {
     id: string;
     title: string;
@@ -12,11 +18,7 @@ export type Task = {
     channelId?: string;
     status: StatusKey;
     createdAt: number;
-    assignees?: Array<{
-        id?: string;
-        name?: string;
-        email?: string;
-    }>;
+    assignee?: TaskAssignee;
 };
 
 export const TAB_ORDER: StatusKey[] = [

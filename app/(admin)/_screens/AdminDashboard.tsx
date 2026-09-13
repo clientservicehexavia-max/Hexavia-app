@@ -1,4 +1,5 @@
-import { useRouter } from "expo-router";
+import { BirthdaySummary, fetchBirthdaySummary } from "@/api/birthdays";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
     BarChart3,
     BriefcaseBusiness,
@@ -7,6 +8,7 @@ import {
     Handshake,
     UserPlus,
     Users,
+    UsersRound,
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -26,8 +28,10 @@ import { AdminHeader } from "@/components/common/UserHeader";
 import { selectUser } from "@/redux/user/user.slice";
 import { fetchProfile } from "@/redux/user/user.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { birthdayTodayMessage } from "@/utils/birthday";
 import {
     canAccessFinanceManagement,
+    canAccessHbcMembers,
     canAccessTeamManagement,
     normalizeRole,
 } from "@/utils/roles";
@@ -38,17 +42,35 @@ export default function AdminDashboard() {
     const user = useAppSelector(selectUser);
     const isIOS = Platform.OS === "ios";
     const [refreshing, setRefreshing] = useState(false);
+    const [birthdaySummary, setBirthdaySummary] =
+        useState<BirthdaySummary | null>(null);
     const showTeam = canAccessTeamManagement(user?.role);
     const showFinance = canAccessFinanceManagement(user?.role);
+    const showHbcMembers = canAccessHbcMembers(user?.role);
     const subtitleBadge =
         normalizeRole(user?.role) === "clientservice"
             ? "Clientservice"
             : "Admin";
 
+    useFocusEffect(
+        useCallback(() => {
+            const loadBirthdays = async () => {
+                try {
+                    setBirthdaySummary(await fetchBirthdaySummary());
+                } catch {
+                    setBirthdaySummary(null);
+                }
+            };
+
+            void loadBirthdays();
+        }, []),
+    );
+
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
             await dispatch(fetchProfile()).unwrap();
+            setBirthdaySummary(await fetchBirthdaySummary());
         } finally {
             setRefreshing(false);
         }
@@ -69,7 +91,10 @@ export default function AdminDashboard() {
                     />
                 }
             >
-                <AdminHeader />
+                <AdminHeader
+                    rightIcon={<BarChart3 size={20} color="#111827" />}
+                    onRightPress={() => router.push("/(admin)/report")}
+                />
 
                 <View className="gap-2 mb-2">
                     <View className="flex-row gap-2">
@@ -133,31 +158,40 @@ export default function AdminDashboard() {
                             icon={<BriefcaseBusiness size={22} color="white" />}
                             onPress={() => router.push("/(admin)/recruitment")}
                         />
+                        {showHbcMembers && (
+                            <Tile
+                                title="HBC"
+                                icon={<UsersRound size={22} color="white" />}
+                                onPress={() => router.push("/(admin)/hbc")}
+                            />
+                        )}
                     </View>
                 </View>
 
-                <SectionCard noTitle>
+                {birthdaySummary && birthdaySummary.counts.month > 0 ? (
                     <Pressable
-                        onPress={() => router.push("/(admin)/report")}
-                        className="flex-row items-center justify-between"
+                        onPress={() => router.push("/(admin)/birthdays")}
+                        className="my-2 flex-row items-center justify-between rounded-xl border border-amber-100 bg-amber-50 p-4"
                     >
-                        <View className="flex-row items-center gap-3">
-                            <View className="w-12 h-12 rounded-2xl bg-primary-100 items-center justify-center">
-                                <BarChart3 size={22} color="#4c5fab" />
-                            </View>
-                            <View>
-                                <Text className="text-[20px] font-kumbh text-text">
-                                    Create report
-                                </Text>
-                                <Text className="text-sm text-gray-500 mt-1 max-w-[200px] font-kumbh">
-                                    Generate detailed reports to track
-                                    performance and make informed decisions
-                                </Text>
-                            </View>
+                        <View className="mr-3 flex-1">
+                            <Text className="font-kumbhBold text-amber-900">
+                                Birthday reminders
+                            </Text>
+                            <Text className="mt-1 font-kumbh text-sm text-amber-800">
+                                {birthdaySummary.counts.today > 0
+                                    ? birthdayTodayMessage(
+                                          birthdaySummary.today.map(
+                                              (person) => person.name,
+                                          ),
+                                      )
+                                    : birthdaySummary.counts.week > 0
+                                      ? `${birthdaySummary.counts.week} birthday${birthdaySummary.counts.week === 1 ? "" : "s"} this week`
+                                      : `${birthdaySummary.counts.month} birthday${birthdaySummary.counts.month === 1 ? "" : "s"} this month`}
+                            </Text>
                         </View>
-                        <ChevronRight size={22} color="#111827" />
+                        <ChevronRight size={22} color="#92400E" />
                     </Pressable>
-                </SectionCard>
+                ) : null}
 
                 <SectionCard
                     title="Deleted Clients"
@@ -171,24 +205,6 @@ export default function AdminDashboard() {
                             </Text>
                             <Text className="text-sm text-gray-500 mt-1 font-kumbh">
                                 Tap to open the deleted client log.
-                            </Text>
-                        </View>
-                        <ChevronRight size={20} color="#111827" />
-                    </View>
-                </SectionCard>
-
-                <SectionCard
-                    title="Deleted Projects"
-                    onPress={() => router.push("/(admin)/channels/deleted")}
-                >
-                    <View className="flex-row items-center gap-3">
-                        <View className="flex-1">
-                            <Text className="text-sm text-gray-600 font-kumbh">
-                                Review channels/projects that were removed from
-                                the workspace.
-                            </Text>
-                            <Text className="text-sm text-gray-500 mt-1 font-kumbh">
-                                Tap to open the deleted project log.
                             </Text>
                         </View>
                         <ChevronRight size={20} color="#111827" />

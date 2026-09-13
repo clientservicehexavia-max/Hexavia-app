@@ -31,14 +31,10 @@ import { api } from "@/api/axios";
 import OptionSheet from "@/components/common/OptionSheet";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { PRIMARY } from "@/constants/Colors";
-import { selectAdminUsers } from "@/redux/admin/admin.slice";
-import {
-    adminAddChannelMember,
-    fetchAdminUsers,
-} from "@/redux/admin/admin.thunks";
+import { adminAddChannelMember } from "@/redux/admin/admin.thunks";
 import type { ChannelLink } from "@/redux/channelLinks/channelLinks.types";
 import type { ChannelNote } from "@/redux/channelNotes/channelNotes.types";
-import { selectChannelById } from "@/redux/channels/channels.selectors";
+import { selectChannelById } from "@/redux/channels/channels.slice";
 import {
     fetchChannelById,
     removeMemberFromChannel,
@@ -54,6 +50,15 @@ type MemberItem = {
     avatar?: string | null;
     role?: string | null;
     channelType?: string | null;
+};
+
+type EligibleUser = {
+    _id: string;
+    fullname?: string;
+    username?: string;
+    email?: string;
+    role?: string;
+    profilePicture?: string | null;
 };
 
 type SummaryPdfResponse = {
@@ -916,7 +921,7 @@ export default function ChannelInfoScreen() {
         () => selectChannelById(channelId ?? ""),
         [channelId],
     );
-    const channel = useAppSelector(channelSel);
+    const channel = useAppSelector(selectChannelById(channelId || ""));
     const [refreshing, setRefreshing] = useState(false);
     const [removingId, setRemovingId] = useState<string | null>(null);
     const [isAddSheetVisible, setAddSheetVisible] = useState(false);
@@ -933,9 +938,17 @@ export default function ChannelInfoScreen() {
     }, [dispatch, channelId]);
 
     const meRole = (me?.role ?? "").toLowerCase();
-    const canManageMembers = isAdminLikeRole(meRole);
+    const isChannelOwner =
+        !!channel &&
+        !!me?._id &&
+        String(
+            (channel as any)?.createdBy?._id ??
+                (channel as any)?.createdBy ??
+                "",
+        ) === String(me._id);
+    const canManageMembers = isAdminLikeRole(meRole) || isChannelOwner;
     const meId = me?._id ? String(me._id) : null;
-    const adminUsers = useAppSelector(selectAdminUsers);
+    const [eligibleUsers, setEligibleUsers] = useState<EligibleUser[]>([]);
     const isAddingMember = useAppSelector((state) => state.admin.addingMember);
 
     const tryRemoveMember = useCallback(
@@ -952,6 +965,7 @@ export default function ChannelInfoScreen() {
                         type,
                     }),
                 ).unwrap();
+                await dispatch(fetchChannelById(channelId)).unwrap();
             } catch (err) {
                 console.warn("[channel/remove-member] failed", err);
             } finally {
@@ -980,10 +994,29 @@ export default function ChannelInfoScreen() {
         [channelId, tryRemoveMember],
     );
 
+    const loadEligibleUsers = useCallback(async () => {
+        if (!canManageMembers || !channelId) {
+            setEligibleUsers([]);
+            return [] as EligibleUser[];
+        }
+
+        try {
+            const { data } = await api.get<{ data?: EligibleUser[] }>(
+                `/channel/${channelId}/eligible-users`,
+            );
+            const nextUsers = data?.data ?? [];
+            setEligibleUsers(nextUsers);
+            return nextUsers;
+        } catch (error) {
+            console.warn("[channel/eligible-users] failed", error);
+            setEligibleUsers([]);
+            return [] as EligibleUser[];
+        }
+    }, [canManageMembers, channelId]);
+
     useEffect(() => {
-        if (!canManageMembers) return;
-        dispatch(fetchAdminUsers());
-    }, [canManageMembers, dispatch]);
+        void loadEligibleUsers();
+    }, [loadEligibleUsers]);
 
     const members: MemberItem[] = useMemo(() => {
         if (!channel) return [];
@@ -992,42 +1025,92 @@ export default function ChannelInfoScreen() {
             ? (channel as any).members
             : [];
 
+        const normalizeMember = (m: any, idx: number): MemberItem | null => {
+            const profile =
+                m?._id && typeof m._id === "object"
+                    ? m._id
+                    : m?.user && typeof m.user === "object"
+                      ? m.user
+                      : m?.member && typeof m.member === "object"
+                        ? m.member
+                        : m &&
+                            typeof m === "object" &&
+                            ("fullname" in m ||
+                                "name" in m ||
+                                "username" in m ||
+                                "email" in m)
+                          ? m
+                          : {};
+
+            const directMemberId =
+                typeof m?._id === "string"
+                    ? m._id
+                    : m?._id && typeof m._id === "object"
+                      ? !(
+                            "fullname" in m._id ||
+                            "name" in m._id ||
+                            "username" in m._id ||
+                            "email" in m._id ||
+                            "profilePicture" in m._id
+                        )
+                          ? String(m._id)
+                          : undefined
+                      : undefined;
+
+            const rawUserId =
+                profile?._id ??
+                profile?.id ??
+                m?.userId ??
+                m?.memberId ??
+                directMemberId ??
+                undefined;
+
+            const hasRealUserId =
+                !!rawUserId &&
+                String(rawUserId).trim() !== "" &&
+                !/^member-\d+$/i.test(String(rawUserId));
+
+            const userId = hasRealUserId ? String(rawUserId) : null;
+
+            const username =
+                profile?.fullname ??
+                profile?.name ??
+                profile?.username ??
+                profile?.email ??
+                m?.fullname ??
+                m?.name ??
+                m?.username ??
+                m?.email ??
+                m?.displayName ??
+                (userId ? "Member" : null);
+            if (!userId || !username) return null;
+
+            return {
+                id: String(userId),
+                username: String(username),
+                avatar:
+                    profile?.profilePicture ??
+                    profile?.avatar ??
+                    m?.profilePicture ??
+                    m?.avatar ??
+                    null,
+                role: profile?.role ?? m?.role ?? "member",
+                channelType: String(m?.type ?? m?.memberType ?? "normal"),
+            };
+        };
+
         if (rawMembers.length > 0) {
-            const mapped: MemberItem[] = rawMembers.map(
-                (m: any, idx: number) => {
-                    const source = m?._id ?? m ?? {};
-                    const userId =
-                        source?._id ??
-                        source?.id ??
-                        m?.userId ??
-                        m?.memberId ??
-                        `member-${idx}`;
-                    const rawType = m?.type ?? m?.memberType ?? "normal";
-                    const username =
-                        source?.username ??
-                        source?.name ??
-                        source?.email ??
-                        source?.displayName ??
-                        `member-${idx}`;
-                    return {
-                        id: String(userId),
-                        username,
-                        avatar:
-                            source?.profilePicture ?? source?.avatar ?? null,
-                        role: source?.role ?? m?.role ?? "member",
-                        channelType: rawType ? String(rawType) : null,
-                    };
-                },
-            );
-            const seen = new Set<string>();
-            const deduped: MemberItem[] = [];
-            for (const curr of mapped) {
-                const id = curr.id || `member-${deduped.length}`;
-                if (seen.has(id)) continue;
-                seen.add(id);
-                deduped.push({ ...curr, id });
-            }
-            return deduped;
+            const deduped = new Map<string, MemberItem>();
+
+            rawMembers.forEach((member: any, idx: number) => {
+                const normalized = normalizeMember(member, idx);
+                if (!normalized) return;
+                if (!deduped.has(normalized.id)) {
+                    deduped.set(normalized.id, normalized);
+                }
+            });
+
+            return Array.from(deduped.values());
         }
 
         const byId = new Map<string, MemberItem>();
@@ -1087,10 +1170,21 @@ export default function ChannelInfoScreen() {
 
     const availableAddUsers = useMemo(() => {
         const memberIds = new Set(members.map((m) => m.id));
-        return adminUsers.filter(
-            (user) => user?._id && !memberIds.has(String(user._id)),
-        );
-    }, [adminUsers, members]);
+        const ownerId =
+            channel && (channel as any)?.createdBy
+                ? String(
+                      typeof (channel as any).createdBy === "string"
+                          ? (channel as any).createdBy
+                          : ((channel as any).createdBy?._id ?? ""),
+                  )
+                : "";
+
+        return eligibleUsers.filter((user) => {
+            if (!user?._id) return false;
+            const userId = String(user._id);
+            return userId !== ownerId && !memberIds.has(userId);
+        });
+    }, [channel, eligibleUsers, members]);
 
     const addUserOptions = useMemo(() => {
         return availableAddUsers.map((user) => {
@@ -1104,16 +1198,33 @@ export default function ChannelInfoScreen() {
         });
     }, [availableAddUsers]);
 
-    const handleOpenAddMember = useCallback(() => {
-        if (addUserOptions.length === 0) {
+    const handleOpenAddMember = useCallback(async () => {
+        const latestUsers = await loadEligibleUsers();
+        const nextOptions = latestUsers.filter((user) => {
+            if (!user?._id) return false;
+            const memberIds = new Set(members.map((m) => String(m.id)));
+            const ownerId =
+                channel && (channel as any)?.createdBy
+                    ? String(
+                          typeof (channel as any).createdBy === "string"
+                              ? (channel as any).createdBy
+                              : ((channel as any).createdBy?._id ?? ""),
+                      )
+                    : "";
+            return (
+                String(user._id) !== ownerId && !memberIds.has(String(user._id))
+            );
+        });
+
+        if (nextOptions.length === 0) {
             Alert.alert(
-                "No users available",
-                "All fetched users already belong to this channel.",
+                "No eligible users available",
+                "No users are currently available to add to this channel.",
             );
             return;
         }
         setAddSheetVisible(true);
-    }, [addUserOptions.length]);
+    }, [channel, loadEligibleUsers, members]);
 
     const handleAddMember = useCallback(
         async (value: string | number) => {
@@ -1411,7 +1522,7 @@ export default function ChannelInfoScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-[#F7F8FB]"
+            className="flex-1 bg-white"
         >
             <PlatformAdaptiveHeader title="Channel Info" />
 

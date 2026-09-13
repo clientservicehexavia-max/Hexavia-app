@@ -20,5 +20,12 @@ export type User = {
     linkedChannelId?: string | null;
     linkedProjectCode?: string | null;
     linkedAt?: string | null;
+    clientProjects?: Array<{
+        _id: string;
+        name: string;
+        code: string;
+        description?: string | null;
+        clientRole: "project_owner" | "project_member";
+    }>;
     expoPushToken?: string | null;
 };

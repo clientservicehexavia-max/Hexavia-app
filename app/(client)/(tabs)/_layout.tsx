@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { Text, View } from "react-native";
 
 import { fetchChannels } from "@/redux/channels/channels.thunks";
+import { selectAllChannels } from "@/redux/channels/channels.slice";
 import { selectUser } from "@/redux/user/user.slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
@@ -66,6 +67,7 @@ export default function StaffTabsLayout() {
     }, [dispatch]);
 
     const user = useAppSelector(selectUser);
+    const channels = useAppSelector(selectAllChannels);
     const linkedChannelId =
         typeof (user as any)?.linkedChannelId === "string"
             ? (user as any).linkedChannelId
@@ -76,6 +78,10 @@ export default function StaffTabsLayout() {
         segments.includes("chats") ||
         pathname === "/chats" ||
         pathname.startsWith("/chats/");
+    const clientProjects = channels.filter((channel) => Boolean(channel.clientRole));
+    const projectChatId =
+        clientProjects.find((project) => String(project._id) === linkedChannelId)
+            ?._id || clientProjects[0]?._id || null;
 
     return (
         <Tabs
@@ -129,10 +135,10 @@ export default function StaffTabsLayout() {
                 listeners={{
                     tabPress: (e) => {
                         e.preventDefault();
-                        if (linkedChannelId) {
+                        if (projectChatId) {
                             router.push({
                                 pathname: "/(client)/(tabs)/chats/[channelId]",
-                                params: { channelId: linkedChannelId },
+                                params: { channelId: projectChatId },
                             });
                             return;
                         }

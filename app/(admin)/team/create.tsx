@@ -3,6 +3,7 @@ import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import {
     AtSign,
+    CalendarDays,
     Copy,
     Mail,
     Phone,
@@ -24,12 +25,25 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as yup from "yup";
 
 import { api } from "@/api/axios";
+import DatePickerModal from "@/components/admin/DatePickerModal";
 import Field from "@/components/admin/Field";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import HexButton from "@/components/ui/HexButton";
 import { showError, showPromise, showSuccess } from "@/components/ui/toast";
+import {
+    birthdayInputFromDate,
+    birthdayPickerDate,
+} from "@/utils/birthday";
 
-const schema = yup.object({
+type FormValues = {
+    fullname: string;
+    username: string;
+    email: string;
+    phoneNumber: string;
+    dateOfBirth: string;
+};
+
+const schema: yup.ObjectSchema<FormValues> = yup.object({
     fullname: yup
         .string()
         .trim()
@@ -50,9 +64,8 @@ const schema = yup.object({
         .trim()
         .min(6, "Enter a valid phone number")
         .required("Phone number is required"),
+    dateOfBirth: yup.string().trim().default(""),
 });
-
-type FormValues = yup.InferType<typeof schema>;
 
 type CreatedMember = {
     fullname: string;
@@ -91,6 +104,7 @@ export default function CreateTeamMemberScreen() {
     const [generatedPassword, setGeneratedPassword] = useState(() =>
         generatePassword(),
     );
+    const [birthdayPickerVisible, setBirthdayPickerVisible] = useState(false);
     const [createdMember, setCreatedMember] = useState<CreatedMember | null>(
         null,
     );
@@ -99,6 +113,8 @@ export default function CreateTeamMemberScreen() {
         control,
         handleSubmit,
         reset,
+        setValue,
+        watch,
         formState: { errors, isValid, isSubmitting },
     } = useForm<FormValues>({
         mode: "onChange",
@@ -108,6 +124,7 @@ export default function CreateTeamMemberScreen() {
             username: "",
             email: "",
             phoneNumber: "",
+            dateOfBirth: "",
         },
     });
 
@@ -129,6 +146,7 @@ export default function CreateTeamMemberScreen() {
                 username: values.username.trim(),
                 email: values.email.trim().toLowerCase(),
                 phoneNumber: values.phoneNumber.trim(),
+                dateOfBirth: values.dateOfBirth || undefined,
                 password,
                 role: "staff",
             };
@@ -145,7 +163,13 @@ export default function CreateTeamMemberScreen() {
                 password,
             });
 
-            reset({ fullname: "", username: "", email: "", phoneNumber: "" });
+            reset({
+                fullname: "",
+                username: "",
+                email: "",
+                phoneNumber: "",
+                dateOfBirth: "",
+            });
             setGeneratedPassword(generatePassword());
         } catch (err: any) {
             const msg =
@@ -322,6 +346,39 @@ export default function CreateTeamMemberScreen() {
                                 {errors.phoneNumber.message}
                             </Text>
                         ) : null}
+                    </Field>
+
+                    <Field label="Date of birth">
+                        <Controller
+                            control={control}
+                            name="dateOfBirth"
+                            render={({ field: { value, onChange } }) => (
+                                <Pressable
+                                    onPress={() => setBirthdayPickerVisible(true)}
+                                    className="flex-row items-center justify-between rounded-xl bg-gray-100 px-4 py-4"
+                                >
+                                    <Text
+                                        className={`font-kumbh ${value ? "text-black" : "text-gray-500"}`}
+                                    >
+                                        {value || "Select date of birth"}
+                                    </Text>
+                                    <CalendarDays size={18} color="#6B7280" />
+                                </Pressable>
+                            )}
+                        />
+                        <DatePickerModal
+                            visible={birthdayPickerVisible}
+                            value={birthdayPickerDate(
+                                watch("dateOfBirth") || undefined,
+                            )}
+                            maximumDate={new Date()}
+                            onCancel={() => setBirthdayPickerVisible(false)}
+                            onDone={() => setBirthdayPickerVisible(false)}
+                            onDateChange={(date) => {
+                                setBirthdayPickerVisible(false);
+                                setValue("dateOfBirth", birthdayInputFromDate(date));
+                            }}
+                        />
                     </Field>
 
                     <Field label="Generated password">

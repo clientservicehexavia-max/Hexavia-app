@@ -18,7 +18,7 @@ import { setPushToken } from "@/redux/auth/auth.slice";
 import { getActiveChannelId } from "@/storage/auth";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getExpoPushToken } from "@/utils/pushToken";
-import { canAccessFinanceManagement } from "@/utils/roles";
+import { canAccessFinanceManagement, isAdminLikeRole } from "@/utils/roles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { PersistGate } from "redux-persist/integration/react";
@@ -147,6 +147,19 @@ function AppFrame() {
             if (kind === "finance") {
                 if (canAccessFinanceManagement(role)) {
                     router.push("/(admin)/finance");
+                }
+                return;
+            }
+
+            if (kind === "birthday") {
+                if (isAdminLikeRole(role)) {
+                    router.push({
+                        pathname: "/(admin)/birthdays",
+                        params: {
+                            filter: String(data?.birthdayFilter || "all"),
+                            section: String(data?.birthdaySection || ""),
+                        },
+                    });
                 }
                 return;
             }

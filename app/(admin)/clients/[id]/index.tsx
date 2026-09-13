@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import {
     Check,
+    CalendarDays,
     ChevronDown,
     ClipboardCheck,
     Pencil,
@@ -54,6 +55,7 @@ import {
     updateClient,
 } from "@/redux/client/client.thunks";
 import type { Client } from "@/redux/client/client.types";
+import { birthdayInputFromDate, birthdayPickerDate } from "@/utils/birthday";
 
 type AdminUser = {
     _id: string;
@@ -488,6 +490,7 @@ export default function ClientDetails() {
                 createdAt: clientFromStore.createdAt,
                 projectName: clientFromStore.projectName,
                 source: String((clientFromStore as any).source ?? ""),
+                dateOfBirth: clientFromStore.dateOfBirth,
                 industry: clientFromStore.industry,
                 staffSize: clientFromStore.staffSize,
                 description: clientFromStore.description,
@@ -524,6 +527,9 @@ export default function ClientDetails() {
     );
     const [email, setEmail] = useState(baseUser.email ?? "");
     const [phoneNumber, setPhoneNumber] = useState(baseUser.phoneNumber ?? "");
+    const [dateOfBirth, setDateOfBirth] = useState(
+        toIsoDateInput((clientFromStore?.dateOfBirth ?? (baseUser as any)?.dateOfBirth) || ""),
+    );
 
     const [projectName, setProjectName] = useState(baseUser.projectName ?? "");
     const [source, setSource] = useState<SourceType>(
@@ -568,6 +574,7 @@ export default function ClientDetails() {
     const [uploadingDocument, setUploadingDocument] = useState(false);
     const [documentRemoved, setDocumentRemoved] = useState(false);
     const [showJoinedDatePicker, setShowJoinedDatePicker] = useState(false);
+    const [showBirthdayDatePicker, setShowBirthdayDatePicker] = useState(false);
     const [activeTab, setActiveTab] = useState<"details" | "notes">("details");
     const [clientNotes, setClientNotes] = useState<ClientNote[]>(
         clientFromStore?.notes ?? [],
@@ -1033,6 +1040,9 @@ export default function ClientDetails() {
             baseUser.fullname || baseUser.username || baseUser.email || "";
         const baseEmail = baseUser.email ?? "";
         const basePhone = baseUser.phoneNumber ?? "";
+        const baseDateOfBirth = toIsoDateInput(
+            (clientFromStore?.dateOfBirth ?? (baseUser as any)?.dateOfBirth) || "",
+        );
         const baseSource = String(baseUser.source ?? "").trim();
         const baseIndustry = (baseUser.industry ?? "").trim();
         const baseJoined = toIsoDateInput(baseUser.createdAt);
@@ -1041,6 +1051,7 @@ export default function ClientDetails() {
             name !== baseName ||
             email !== baseEmail ||
             phoneNumber !== basePhone ||
+            dateOfBirth !== baseDateOfBirth ||
             effectiveSource !== baseSource ||
             projectName !== (baseUser.projectName ?? "") ||
             effectiveIndustry !== baseIndustry ||
@@ -1067,6 +1078,7 @@ export default function ClientDetails() {
         effectiveSource,
         projectName,
         effectiveIndustry,
+        dateOfBirth,
         staffSize,
         description,
         problems,
@@ -1088,6 +1100,9 @@ export default function ClientDetails() {
         setProjectName(baseUser.projectName ?? "");
         setEmail(baseUser.email ?? "");
         setPhoneNumber(baseUser.phoneNumber ?? "");
+        setDateOfBirth(
+            toIsoDateInput((clientFromStore?.dateOfBirth ?? (baseUser as any)?.dateOfBirth) || ""),
+        );
         setSource(normalizeSource(baseUser.source));
         setSourceOther(normalizeSourceOther(baseUser.source));
         setIndustry(resolvedIndustry.selection);
@@ -1328,6 +1343,7 @@ export default function ClientDetails() {
             projectName: toNullableText(projectName),
             email: toNullableText(email),
             phoneNumber: toNullableText(phoneNumber),
+            dateOfBirth: dateOfBirth ? new Date(dateOfBirth).toISOString() : null,
             source: toNullableText(effectiveSource),
             industry: toNullableText(effectiveIndustry),
             staffSize: hasStaffSize ? parsedStaffSize : null,
@@ -1559,6 +1575,25 @@ export default function ClientDetails() {
                                             placeholder="080..."
                                             keyboardType="numeric"
                                         />
+                                    </View>
+
+                                    {/* Date of Birth */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Date of Birth</FieldLabel>
+                                        <Pressable
+                                            onPress={() => setShowBirthdayDatePicker(true)}
+                                            className="flex-row items-center justify-between rounded-2xl bg-gray-200 px-4 py-4"
+                                        >
+                                            <Text className={`font-kumbh ${dateOfBirth ? "text-text" : "text-gray-500"}`}>
+                                                {dateOfBirth || "Select date of birth"}
+                                            </Text>
+                                            <CalendarDays size={18} color="#4C5FAB" />
+                                        </Pressable>
+                                        {dateOfBirth ? (
+                                            <Pressable onPress={() => setDateOfBirth("")} className="mt-2 self-start">
+                                                <Text className="font-kumbh text-xs text-[#4C5FAB]">Clear date</Text>
+                                            </Pressable>
+                                        ) : null}
                                     </View>
 
                                     {/* Source */}
@@ -2225,6 +2260,17 @@ export default function ClientDetails() {
                             setJoinedPickerDate(d);
                             setJoined(toIsoDateInput(d.toISOString()));
                         }}
+                    />
+
+                    <DatePickerModal
+                        visible={showBirthdayDatePicker}
+                        value={birthdayPickerDate(dateOfBirth)}
+                        maximumDate={new Date()}
+                        onCancel={() => setShowBirthdayDatePicker(false)}
+                        onDone={() => setShowBirthdayDatePicker(false)}
+                        onDateChange={(date) =>
+                            setDateOfBirth(birthdayInputFromDate(date))
+                        }
                     />
 
                     <Modal

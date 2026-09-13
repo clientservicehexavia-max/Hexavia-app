@@ -53,6 +53,7 @@ export interface UpdateUserBody {
     fullname?: string;
     username?: string;
     email?: string;
+    dateOfBirth?: string | null;
 }
 
 /** Channel member ops */

@@ -1,6 +1,6 @@
 import { STATUS_META, Task } from "@/features/staff/types";
 import React, { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text } from "react-native";
 import TaskDetailModal from "./modals/TaskDetailModal";
 
 export default function TaskCard({
@@ -20,7 +20,7 @@ export default function TaskCard({
                 className="rounded-2xl border px-3 py-3"
                 style={{ borderColor: statusColor, backgroundColor: "#FFFFFF" }}
             >
-                <View className="flex-row items-center mb-1">
+                {/* <View className="flex-row items-center mb-1">
                     <Text
                         className="font-kumbh text-[11px] px-2 py-[2px] rounded-full"
                         style={{
@@ -38,7 +38,7 @@ export default function TaskCard({
                             ? "Personal"
                             : task.channelCode}
                     </Text>
-                </View>
+                </View> */}
                 <Text className="font-kumbh text-[#111827] text-base capitalize">
                     {task.title}
                 </Text>

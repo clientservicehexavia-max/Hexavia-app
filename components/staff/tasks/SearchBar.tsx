@@ -15,14 +15,14 @@ export default function SearchBar({
 }: Props) {
     return (
         <View className="px-3 py-2 mb-2">
-            <View className="flex-row items-center rounded-full bg-[#F1F3F5] px-4 py-3">
+            <View className="flex-row items-center rounded-lg bg-[#F1F3F5] px-4 py-1">
                 <Ionicons name="search" size={18} color="#6B7280" />
                 <TextInput
                     value={value}
                     onChangeText={onChangeText}
                     placeholder="Search for tasks"
                     placeholderTextColor="#9CA3AF"
-                    className="ml-3 flex-1 text-[#111827] font-kumbh"
+                    className="ml-3 flex-1 text-[#111827] font-kumbh text-base"
                 />
                 {onFilterPress ? (
                     <Pressable

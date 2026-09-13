@@ -20,6 +20,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     BriefcaseBusiness,
     Building2,
+    CalendarDays,
     Check,
     Edit2,
     ExternalLink,
@@ -58,7 +59,7 @@ type PickedFile = {
 
 const TABS: TabKey[] = ["Overview", "Deals", "Documents"];
 
-const formatDate = (value?: string) => {
+const formatDate = (value?: string | null) => {
     if (!value) return "—";
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? "—" : parsed.toLocaleDateString();
@@ -519,6 +520,11 @@ export default function PartnerDetailScreen() {
                             ? () => dialPhone(partner.contactPhone!)
                             : undefined
                     }
+                />
+                <ContactRow
+                    icon={<CalendarDays size={18} color="#4C5FAB" />}
+                    label="Date of Birth"
+                    value={formatDate(partner.dateOfBirth)}
                 />
                 <ContactRow
                     icon={<MapPin size={18} color="#4C5FAB" />}

@@ -126,7 +126,7 @@ function UserHeaderCore({
                 onPress={handleRightPress}
                 className="w-11 h-11 rounded-2xl bg-white shadow-sm items-center justify-center"
             >
-                <Bell size={20} color="#111827" />
+                {rightIcon ?? <Bell size={20} color="#111827" />}
             </Pressable>
         </View>
     );

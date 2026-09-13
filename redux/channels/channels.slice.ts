@@ -12,8 +12,10 @@ import {
     fetchChannelTasks,
     generateChannelCode,
     importChannelTasks,
+    inviteClientProjectMember,
     joinChannel,
     removeMemberFromChannel,
+    removeClientProjectMember,
     restoreChannelById,
     updateChannel,
     updateChannelMemberRole,
@@ -122,6 +124,12 @@ const channelsSlice = createSlice({
             .addCase(fetchChannelTasks.pending, (state) => {
                 state.status = "loading";
                 state.error = null;
+            })
+            .addCase(inviteClientProjectMember.fulfilled, (state, action) => {
+                upsertOne(state, action.payload);
+            })
+            .addCase(removeClientProjectMember.fulfilled, (state, action) => {
+                upsertOne(state, action.payload);
             })
             .addCase(fetchChannelTasks.fulfilled, (state, action) => {
                 state.status = "succeeded";
@@ -364,7 +372,6 @@ const channelsSlice = createSlice({
             })
             .addCase(joinChannel.fulfilled, (state, action) => {
                 state.status = "succeeded";
-                upsertOne(state, action.payload);
             })
             .addCase(joinChannel.rejected, (state, action) => {
                 state.status = "failed";

@@ -3,6 +3,7 @@ import {
     BriefcaseBusiness,
     Building2,
     ChevronRight,
+    Gift,
     Landmark,
     Mail,
     Phone,
@@ -28,6 +29,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { fetchBirthdaySummary } from "@/api/birthdays";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import {
     selectAllPartners,
@@ -77,6 +79,7 @@ export default function PartnersListScreen() {
     const [query, setQuery] = useState("");
     const [status, setStatus] = useState<string | undefined>(undefined);
     const [refreshing, setRefreshing] = useState(false);
+    const [birthdayCount, setBirthdayCount] = useState(0);
     const didInitialLoadRef = useRef(false);
 
     const debouncedQuery = useDebounced(query, 300);
@@ -117,6 +120,9 @@ export default function PartnersListScreen() {
     useFocusEffect(
         useCallback(() => {
             onRefresh();
+            void fetchBirthdaySummary("partners")
+                .then((summary) => setBirthdayCount(summary.counts.month))
+                .catch(() => setBirthdayCount(0));
         }, [onRefresh]),
     );
 
@@ -249,17 +255,40 @@ export default function PartnersListScreen() {
                 <PlatformAdaptiveHeader
                     title="Partners"
                     headerRight={({ tintColor }) => (
-                        <Pressable
-                            onPress={() =>
-                                router.push(
-                                    "/(admin)/partnerships/partners/create",
-                                )
-                            }
-                            className="w-10 h-10 rounded-full items-center justify-center"
-                            hitSlop={8}
-                        >
-                            <Plus size={28} color={tintColor} />
-                        </Pressable>
+                        <View className="flex-row items-center gap-1">
+                            <Pressable
+                                onPress={() =>
+                                    router.push({
+                                        pathname: "/(admin)/birthdays",
+                                        params: { filter: "partners" },
+                                    })
+                                }
+                                className="w-10 h-10 rounded-full items-center justify-center"
+                                hitSlop={8}
+                            >
+                                <Gift size={24} color={tintColor} />
+                                {birthdayCount > 0 ? (
+                                    <View className="absolute right-0.5 top-0.5 min-w-4 h-4 rounded-full bg-amber-500 px-1 items-center justify-center">
+                                        <Text className="text-[9px] leading-3 font-kumbhBold text-white">
+                                            {birthdayCount > 99
+                                                ? "99+"
+                                                : birthdayCount}
+                                        </Text>
+                                    </View>
+                                ) : null}
+                            </Pressable>
+                            <Pressable
+                                onPress={() =>
+                                    router.push(
+                                        "/(admin)/partnerships/partners/create",
+                                    )
+                                }
+                                className="w-10 h-10 rounded-full items-center justify-center"
+                                hitSlop={8}
+                            >
+                                <Plus size={28} color={tintColor} />
+                            </Pressable>
+                        </View>
                     )}
                 />
 

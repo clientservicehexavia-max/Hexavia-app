@@ -4,6 +4,7 @@ import {
     AtSign,
     Briefcase,
     DollarSign,
+    Gift,
     MessageSquare,
     Plus,
     Search,
@@ -92,6 +93,8 @@ function iconFor(kind: NotificationKind) {
             return <MessageSquare size={22} color="white" />;
         case "mass":
             return <Users size={22} color="white" />;
+        case "birthday":
+            return <Gift size={22} color="white" />;
         default:
             return <Briefcase size={22} color="white" />;
     }

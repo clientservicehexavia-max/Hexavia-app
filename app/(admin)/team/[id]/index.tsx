@@ -153,7 +153,7 @@ export default function StaffDetails() {
             className="flex-1 bg-white px-4"
         >
             {/* Header */}
-            <PlatformAdaptiveHeader title="Staff Details" />
+            <PlatformAdaptiveHeader title="Team Member Details" />
 
             {/* Details */}
             <View className="mt-4">
@@ -198,6 +198,7 @@ export default function StaffDetails() {
                 />
 
                 <Row label="Username" value={user.username ?? "—"} />
+                <Row label="Date of Birth" value={formatDate(user.dateOfBirth)} />
                 <Row label="Role" value={formatRole(user.role)} />
                 <Row label="Joined" value={joined} />
                 <Row
@@ -238,7 +239,7 @@ export default function StaffDetails() {
                     className="flex-row items-center justify-center gap-3 bg-gray-100 border border-gray-200 rounded-2xl py-4"
                 >
                     <Text className="text-base font-kumbhBold text-text">
-                        Edit Staff
+                        Edit Team Member
                     </Text>
                 </Pressable>
 
