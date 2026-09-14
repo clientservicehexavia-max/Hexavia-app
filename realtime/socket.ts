@@ -8,7 +8,15 @@ export function getSocket() {
 }
 
 export function connectSocket(token?: string | null) {
-  if (socket?.connected) return socket;
+  if (socket) {
+    if (token) {
+      (socket.auth as any) = { token };
+    }
+    if (!socket.connected) {
+      socket.connect();
+    }
+    return socket;
+  }
 
   if (!WS_URL) {
     console.warn("[chat] WS_URL is missing!");

@@ -59,7 +59,9 @@ export const chatMiddleware: Middleware<{}, RootState> =
                 store.dispatch(setMe(meId));
                 store.dispatch(wsConnecting());
 
-                const socket = connectSocket(store.getState().user.token);
+                const token =
+                    store.getState().auth.token || store.getState().user.token;
+                const socket = connectSocket(token);
 
                 if (!(socket as any).__handlersBound) {
                     (socket as any).__handlersBound = true;
