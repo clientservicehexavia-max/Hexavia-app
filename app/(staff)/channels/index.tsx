@@ -7,10 +7,19 @@ import FilterModal, { Filters } from "@/components/FIlterModal";
 import SearchBar from "@/components/SearchBar";
 import ChannelCard from "@/components/staff/channels/ChannelCard";
 import useDebounced from "@/hooks/useDebounced";
+import { useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
-import { selectMyChannelsByUserId } from "@/redux/channels/channels.selectors";
+import {
+    selectAllChannels,
+    selectMyChannelsByUserId,
+} from "@/redux/channels/channels.selectors";
+import {
+    fetchChannelByCode,
+    fetchChannels,
+    joinChannel,
+} from "@/redux/channels/channels.thunks";
 import { selectUser } from "@/redux/user/user.slice";
 import { fetchProfile } from "@/redux/user/user.thunks";
 import type { AppDispatch, RootState } from "@/store";
@@ -52,24 +61,65 @@ export default function AllChannelsScreen() {
 
     const [query, setQuery] = useState("");
     const debouncedQuery = useDebounced(query, 250);
+    const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        dispatch(fetchProfile());
-    }, [dispatch]);
+    // Refresh channels and profile whenever the screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            dispatch(fetchProfile());
+            dispatch(fetchChannels());
+        }, [dispatch]),
+    );
 
     const userId = user?._id ?? null;
 
-    // My channels (existing list)
+    // My channels (joined / created)
     const myChannels = useAppSelector((s) =>
         selectMyChannelsByUserId(s, userId),
     );
-    const myChannelIds = new Set(
-        myChannels.map((c: any) => String(c?._id ?? c?.id)),
+    // All loaded channels
+    const allChannels = useAppSelector(selectAllChannels);
+
+    const myChannelIds = useMemo(
+        () => new Set(myChannels.map((c: any) => String(c?._id ?? c?.id))),
+        [myChannels],
     );
 
-    const onRefresh = useCallback(() => {
-        // refresh is handled by the channel slice fetch for the current user only
-    }, []);
+    // Code search effect (dynamic fetch if user enters a 4-char code not yet in cache)
+    useEffect(() => {
+        const normalized = normalizeCodeLoose(debouncedQuery);
+        if (normalized.length === 4) {
+            dispatch(fetchChannelByCode(normalized));
+        }
+    }, [debouncedQuery, dispatch]);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                dispatch(fetchProfile()).unwrap(),
+                dispatch(fetchChannels()).unwrap(),
+            ]);
+        } catch {
+            // error handled by thunk
+        } finally {
+            setRefreshing(false);
+        }
+    }, [dispatch]);
+
+    const handleJoin = useCallback(
+        async (code: string) => {
+            const cleanCode = normalizeCodeLoose(code);
+            if (!cleanCode) return;
+            try {
+                await dispatch(joinChannel(cleanCode)).unwrap();
+                await dispatch(fetchChannels()).unwrap();
+            } catch (err) {
+                // error is already toasted by thunk
+            }
+        },
+        [dispatch],
+    );
 
     const [filters, setFilters] = useState<Filters>({
         department: "All",
@@ -79,7 +129,10 @@ export default function AllChannelsScreen() {
     const [filterOpen, setFilterOpen] = useState(false);
 
     const data = useMemo(() => {
-        const keyed = myChannels
+        const isSearching = Boolean(debouncedQuery.trim());
+        const baseChannels = isSearching ? allChannels : myChannels;
+
+        const keyed = baseChannels
             .filter(Boolean)
             .map((c: any) => ({ ...c, __key: makeKey(c) }))
             .filter((c: any) => c.__key.length > 0);
@@ -99,17 +152,25 @@ export default function AllChannelsScreen() {
         }));
 
         const q = debouncedQuery.trim().toLowerCase();
+        const normalizedQ = normalizeCodeLoose(debouncedQuery);
         if (q) {
-            list = list.filter((c) =>
-                [
-                    c?.name ?? "",
-                    c?.description ?? "",
-                    (c as any)?.department ?? "",
-                ]
-                    .join(" ")
-                    .toLowerCase()
-                    .includes(q),
-            );
+            list = list.filter((c) => {
+                const name = (c?.name || "").toLowerCase();
+                const desc = (c?.description || "").toLowerCase();
+                const dept = ((c as any)?.department || "").toLowerCase();
+                const code = (c?.code || "").toLowerCase();
+                const normalizedCode = normalizeCodeLoose(c?.code || "");
+
+                return (
+                    name.includes(q) ||
+                    desc.includes(q) ||
+                    dept.includes(q) ||
+                    code.includes(q) ||
+                    (Boolean(normalizedQ) &&
+                        Boolean(normalizedCode) &&
+                        normalizedCode.includes(normalizedQ))
+                );
+            });
         }
         if (filters.department !== "All") {
             list = list.filter(
@@ -128,7 +189,7 @@ export default function AllChannelsScreen() {
             );
         }
         return list;
-    }, [debouncedQuery, filters, myChannels, myChannelIds]);
+    }, [debouncedQuery, filters, myChannels, allChannels, myChannelIds]);
 
     const viewStyle = {
         flex: 1,
@@ -158,12 +219,13 @@ export default function AllChannelsScreen() {
                                 (item as any)?.color || colorFor(item.__key)
                             }
                             isMember={item.isMember}
+                            onJoin={handleJoin}
                         />
                     )}
                     contentContainerStyle={{ paddingBottom: 24, paddingTop: 0 }}
                     refreshControl={
                         <RefreshControl
-                            refreshing={status === "loading"}
+                            refreshing={refreshing}
                             onRefresh={onRefresh}
                         />
                     }
@@ -177,7 +239,9 @@ export default function AllChannelsScreen() {
                             <Text className="mt-2 text-gray-500 font-kumbh">
                                 {status === "loading"
                                     ? "Loading Projects..."
-                                    : "No Projects found"}
+                                    : debouncedQuery.trim()
+                                      ? "No Projects found matching your search"
+                                      : "No Projects found"}
                             </Text>
                         </View>
                     }

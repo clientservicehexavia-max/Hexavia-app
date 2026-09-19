@@ -1247,12 +1247,16 @@ export default function ChannelInfoScreen() {
                         channelId: String(channelId),
                     }),
                 ).unwrap();
-                await dispatch(fetchChannelById(channelId)).unwrap();
             } catch (err) {
                 console.warn("[admin/add-channel-member] failed", err);
+            } finally {
+                try {
+                    await dispatch(fetchChannelById(channelId)).unwrap();
+                    await loadEligibleUsers();
+                } catch {}
             }
         },
-        [channel, channelId, dispatch],
+        [channel, channelId, dispatch, loadEligibleUsers],
     );
 
     const isLoading = !channel && !!channelId;

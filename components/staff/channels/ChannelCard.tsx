@@ -49,6 +49,12 @@ function ChannelCard({
 
   const handlePress = () => {
     if (!channelId) return;
+    if (!isMember) {
+      if (item.code && onJoin) {
+        onJoin(item.code);
+      }
+      return;
+    }
     router.push({
       pathname: "/(staff)/(tabs)/chats/[channelId]" as any,
       params: { channelId: String(channelId) },
@@ -62,7 +68,7 @@ function ChannelCard({
       style={{ backgroundColor: colorOverride }}
       className="mx-4 mt-4 rounded-2xl p-6 overflow-hidden"
     >
-      {isStaff && channelForEdit ? (
+      {isStaff && isMember && channelForEdit ? (
         <Pressable
           onPress={(event) => {
             event.stopPropagation?.();
@@ -130,6 +136,28 @@ function ChannelCard({
           </View>
         )}
       </View>
+
+      {!isMember && (
+        <View className="mt-4 pt-3 border-t border-white/20 flex-row items-center justify-between">
+          <Text className="text-white/80 font-kumbh text-[12px]">
+            Not a member of this project
+          </Text>
+          <Pressable
+            onPress={(event) => {
+              event.stopPropagation?.();
+              if (item.code && onJoin) {
+                onJoin(item.code);
+              }
+            }}
+            className="bg-white px-4 py-1.5 rounded-xl active:opacity-80 shadow-sm"
+          >
+            <Text className="text-gray-900 font-kumbhBold text-[13px]">
+              Join
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
       <EditChannelModal
         visible={editOpen}
         channel={channelForEdit}

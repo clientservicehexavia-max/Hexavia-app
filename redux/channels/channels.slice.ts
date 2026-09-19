@@ -53,10 +53,13 @@ function indexChannel(state: ChannelsState, ch: Channel) {
     if (rawCode) state.codeIndex[normalizeCode(String(rawCode))] = ch._id;
 }
 
-function upsertMany(state: ChannelsState, channels: Channel[]) {
+function setMany(state: ChannelsState, channels: Channel[]) {
     if (!Array.isArray(channels)) return;
+    state.byId = {};
+    state.allIds = [];
+    state.codeIndex = {};
     for (const ch of channels) {
-        state.byId[ch._id] = { ...state.byId[ch._id], ...ch };
+        state.byId[ch._id] = ch;
         if (!state.allIds.includes(ch._id)) state.allIds.push(ch._id);
         indexChannel(state, ch);
     }
@@ -102,7 +105,7 @@ const channelsSlice = createSlice({
             })
             .addCase(fetchChannels.fulfilled, (state, action) => {
                 state.status = "succeeded";
-                upsertMany(state, action.payload);
+                setMany(state, action.payload);
             })
             .addCase(fetchChannels.rejected, (state, action) => {
                 state.status = "failed";
