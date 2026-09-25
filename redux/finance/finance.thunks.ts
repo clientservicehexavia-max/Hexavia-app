@@ -100,3 +100,66 @@ export const deleteFinanceRecord = createAsyncThunk<
         });
     }
 });
+
+/** POST /admin/finance/statement/parse */
+export const parseBankStatement = createAsyncThunk<
+    StatementParseResponse,
+    { uri: string; name: string; type?: string },
+    { rejectValue: { message: string } }
+>("finance/parseBankStatement", async (file, { rejectWithValue }) => {
+    try {
+        const formData = new FormData();
+        formData.append("statementFile", {
+            uri: file.uri,
+            name: file.name || "statement.pdf",
+            type: file.type || "application/pdf",
+        } as any);
+
+        const { data } = await api.post<StatementParseResponse>(
+            `${BASE}/statement/parse`,
+            formData,
+            {
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "multipart/form-data",
+                },
+                transformRequest: (v) => v,
+                timeout: 180_000,
+            },
+        );
+        return data;
+    } catch (err: any) {
+        return rejectWithValue({
+            message:
+                err?.response?.data?.message ||
+                err.message ||
+                "Failed to parse bank statement",
+        });
+    }
+});
+
+/** POST /admin/finance/statement/confirm */
+export const confirmBankStatementImport = createAsyncThunk<
+    StatementConfirmResponse,
+    {
+        importId: string;
+        transactions: StatementTransaction[];
+    },
+    { rejectValue: { message: string } }
+>("finance/confirmBankStatementImport", async (payload, { rejectWithValue }) => {
+    try {
+        const { data } = await api.post<StatementConfirmResponse>(
+            `${BASE}/statement/confirm`,
+            payload,
+        );
+        return data;
+    } catch (err: any) {
+        return rejectWithValue({
+            message:
+                err?.response?.data?.message ||
+                err.message ||
+                "Failed to confirm bank statement import",
+        });
+    }
+});
+

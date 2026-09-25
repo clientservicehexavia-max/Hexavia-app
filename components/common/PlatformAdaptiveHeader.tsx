@@ -11,7 +11,7 @@ type Props = {
     description?: string;
     multilineTitle?: boolean;
     onTitlePress?: () => void;
-    // onBackPress: () => void;
+    onBackPress?: () => void;
     headerRight?: (props: { tintColor?: string }) => React.ReactNode;
     headerLeft?: (props: { tintColor?: string }) => React.ReactNode;
     backgroundColor?: string;
@@ -22,7 +22,7 @@ export default function PlatformAdaptiveHeader({
     description,
     multilineTitle = false,
     onTitlePress,
-    // onBackPress,
+    onBackPress,
     headerRight,
     headerLeft,
     backgroundColor = "#FFF",
@@ -34,10 +34,10 @@ export default function PlatformAdaptiveHeader({
         return ({ tintColor }: { tintColor?: string }) => (
             <HeaderBackButton
                 tintColor={tintColor}
-                onPress={() => router.back()}
+                onPress={onBackPress ? onBackPress : () => router.back()}
             />
         );
-    }, [headerLeft, router]);
+    }, [headerLeft, onBackPress, router]);
 
     const headerTitleComponent = React.useMemo(() => {
         if (!multilineTitle) return undefined;
@@ -124,6 +124,7 @@ export default function PlatformAdaptiveHeader({
                     description={description}
                     multilineTitle={multilineTitle}
                     onTitlePress={onTitlePress}
+                    onBackPress={onBackPress}
                     backgroundColor={backgroundColor}
                     left={
                         headerLeft

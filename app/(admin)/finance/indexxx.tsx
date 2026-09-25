@@ -76,19 +76,24 @@ function isSameYMD(a: Date, b: Date) {
         a.getDate() === b.getDate()
     );
 }
+const MONTH_NAMES_SHORT = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 function dateBucket(iso?: string) {
     if (!iso) return "";
     const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
     const today = new Date();
     const yday = new Date(today);
     yday.setDate(today.getDate() - 1);
     if (isSameYMD(d, today)) return "Today";
     if (isSameYMD(d, yday)) return "Yesterday";
-    return d.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-    });
+    const month = MONTH_NAMES_SHORT[d.getMonth()];
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return `${month} ${day}, ${year}`;
 }
 
 const ADMIN_FINANCE_PIN = "1473695";

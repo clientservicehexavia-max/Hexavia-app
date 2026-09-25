@@ -8,7 +8,7 @@ type Props = {
     description?: string;
     multilineTitle?: boolean;
     onTitlePress?: () => void;
-    // onBackPress: () => void;
+    onBackPress?: () => void;
     left?: React.ReactNode;
     right?: React.ReactNode;
     backgroundColor?: string;
@@ -20,7 +20,7 @@ export default function PlatformLikeHeader({
     multilineTitle = false,
     onTitlePress,
     backgroundColor,
-    // onBackPress,
+    onBackPress,
     left,
     right,
 }: Props) {
@@ -39,8 +39,7 @@ export default function PlatformLikeHeader({
             >
                 {left ?? (
                     <Pressable
-                        // onPress={onBackPress}
-                        onPress={() => router.back()}
+                        onPress={onBackPress ? onBackPress : () => router.back()}
                         hitSlop={8}
                         className="w-12 h-12 items-center justify-center"
                     >

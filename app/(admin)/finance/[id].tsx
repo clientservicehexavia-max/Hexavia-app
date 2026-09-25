@@ -35,14 +35,15 @@ const NGN = (n: number) =>
         currency: "NGN",
     }).format(n);
 
-const dmy = (iso?: string) =>
-    iso
-        ? new Date(iso).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "2-digit",
-              year: "numeric",
-          })
-        : "—";
+const dmy = (iso?: string) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+};
 
 // Printing/invoice helpers removed — invoices are generated from the
 // installments flow (`app/(admin)/clients/installments.tsx`).
