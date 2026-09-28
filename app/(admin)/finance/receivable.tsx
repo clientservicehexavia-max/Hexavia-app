@@ -461,9 +461,11 @@ export default function ReceivableForm() {
                 visible={showPicker}
                 value={pickerDate}
                 onCancel={() => setShowPicker(false)}
-                onDone={() => {
+                onDone={(selectedDate) => {
+                    const finalDate =
+                        selectedDate instanceof Date ? selectedDate : pickerDate;
                     setShowPicker(false);
-                    setDate(fmtDMY(pickerDate));
+                    setDate(fmtDMY(finalDate));
                 }}
                 onDateChange={(d: Date) => setPickerDate(d)}
             />

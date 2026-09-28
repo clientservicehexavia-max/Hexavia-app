@@ -20,10 +20,12 @@ import clsx from "clsx";
 import {
   AlertTriangle,
   ArrowDownLeft,
+  ArrowUpDown,
   ArrowUpRight,
   Calendar,
   Check,
   CheckCircle2,
+  ChevronDown,
   FileSpreadsheet,
   FileText,
   FileUp,
@@ -97,6 +99,7 @@ const RECEIVABLE_SOURCE_OPTIONS = [
 
 type Step = "upload" | "processing" | "review" | "success";
 type FilterTab = "all" | "receivables" | "expenses" | "duplicates" | "excluded";
+export type ImportScope = "both" | "expenses" | "receivables";
 
 export default function ImportStatementScreen() {
   const router = useRouter();
@@ -105,6 +108,8 @@ export default function ImportStatementScreen() {
 
   // Step state
   const [step, setStep] = useState<Step>("upload");
+  const [importScope, setImportScope] = useState<ImportScope>("both");
+  const [showScopeMenu, setShowScopeMenu] = useState(false);
 
   // Upload state
   const [selectedFile, setSelectedFile] = useState<{
@@ -147,6 +152,7 @@ export default function ImportStatementScreen() {
     totalExpenseAmount: number;
     totalReceivableAmount: number;
     excludedCount: number;
+    importScope?: ImportScope;
   } | null>(null);
 
   // Pick document handler
@@ -299,28 +305,60 @@ export default function ImportStatementScreen() {
   };
 
   // Confirm & Submit Import
+  // Confirm & Submit Import
   const handleConfirmImport = async () => {
     if (!importId) return;
 
     try {
       setIsConfirming(true);
-      const activeTxns = transactions.filter((t) => !t.excluded);
+      const activeTxns = transactions.filter((t) => {
+        if (t.excluded) return false;
+        if (importScope === "expenses") return t.type === "expense";
+        if (importScope === "receivables") return t.type === "receivable";
+        return true;
+      });
 
       if (activeTxns.length === 0) {
         setIsConfirming(false);
         setShowConfirmModal(false);
-        return showError("No transactions selected for import (all excluded).");
+        return showError(
+          `No transactions selected for import under "${importScope}" scope.`,
+        );
       }
+
+      // Mark any transactions not matching scope as excluded
+      const txnsToSubmit = transactions.map((t) => {
+        if (t.excluded) return t;
+        if (importScope === "expenses" && t.type !== "expense") {
+          return {
+            ...t,
+            excluded: true,
+            duplicateReason: "Excluded by scope (expenses only)",
+          };
+        }
+        if (importScope === "receivables" && t.type !== "receivable") {
+          return {
+            ...t,
+            excluded: true,
+            duplicateReason: "Excluded by scope (receivables only)",
+          };
+        }
+        return t;
+      });
 
       const res = await dispatch(
         confirmBankStatementImport({
           importId,
-          transactions,
+          transactions: txnsToSubmit,
+          importScope,
         }),
       ).unwrap();
 
       if (res.success && res.data) {
-        setConfirmedSummary(res.data.summary);
+        setConfirmedSummary({
+          ...res.data.summary,
+          importScope,
+        });
         setShowConfirmModal(false);
         setStep("success");
         showSuccess("Bank statement import completed!");
@@ -351,9 +389,24 @@ export default function ImportStatementScreen() {
     const totalRecAmount = recs.reduce((sum, t) => sum + (t.amount || 0), 0);
     const totalExpAmount = exps.reduce((sum, t) => sum + (t.amount || 0), 0);
 
+    const effectiveActiveTxns = active.filter((t) => {
+      if (importScope === "expenses") return t.type === "expense";
+      if (importScope === "receivables") return t.type === "receivable";
+      return true;
+    });
+
+    const effectiveAmount =
+      importScope === "expenses"
+        ? totalExpAmount
+        : importScope === "receivables"
+          ? totalRecAmount
+          : totalRecAmount + totalExpAmount;
+
     return {
       total,
       activeCount: active.length,
+      effectiveCount: effectiveActiveTxns.length,
+      effectiveAmount,
       excludedCount: excluded.length,
       duplicatesCount: duplicates.length,
       receivablesCount: recs.length,
@@ -361,7 +414,7 @@ export default function ImportStatementScreen() {
       totalRecAmount,
       totalExpAmount,
     };
-  }, [transactions]);
+  }, [transactions, importScope]);
 
   // Filtered transactions for review list
   const filteredTransactions = useMemo(() => {
@@ -425,6 +478,25 @@ export default function ImportStatementScreen() {
             router.back();
           }
         }}
+        headerRight={
+          step === "upload" || step === "review"
+            ? ({ tintColor }) => (
+                <Pressable
+                  onPress={() => setShowScopeMenu(true)}
+                  hitSlop={8}
+                  className="flex-row items-center gap-1.5 px-2.5 py-1.5"
+                >
+                  {importScope === "both" ? (
+                    <ArrowUpDown size={20} color="#4C5FAB" />
+                  ) : importScope === "expenses" ? (
+                    <ArrowUpRight size={20} color="#E11D48" />
+                  ) : (
+                    <ArrowDownLeft size={20} color="#059669" />
+                  )}
+                </Pressable>
+              )
+            : undefined
+        }
       />
 
       {/* ───────── STEP 1: UPLOAD VIEW ───────── */}
@@ -734,11 +806,14 @@ export default function ImportStatementScreen() {
             }
             renderItem={({ item }) => {
               const isRec = item.type === "receivable";
+              const isOutOfScope =
+                (importScope === "expenses" && isRec) ||
+                (importScope === "receivables" && !isRec);
               return (
                 <View
                   className={clsx(
                     "bg-white rounded-2xl p-4 mb-3 border",
-                    item.excluded
+                    item.excluded || isOutOfScope
                       ? "border-gray-200 opacity-60 bg-gray-50"
                       : item.isDuplicate
                         ? "border-amber-300 bg-amber-50/20"
@@ -775,6 +850,15 @@ export default function ImportStatementScreen() {
                           (switch)
                         </Text>
                       </Pressable>
+
+                      {/* Out of scope badge */}
+                      {isOutOfScope && !item.excluded && (
+                        <View className="bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-md">
+                          <Text className="text-[10px] font-kumbhBold text-gray-500">
+                            Skipped by scope
+                          </Text>
+                        </View>
+                      )}
 
                       {/* Source badge for receivables */}
                       {isRec && item.source && (
@@ -903,26 +987,38 @@ export default function ImportStatementScreen() {
           <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-5 py-4 shadow-lg flex-row items-center justify-between">
             <View>
               <Text className="text-xs font-kumbh text-gray-500">
-                Ready to import:
+                Ready to import (
+                {importScope === "both"
+                  ? "All"
+                  : importScope === "expenses"
+                    ? "Expenses"
+                    : "Receivables"}
+                ):
               </Text>
               <Text className="text-sm font-kumbhBold text-[#111827]">
-                {metrics.activeCount} transactions
+                {metrics.effectiveCount} records •{" "}
+                {NGN(metrics.effectiveAmount)}
               </Text>
             </View>
 
             <Pressable
               onPress={() => setShowConfirmModal(true)}
-              disabled={metrics.activeCount === 0}
+              disabled={metrics.effectiveCount === 0}
               className={clsx(
                 "px-6 h-12 rounded-2xl items-center justify-center flex-row gap-2 shadow-sm",
-                metrics.activeCount > 0
+                metrics.effectiveCount > 0
                   ? "bg-[#4C5FAB] active:opacity-90"
                   : "bg-gray-300",
               )}
             >
               <Check size={18} color="#FFFFFF" />
               <Text className="text-white font-kumbhBold text-sm">
-                Import {metrics.activeCount} Records
+                Import {metrics.effectiveCount}{" "}
+                {importScope === "expenses"
+                  ? "Expenses"
+                  : importScope === "receivables"
+                    ? "Receivables"
+                    : "Records"}
               </Text>
             </Pressable>
           </View>
@@ -1127,26 +1223,69 @@ export default function ImportStatementScreen() {
             <View className="bg-gray-50 rounded-2xl p-4 border border-gray-100 mb-6 space-y-2">
               <View className="flex-row items-center justify-between py-1 border-b border-gray-200">
                 <Text className="text-xs font-kumbh text-gray-500">
-                  Receivables:
+                  Import Target:
                 </Text>
-                <Text className="text-xs font-kumbhBold text-emerald-700">
-                  {metrics.receivablesCount} ({NGN(metrics.totalRecAmount)})
+                <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
+                  {importScope === "both"
+                    ? "Both"
+                    : importScope === "expenses"
+                      ? "Expenses Only"
+                      : "Receivables Only"}
                 </Text>
               </View>
+
+              <View className="flex-row items-center justify-between py-1 border-b border-gray-200">
+                <Text className="text-xs font-kumbh text-gray-500">
+                  Receivables:
+                </Text>
+                <Text
+                  className={clsx(
+                    "text-xs font-kumbhBold",
+                    importScope === "expenses"
+                      ? "text-gray-400 line-through"
+                      : "text-emerald-700",
+                  )}
+                >
+                  {importScope === "expenses"
+                    ? `${metrics.receivablesCount} (Skipped by scope)`
+                    : `${metrics.receivablesCount} (${NGN(metrics.totalRecAmount)})`}
+                </Text>
+              </View>
+
               <View className="flex-row items-center justify-between py-1 border-b border-gray-200">
                 <Text className="text-xs font-kumbh text-gray-500">
                   Expenses:
                 </Text>
-                <Text className="text-xs font-kumbhBold text-rose-700">
-                  {metrics.expensesCount} ({NGN(metrics.totalExpAmount)})
+                <Text
+                  className={clsx(
+                    "text-xs font-kumbhBold",
+                    importScope === "receivables"
+                      ? "text-gray-400 line-through"
+                      : "text-rose-700",
+                  )}
+                >
+                  {importScope === "receivables"
+                    ? `${metrics.expensesCount} (Skipped by scope)`
+                    : `${metrics.expensesCount} (${NGN(metrics.totalExpAmount)})`}
                 </Text>
               </View>
+
+              <View className="flex-row items-center justify-between py-1 border-b border-gray-200">
+                <Text className="text-xs font-kumbh text-gray-500">
+                  Total To Create:
+                </Text>
+                <Text className="text-xs font-kumbhBold text-[#111827]">
+                  {metrics.effectiveCount} records (
+                  {NGN(metrics.effectiveAmount)})
+                </Text>
+              </View>
+
               <View className="flex-row items-center justify-between py-1">
                 <Text className="text-xs font-kumbh text-gray-500">
-                  Excluded (Skipped):
+                  Excluded / Skipped:
                 </Text>
                 <Text className="text-xs font-kumbh text-gray-600">
-                  {metrics.excludedCount}
+                  {transactions.length - metrics.effectiveCount}
                 </Text>
               </View>
             </View>
@@ -1197,6 +1336,21 @@ export default function ImportStatementScreen() {
 
           {/* Summary Cards */}
           <View className="w-full bg-white rounded-3xl p-5 border border-gray-100 shadow-xs mb-8">
+            {confirmedSummary.importScope && (
+              <View className="flex-row items-center justify-between py-2 border-b border-gray-100">
+                <Text className="text-sm font-kumbh text-gray-600">
+                  Import Scope
+                </Text>
+                <Text className="text-xs font-kumbhBold text-[#4C5FAB] uppercase">
+                  {confirmedSummary.importScope === "both"
+                    ? "Both"
+                    : confirmedSummary.importScope === "expenses"
+                      ? "Expenses Only"
+                      : "Receivables Only"}
+                </Text>
+              </View>
+            )}
+
             <View className="flex-row items-center justify-between py-2.5 border-b border-gray-100">
               <Text className="text-sm font-kumbh text-gray-600">
                 Total Imported
@@ -1261,6 +1415,146 @@ export default function ImportStatementScreen() {
           </Pressable>
         </View>
       )}
+
+      {/* ───────── SCOPE DROPDOWN MODAL ───────── */}
+      <Modal
+        visible={showScopeMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowScopeMenu(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/20"
+          onPress={() => setShowScopeMenu(false)}
+        >
+          <SafeAreaView edges={["top", "right"]} className="flex-1">
+            <View className="items-end px-5 pt-12">
+              <Pressable
+                onPress={(e) => e.stopPropagation()}
+                className="w-64 bg-white rounded-2xl p-2 shadow-2xl border border-gray-100"
+              >
+                <Text className="text-[10px] font-kumbhBold text-gray-400 uppercase tracking-wider px-3 py-1.5">
+                  Import Filter
+                </Text>
+
+                {/* Option 1: Both */}
+                <Pressable
+                  onPress={() => {
+                    setImportScope("both");
+                    setShowScopeMenu(false);
+                  }}
+                  className={clsx(
+                    "flex-row items-center justify-between px-3 py-2.5 rounded-xl",
+                    importScope === "both"
+                      ? "bg-[#4C5FAB]/10"
+                      : "active:bg-gray-50",
+                  )}
+                >
+                  <View className="flex-row items-center gap-2.5">
+                    <View className="w-7 h-7 rounded-lg bg-[#4C5FAB]/10 items-center justify-center">
+                      <ArrowUpDown size={15} color="#4C5FAB" />
+                    </View>
+                    <View>
+                      <Text
+                        className={clsx(
+                          "text-xs font-kumbhBold",
+                          importScope === "both"
+                            ? "text-[#4C5FAB]"
+                            : "text-gray-800",
+                        )}
+                      >
+                        Import Both
+                      </Text>
+                      <Text className="text-[10px] font-kumbh text-gray-400">
+                        Receivables & Expenses
+                      </Text>
+                    </View>
+                  </View>
+                  {importScope === "both" && (
+                    <Check size={14} color="#4C5FAB" />
+                  )}
+                </Pressable>
+
+                {/* Option 2: Expenses Only */}
+                <Pressable
+                  onPress={() => {
+                    setImportScope("expenses");
+                    setShowScopeMenu(false);
+                  }}
+                  className={clsx(
+                    "flex-row items-center justify-between px-3 py-2.5 rounded-xl mt-1",
+                    importScope === "expenses"
+                      ? "bg-rose-50"
+                      : "active:bg-gray-50",
+                  )}
+                >
+                  <View className="flex-row items-center gap-2.5">
+                    <View className="w-7 h-7 rounded-lg bg-rose-100 items-center justify-center">
+                      <ArrowUpRight size={15} color="#E11D48" />
+                    </View>
+                    <View>
+                      <Text
+                        className={clsx(
+                          "text-xs font-kumbhBold",
+                          importScope === "expenses"
+                            ? "text-rose-700"
+                            : "text-gray-800",
+                        )}
+                      >
+                        Expenses Only
+                      </Text>
+                      <Text className="text-[10px] font-kumbh text-gray-400">
+                        Money out (Debits)
+                      </Text>
+                    </View>
+                  </View>
+                  {importScope === "expenses" && (
+                    <Check size={14} color="#E11D48" />
+                  )}
+                </Pressable>
+
+                {/* Option 3: Receivables Only */}
+                <Pressable
+                  onPress={() => {
+                    setImportScope("receivables");
+                    setShowScopeMenu(false);
+                  }}
+                  className={clsx(
+                    "flex-row items-center justify-between px-3 py-2.5 rounded-xl mt-1",
+                    importScope === "receivables"
+                      ? "bg-emerald-50"
+                      : "active:bg-gray-50",
+                  )}
+                >
+                  <View className="flex-row items-center gap-2.5">
+                    <View className="w-7 h-7 rounded-lg bg-emerald-100 items-center justify-center">
+                      <ArrowDownLeft size={15} color="#059669" />
+                    </View>
+                    <View>
+                      <Text
+                        className={clsx(
+                          "text-xs font-kumbhBold",
+                          importScope === "receivables"
+                            ? "text-emerald-700"
+                            : "text-gray-800",
+                        )}
+                      >
+                        Receivables Only
+                      </Text>
+                      <Text className="text-[10px] font-kumbh text-gray-400">
+                        Money in (Credits)
+                      </Text>
+                    </View>
+                  </View>
+                  {importScope === "receivables" && (
+                    <Check size={14} color="#059669" />
+                  )}
+                </Pressable>
+              </Pressable>
+            </View>
+          </SafeAreaView>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

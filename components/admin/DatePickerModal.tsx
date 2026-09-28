@@ -7,7 +7,7 @@ type IOSDatePickerModalProps = {
     visible: boolean;
     value: Date;
     onCancel: () => void;
-    onDone: () => void;
+    onDone: (date?: Date) => void;
     onDateChange: (date: Date) => void;
     minimumDate?: Date;
     maximumDate?: Date;
@@ -64,7 +64,7 @@ export default function DatePickerModal({
                     if (!isUsableDate(d, minimumDate, maximumDate)) return;
                     setDraftDate(d);
                     onDateChange(d);
-                    onDone();
+                    onDone(d);
                 }}
             />
         );
@@ -74,7 +74,7 @@ export default function DatePickerModal({
         <BottomSheetModal
             visible={visible}
             onRequestClose={onCancel}
-            onDone={onDone}
+            onDone={() => onDone(draftDate)}
         >
             <View className="flex-row justify-center">
                 <DateTimePicker

@@ -118,16 +118,40 @@ const N = (v: number | string) => {
 };
 
 function toISO(d: string) {
-    const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!m) return d;
-    const [_, dd, mm, yyyy] = m;
-    return `${yyyy}-${mm}-${dd}`;
+    if (!d) return new Date().toISOString();
+    const trimmed = d.trim();
+    const m = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) {
+        const dd = m[1].padStart(2, "0");
+        const mm = m[2].padStart(2, "0");
+        const yyyy = m[3];
+        return `${yyyy}-${mm}-${dd}`;
+    }
+    const parsed = parseDueDate(trimmed);
+    return parsed.toISOString();
 }
 function fmtDMY(d: Date) {
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
+}
+
+function parseDueDate(dueStr?: string): Date {
+    if (!dueStr) return new Date();
+    const trimmed = String(dueStr).trim();
+    const dmy = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmy) {
+        const d = new Date(+dmy[3], +dmy[2] - 1, +dmy[1]);
+        if (!Number.isNaN(d.getTime())) return d;
+    }
+    const ymd = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (ymd) {
+        const d = new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
+        if (!Number.isNaN(d.getTime())) return d;
+    }
+    const fallback = new Date(trimmed);
+    return !Number.isNaN(fallback.getTime()) ? fallback : new Date();
 }
 
 function slugFileName(s: string) {
@@ -937,7 +961,11 @@ export default function ClientInstallments() {
                             await dispatch(deleteClient(clientId)).unwrap();
                             await dispatch(fetchClients(clientFilters));
                             showSuccess("External receivable deleted.");
-                            router.replace("/(admin)/finance");
+                            if (router.canGoBack()) {
+                                router.back();
+                            } else {
+                                router.replace("/(admin)/finance");
+                            }
                         } catch (e: any) {
                             showError(
                                 e?.message ||
@@ -961,6 +989,7 @@ export default function ClientInstallments() {
         >
             <PlatformAdaptiveHeader
                 title="Installment Payment"
+                onBackPress={onHeaderBackPress}
                 headerRight={({ tintColor }) => (
                     <Pressable
                         onPress={handleSave}
@@ -1137,20 +1166,7 @@ export default function ClientInstallments() {
                                             disabled={false}
                                             onPress={() => {
                                                 setDateIdx(idx);
-                                                const parts = row.due.match(
-                                                    /^(\d{2})\/(\d{2})\/(\d{4})$/,
-                                                );
-                                                if (parts) {
-                                                    setPickerDate(
-                                                        new Date(
-                                                            +parts[3],
-                                                            +parts[2] - 1,
-                                                            +parts[1],
-                                                        ),
-                                                    );
-                                                } else {
-                                                    setPickerDate(new Date());
-                                                }
+                                                setPickerDate(parseDueDate(row.due));
                                             }}
                                             className={clsx(
                                                 "rounded-xl px-3 android:py-2.5 ios:py-3",
@@ -1248,16 +1264,18 @@ export default function ClientInstallments() {
                 visible={dateIdx !== null}
                 value={pickerDate}
                 onCancel={() => setDateIdx(null)}
-                onDone={() => {
-                    if (dateIdx !== null) {
-                        updateRow(dateIdx, { due: fmtDMY(pickerDate) });
+                onDone={(selectedDate) => {
+                    const finalDate =
+                        selectedDate instanceof Date
+                            ? selectedDate
+                            : pickerDate;
+                    if (dateIdx !== null && finalDate) {
+                        updateRow(dateIdx, { due: fmtDMY(finalDate) });
                     }
                     setDateIdx(null);
                 }}
                 onDateChange={(d) => {
-                    if (dateIdx === null) return;
                     setPickerDate(d);
-                    updateRow(dateIdx, { due: fmtDMY(d) });
                 }}
             />
         </SafeAreaView>

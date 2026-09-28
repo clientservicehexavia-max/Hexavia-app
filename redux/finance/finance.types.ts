@@ -151,6 +151,7 @@ export type StatementConfirmResponse = {
             totalExpenseAmount: number;
             totalReceivableAmount: number;
             excludedCount: number;
+            importScope?: "both" | "expenses" | "receivables";
         };
     };
 };

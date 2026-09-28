@@ -120,32 +120,46 @@ function getTotalPaid(client: any) {
 }
 
 function getReceivableActivityDate(client: any) {
-  const directActivity =
-    client?.receivableUpdatedAt || client?.updatedAt || client?.createdAt;
-  const directTs = new Date(directActivity || "").getTime();
-  if (!Number.isNaN(directTs) && directTs > 0) {
-    return new Date(directTs).toISOString();
-  }
-
-  if (!Array.isArray(client?.installmentalPayment)) {
-    return client?.createdAt || "";
-  }
-
-  let latestPaidTs = 0;
-  for (const payment of client.installmentalPayment) {
-    if (payment?.isPaid === false) continue;
-    const paymentTs = new Date(
-      payment?.paymentUpdatedAt || payment?.date || "",
-    ).getTime();
-    if (!Number.isNaN(paymentTs) && paymentTs > latestPaidTs) {
-      latestPaidTs = paymentTs;
+  // 1. Use client.receivableUpdatedAt (consistently kept up to date with the latest row date)
+  if (client?.receivableUpdatedAt) {
+    const ts = new Date(client.receivableUpdatedAt).getTime();
+    if (!Number.isNaN(ts) && ts > 0) {
+      return new Date(ts).toISOString();
     }
   }
 
-  if (latestPaidTs > 0) {
-    return new Date(latestPaidTs).toISOString();
+  // 2. Fallback to direct inspection of rows (for instant optimistic updates or legacy data)
+  if (Array.isArray(client?.installmentalPayment) && client.installmentalPayment.length > 0) {
+    let latestPaidTs = 0;
+    for (const payment of client.installmentalPayment) {
+      if (payment?.isPaid === false) continue;
+      const paymentDate = payment?.date || payment?.paymentUpdatedAt;
+      const paymentTs = new Date(paymentDate || "").getTime();
+      if (!Number.isNaN(paymentTs) && paymentTs > latestPaidTs) {
+        latestPaidTs = paymentTs;
+      }
+    }
+
+    if (latestPaidTs > 0) {
+      return new Date(latestPaidTs).toISOString();
+    }
+
+    // If no installments are marked paid, use latest scheduled due date
+    let latestScheduledTs = 0;
+    for (const payment of client.installmentalPayment) {
+      const paymentDate = payment?.date || payment?.paymentUpdatedAt;
+      const paymentTs = new Date(paymentDate || "").getTime();
+      if (!Number.isNaN(paymentTs) && paymentTs > latestScheduledTs) {
+        latestScheduledTs = paymentTs;
+      }
+    }
+
+    if (latestScheduledTs > 0) {
+      return new Date(latestScheduledTs).toISOString();
+    }
   }
 
+  // 3. Fallback to account creation date
   return client?.createdAt || "";
 }
 

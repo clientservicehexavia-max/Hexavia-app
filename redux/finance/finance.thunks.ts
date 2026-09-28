@@ -144,6 +144,7 @@ export const confirmBankStatementImport = createAsyncThunk<
     {
         importId: string;
         transactions: StatementTransaction[];
+        importScope?: "both" | "expenses" | "receivables";
     },
     { rejectValue: { message: string } }
 >("finance/confirmBankStatementImport", async (payload, { rejectWithValue }) => {
