@@ -30,6 +30,8 @@ import Field from "@/components/admin/Field";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import HexButton from "@/components/ui/HexButton";
 import { showError, showPromise, showSuccess } from "@/components/ui/toast";
+import { fetchAdminUsers } from "@/redux/admin/admin.thunks";
+import { useAppDispatch } from "@/store/hooks";
 import {
     birthdayInputFromDate,
     birthdayPickerDate,
@@ -100,6 +102,7 @@ function generatePassword(length = 12) {
 
 export default function CreateTeamMemberScreen() {
     const router = useRouter();
+    const dispatch = useAppDispatch();
     const isIOS = Platform.OS === "ios";
     const [generatedPassword, setGeneratedPassword] = useState(() =>
         generatePassword(),
@@ -156,6 +159,8 @@ export default function CreateTeamMemberScreen() {
                 "Creating account…",
                 "Team member created",
             );
+
+            dispatch(fetchAdminUsers());
 
             setCreatedMember({
                 fullname: payload.fullname,
