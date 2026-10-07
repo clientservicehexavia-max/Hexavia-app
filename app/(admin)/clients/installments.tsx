@@ -194,6 +194,13 @@ function yyyymmdd(d = new Date()) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
+const formatWithCommas = (digits: string | number) => {
+    if (!digits && digits !== 0) return "";
+    const clean = String(digits).replace(/[^\d]/g, "");
+    if (!clean) return "";
+    return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
 const AmountInput = ({
     value,
     onChange,
@@ -202,29 +209,44 @@ const AmountInput = ({
     value: string;
     onChange: (t: string) => void;
     editable?: boolean;
-}) => (
-    <View
-        className="rounded-xl px-4 py-2 flex-row items-center"
-        style={{ backgroundColor: "#F3F4F6" }}
-    >
-        <Text className="font-kumbh text-[#6B7280] text-base">₦</Text>
-        <TextInput
-            editable={editable}
-            value={value}
-            onChangeText={onChange}
-            placeholder="5000"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            className="font-kumbh text-[#111827]"
-            style={{
-                flex: 1,
-                marginLeft: 3,
-                paddingBottom: value.length === 0 ? 3 : 0,
-                paddingTop: value.length === 0 ? 0 : 3,
-            }}
-        />
-    </View>
-);
+}) => {
+    const rawValue = (value ?? "").toString().replace(/[^\d]/g, "");
+    const displayValue = formatWithCommas(rawValue);
+
+    return (
+        <View
+            className="rounded-xl px-4 py-2 flex-row items-center"
+            style={{ backgroundColor: "#F3F4F6" }}
+        >
+            <Text className="font-kumbh text-[#6B7280] text-base">₦</Text>
+            <TextInput
+                editable={editable}
+                value={displayValue}
+                onChangeText={(text) => {
+                    let digits = text.replace(/[^\d]/g, "");
+                    if (
+                        text.length < displayValue.length &&
+                        digits === rawValue &&
+                        digits.length > 0
+                    ) {
+                        digits = digits.slice(0, -1);
+                    }
+                    onChange(digits);
+                }}
+                placeholder="5,000"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+                className="font-kumbh text-[#111827]"
+                style={{
+                    flex: 1,
+                    marginLeft: 3,
+                    paddingBottom: displayValue.length === 0 ? 3 : 0,
+                    paddingTop: displayValue.length === 0 ? 0 : 3,
+                }}
+            />
+        </View>
+    );
+};
 
 /* ---------- invoice / receipt HTML (shared format) ---------- */
 function htmlForDocument(payload: {
@@ -267,7 +289,7 @@ function htmlForDocument(payload: {
             <td>${i + 1}</td>
             <td>${r.due || ""}</td>
             <td style="text-align:right">${N(amountNum)}</td>
-            <td>${r.paymentId ? `<span class="pill ok">Paid</span>` : `<span class="pill warn">Not Paid</span>`}</td>
+            <td>${r.isPaid ? `<span class="pill ok">Paid</span>` : `<span class="pill warn">Not Paid</span>`}</td>
           </tr>`;
               })
               .join("")
@@ -1099,7 +1121,7 @@ export default function ClientInstallments() {
 
                     {/* Plan rows */}
                     {rows.map((row, idx) => {
-                        const isPaid = row.isPaid ?? !!row.paymentId;
+                        const isPaid = Boolean(row.isPaid);
                         const rowKey =
                             row.paymentId || row._localId || `temp-${idx}`;
                         return (
