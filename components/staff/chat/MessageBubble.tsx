@@ -823,6 +823,11 @@ export default function MessageBubble({
 
                 {!isAudio(msg) ? (
                     <View className="flex-row items-center mt-1">
+                        {msg.edited ? (
+                            <Text className="text-[10px] text-gray-400 italic mr-1">
+                                Edited
+                            </Text>
+                        ) : null}
                         <Text className="text-[11px] text-gray-400 mr-1">
                             {formatTime(msg.createdAt)}
                         </Text>
@@ -881,9 +886,16 @@ export default function MessageBubble({
                         {BubbleCore}
                     </View>
                     {!isAudio(msg) ? (
-                        <Text className="text-[11px] text-gray-400 mt-1">
-                            {formatTime(msg.createdAt)}
-                        </Text>
+                        <View className="flex-row items-center mt-1">
+                            {msg.edited ? (
+                                <Text className="text-[10px] text-gray-400 italic mr-1">
+                                    Edited
+                                </Text>
+                            ) : null}
+                            <Text className="text-[11px] text-gray-400">
+                                {formatTime(msg.createdAt)}
+                            </Text>
+                        </View>
                     ) : null}
                 </View>
             </View>

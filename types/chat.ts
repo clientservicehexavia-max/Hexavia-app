@@ -30,6 +30,8 @@ export type Message = {
     assetId?: string;
     resourceType?: string;
     mentions?: Mention[];
+    edited?: boolean;
+    editedAt?: string | number;
 };
 
 export type AttachmentKind = "gallery" | "audio" | "camera" | "document";

@@ -136,6 +136,23 @@ export const chatSlice = createSlice({
                 if (idx >= 0) t.messages.splice(idx, 1);
             });
         },
+        editMessageSuccess(
+            state,
+            action: PayloadAction<{
+                id: string;
+                text: string;
+                edited?: boolean;
+                editedAt?: string | number;
+            }>,
+        ) {
+            const { id, text, edited = true, editedAt } = action.payload;
+            const m = state.messages[id];
+            if (m) {
+                m.text = text;
+                m.edited = edited;
+                if (editedAt !== undefined) m.editedAt = editedAt;
+            }
+        },
         setError(state, action: PayloadAction<string | null>) {
             state.error = action.payload;
         },
@@ -232,7 +249,19 @@ export const chatSlice = createSlice({
                             publicId: d.attachment?.publicId,
                             assetId: d.attachment?.assetId,
                             resourceType: d.attachment?.resourceType,
+                            edited: Boolean(d.edited),
+                            editedAt: d.editedAt,
                         };
+                    } else {
+                        if (d.edited !== undefined) {
+                            state.messages[id].edited = Boolean(d.edited);
+                        }
+                        if (d.editedAt !== undefined) {
+                            state.messages[id].editedAt = d.editedAt;
+                        }
+                        if (d.message !== undefined && state.messages[id].text !== d.message) {
+                            state.messages[id].text = d.message;
+                        }
                     }
                     if (!thr.messages.includes(id)) {
                         thr.messages.push(id);
@@ -289,6 +318,7 @@ export const {
     setMessageStatus,
     markReadBulk,
     removeMessage,
+    editMessageSuccess,
     setError,
 } = chatSlice.actions;
 

@@ -1,6 +1,6 @@
 import type { ReplyMeta } from "@/types/chat";
 import type { Mentionable } from "@/utils/handles";
-import { Mic, Paperclip, Send, X } from "lucide-react-native";
+import { Mic, Paperclip, Pencil, Send, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     FlatList,
@@ -21,6 +21,8 @@ type Props = {
     trayOpen: boolean;
     replyTo?: ReplyMeta | null;
     onCancelReply?: () => void;
+    editingMessage?: { id: string; text: string } | null;
+    onCancelEdit?: () => void;
     isRecording?: boolean;
     recordDurationMs?: number;
     onMicPress?: () => void;
@@ -36,6 +38,8 @@ export default function Composer({
     trayOpen,
     replyTo,
     onCancelReply,
+    editingMessage,
+    onCancelEdit,
     isRecording,
     recordDurationMs = 0,
     onMicPress,
@@ -62,6 +66,12 @@ export default function Composer({
         if (value === undefined) return;
         if (value !== text) setText(value);
     }, [value, text]);
+
+    useEffect(() => {
+        if (editingMessage) {
+            inputRef.current?.focus();
+        }
+    }, [editingMessage]);
 
     useEffect(() => {
         if (Platform.OS === "android") {
@@ -219,6 +229,33 @@ export default function Composer({
                 </View>
             ) : null}
 
+            {/* Edit message bar */}
+            {editingMessage ? (
+                <View className="mb-2 px-4 py-2 rounded-2xl bg-[#E1E4F6] flex-row items-center justify-between">
+                    <View className="flex-1 mr-2">
+                        <View className="flex-row items-center mb-0.5">
+                            <Pencil size={13} color="#4C5FAB" />
+                            <Text className="text-[12px] text-[#4C5FAB] font-kumbhBold ml-1.5">
+                                Editing message
+                            </Text>
+                        </View>
+                        <Text
+                            className="text-[12px] text-gray-700"
+                            numberOfLines={1}
+                        >
+                            {editingMessage.text}
+                        </Text>
+                    </View>
+                    <Pressable
+                        onPress={onCancelEdit}
+                        className="h-6 w-6 rounded-lg bg-white/60 items-center justify-center"
+                        hitSlop={8}
+                    >
+                        <X size={14} color="#111827" />
+                    </Pressable>
+                </View>
+            ) : null}
+
             <View className="flex-row items-end">
                 {isRecording ? (
                     <View
@@ -278,7 +315,7 @@ export default function Composer({
                             ref={inputRef}
                             value={text}
                             onChangeText={onChange}
-                            placeholder="Write a message"
+                            placeholder={editingMessage ? "Edit message..." : "Write a message"}
                             placeholderTextColor="#9CA3AF"
                             // placeholderTextColor="#6B7280"
                             className="flex-1 text-gray-900"

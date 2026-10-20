@@ -1,3 +1,5 @@
+import { api } from "@/api/axios";
+import { showError } from "@/components/ui/toast";
 import { closeSocket, connectSocket, getSocket } from "@/realtime/socket";
 import type { RootState } from "@/store";
 import type { ChatMessage, ChatTaggedUser } from "@/types/chat-model";
@@ -5,6 +7,7 @@ import type { AnyAction, Middleware } from "@reduxjs/toolkit";
 import * as Notifications from "expo-notifications";
 import {
     addMessageToThread,
+    editMessageSuccess,
     ensureThread,
     joinedChannel,
     markReadBulk,
@@ -172,6 +175,8 @@ export const chatMiddleware: Middleware<{}, RootState> =
                                     taggedUsers: normalizeTaggedUsers(
                                         data.taggedUsers ?? data.tag,
                                     ),
+                                    edited: Boolean(data.edited),
+                                    editedAt: data.editedAt,
                                 };
 
                                 store.dispatch(
@@ -213,6 +218,8 @@ export const chatMiddleware: Middleware<{}, RootState> =
                             taggedUsers: normalizeTaggedUsers(
                                 data.taggedUsers ?? data.tag,
                             ),
+                            edited: Boolean(data.edited),
+                            editedAt: data.editedAt,
                         };
 
                         store.dispatch(
@@ -260,6 +267,22 @@ export const chatMiddleware: Middleware<{}, RootState> =
                     };
                     socket.on("messageDeleted", handleDelete);
                     socket.on("deleteMessage", handleDelete);
+
+                    const handleEdit = (data: any) => {
+                        const rawId = data?.messageId ?? data?._id ?? data?.id;
+                        const text = data?.text ?? data?.message;
+                        if (!rawId || typeof text !== "string") return;
+                        store.dispatch(
+                            editMessageSuccess({
+                                id: String(rawId),
+                                text,
+                                edited: true,
+                                editedAt: data?.editedAt,
+                            }),
+                        );
+                    };
+                    socket.on("messageEdited", handleEdit);
+                    socket.on("editMessage", handleEdit);
                 }
 
                 return result;
@@ -657,6 +680,58 @@ export const chatMiddleware: Middleware<{}, RootState> =
                 store.dispatch(removeMessage({ id: messageId }));
                 if (socket?.connected) {
                     socket.emit("deleteMessage", { userId, messageId });
+                }
+                return result;
+            }
+
+            case "chat/editMessage": {
+                const { userId, messageId, text } = a.payload as {
+                    userId: string;
+                    messageId: string;
+                    text: string;
+                };
+                const socket = getSocket();
+
+                if (socket?.connected) {
+                    socket.emit(
+                        "editMessage",
+                        { userId, messageId, message: text },
+                        (response: any) => {
+                            if (response?.success) {
+                                store.dispatch(
+                                    editMessageSuccess({
+                                        id: messageId,
+                                        text,
+                                        edited: true,
+                                        editedAt: response?.message?.editedAt,
+                                    }),
+                                );
+                            } else {
+                                const errMsg =
+                                    response?.error || "Failed to edit message";
+                                showError(errMsg);
+                            }
+                        },
+                    );
+                } else {
+                    api.patch(`/messages/${messageId}`, { message: text })
+                        .then((res) => {
+                            store.dispatch(
+                                editMessageSuccess({
+                                    id: messageId,
+                                    text,
+                                    edited: true,
+                                    editedAt: res?.data?.message?.editedAt,
+                                }),
+                            );
+                        })
+                        .catch((err) => {
+                            const errMsg =
+                                err?.response?.data?.error ||
+                                err?.message ||
+                                "Failed to edit message";
+                            showError(errMsg);
+                        });
                 }
                 return result;
             }

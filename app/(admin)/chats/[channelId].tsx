@@ -265,6 +265,11 @@ export default function ChatScreen() {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [selected, setSelected] = useState<Message | null>(null);
     const [replyTo, setReplyTo] = useState<ReplyMeta | null>(null);
+    const [editingMessage, setEditingMessage] = useState<{
+        id: string;
+        text: string;
+        originalCreatedAt: number;
+    } | null>(null);
     const [pendingVoiceNotes, setPendingVoiceNotes] = useState<Message[]>([]);
     const [pendingUploadPreview, setPendingUploadPreview] =
         useState<PendingUploadPreview | null>(null);
@@ -322,6 +327,7 @@ export default function ChatScreen() {
                 assetId: (m as any).assetId,
                 resourceType: (m as any).resourceType,
                 replyTo: (m as any).replyTo,
+                edited: Boolean(m.edited),
             };
         });
 
@@ -583,6 +589,47 @@ export default function ChatScreen() {
         [dispatch, meId],
     );
 
+    const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
+
+    const isEligibleForEdit = useMemo(() => {
+        if (!selected || !meId || selected.senderId !== meId) return false;
+        if (selected.status === "failed" || selected.status === "sending")
+            return false;
+        if (!selected.text || selected.text === "Image resource uploaded")
+            return false;
+        if (selected.mimeType?.startsWith("audio/") || selected.durationMs)
+            return false;
+        const messageAge = Date.now() - Number(selected.createdAt);
+        return messageAge >= 0 && messageAge <= FIVE_HOURS_MS;
+    }, [selected, meId]);
+
+    const handleEditSelected = useCallback(() => {
+        if (!selected || !meId || selected.senderId !== meId) return;
+
+        const originalSentTime = Number(selected.createdAt);
+        const messageAge = Date.now() - originalSentTime;
+        if (messageAge > FIVE_HOURS_MS) {
+            Alert.alert(
+                "Cannot Edit",
+                "Messages can only be edited within 5 hours of sending.",
+            );
+            return;
+        }
+
+        setReplyTo(null);
+        setEditingMessage({
+            id: selected.id,
+            text: selected.text,
+            originalCreatedAt: originalSentTime,
+        });
+        setDraftText(selected.text);
+    }, [selected, meId]);
+
+    const handleCancelEdit = useCallback(() => {
+        setEditingMessage(null);
+        setDraftText("");
+    }, []);
+
     const items = useMemo(() => {
         const base = [
             {
@@ -606,6 +653,13 @@ export default function ChatScreen() {
         ];
 
         if (selected && selected.senderId === meId) {
+            if (isEligibleForEdit) {
+                base.push({
+                    key: "edit",
+                    label: "Edit",
+                    onPress: handleEditSelected,
+                });
+            }
             if (selected.status === "failed") {
                 base.push({
                     key: "retry",
@@ -621,7 +675,14 @@ export default function ChatScreen() {
         }
 
         return base;
-    }, [handleDeleteSelected, handleRetryMessage, meId, selected]);
+    }, [
+        handleDeleteSelected,
+        handleEditSelected,
+        handleRetryMessage,
+        isEligibleForEdit,
+        meId,
+        selected,
+    ]);
 
     const handlePick = async (kind: AttachmentKind) => {
         try {
@@ -1024,6 +1085,42 @@ export default function ChatScreen() {
     );
 
     const handleSend = (text: string) => {
+        if (editingMessage) {
+            const trimmed = text.trim();
+            if (!trimmed) {
+                Alert.alert("Empty Message", "Message content cannot be empty.");
+                return;
+            }
+
+            if (trimmed === editingMessage.text) {
+                handleCancelEdit();
+                return;
+            }
+
+            const messageAge = Date.now() - editingMessage.originalCreatedAt;
+            if (messageAge > FIVE_HOURS_MS) {
+                Alert.alert(
+                    "Edit Limit Expired",
+                    "Messages can only be edited within 5 hours of sending.",
+                );
+                handleCancelEdit();
+                return;
+            }
+
+            dispatch({
+                type: "chat/editMessage",
+                payload: {
+                    userId: meId,
+                    messageId: editingMessage.id,
+                    text: trimmed,
+                    channelId,
+                },
+            });
+
+            handleCancelEdit();
+            return;
+        }
+
         const now = Date.now();
         if (now - lastSendRef.current < MIN_INTERVAL_MS) return;
         lastSendRef.current = now;
@@ -1367,6 +1464,8 @@ export default function ChatScreen() {
                             onToggleTray={() => setTrayOpen((v) => !v)}
                             replyTo={replyTo}
                             onCancelReply={() => setReplyTo(null)}
+                            editingMessage={editingMessage}
+                            onCancelEdit={handleCancelEdit}
                             isRecording={isRecording}
                             recordDurationMs={recordDurationMs}
                             onMicPress={handleMicPress}
