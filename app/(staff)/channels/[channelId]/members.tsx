@@ -42,6 +42,7 @@ import {
 import type { ChannelResource } from "@/redux/channels/resources.types";
 import { selectUser } from "@/redux/user/user.slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { generateChannelSummaryReport } from "@/utils/channelSummary";
 import { isAdminLikeRole } from "@/utils/roles";
 
 type MemberItem = {
@@ -59,14 +60,6 @@ type EligibleUser = {
     email?: string;
     role?: string;
     profilePicture?: string | null;
-};
-
-type SummaryPdfResponse = {
-    success?: boolean;
-    pdfUrl?: string;
-    summaryText?: string;
-    message?: string;
-    filename?: string;
 };
 
 function initialsFrom(value?: string | null) {
@@ -1275,17 +1268,7 @@ export default function ChannelInfoScreen() {
 
         setIsGeneratingReport(true);
         try {
-            const endpointResponse = await api.post<SummaryPdfResponse>(
-                `/channel/${channelId}/summary-pdf`,
-                {},
-                { timeout: 120_000 }, // 2 minutes for report generation (includes AI summary + PDF)
-            );
-            if (!endpointResponse.data?.success) {
-                throw new Error(
-                    endpointResponse.data?.message ||
-                        "Summary generation failed.",
-                );
-            }
+            await generateChannelSummaryReport({ channelId });
 
             router.push({
                 pathname: "/(admin)/report/[channelId]" as any,

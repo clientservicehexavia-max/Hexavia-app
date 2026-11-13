@@ -1,9 +1,9 @@
-import { api } from "@/api/axios";
 import DatePickerModal from "@/components/admin/DatePickerModal";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { selectAllChannels } from "@/redux/channels/channels.slice";
 import { fetchChannels } from "@/redux/channels/channels.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { generateChannelSummaryReport } from "@/utils/channelSummary";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useRouter } from "expo-router";
 import { Check, ChevronDown } from "lucide-react-native";
@@ -45,14 +45,6 @@ type FormValues = {
     channelIds: string[];
     startDate: Date | null;
     endDate: Date | null;
-};
-
-type SummaryPdfResponse = {
-    success?: boolean;
-    pdfUrl?: string;
-    summaryText?: string;
-    message?: string;
-    filename?: string;
 };
 
 /* ───────── validation ───────── */
@@ -241,18 +233,15 @@ export default function CreateReportScreen() {
                 return;
             }
 
-            await api.post<SummaryPdfResponse>(
-                `/channel/${channelId}/summary-pdf`,
-                {
-                    startDate: values.startDate
-                        ? yyyymmdd(values.startDate)
-                        : undefined,
-                    endDate: values.endDate
-                        ? yyyymmdd(values.endDate)
-                        : undefined,
-                },
-                { timeout: 120_000 },
-            );
+            await generateChannelSummaryReport({
+                channelId,
+                startDate: values.startDate
+                    ? yyyymmdd(values.startDate)
+                    : undefined,
+                endDate: values.endDate
+                    ? yyyymmdd(values.endDate)
+                    : undefined,
+            });
 
             router.push({
                 pathname: "/(admin)/report/[channelId]",
