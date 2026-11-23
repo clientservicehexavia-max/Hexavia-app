@@ -21,7 +21,7 @@ export default function AttachmentTray({
     onPick: (kind: AttachmentKind) => void;
 }) {
     return (
-        <View className="mx-3 px-4 pt-4 pb-2 rounded-3xl bg-[#E1E4F6]">
+        <View className="mx-2 mb-1 px-4 pt-4 pb-2 rounded-xl bg-[#E1E4F6]">
             <View className="flex-row items-center justify-between mb-2">
                 {items.map(({ key, label, Icon }) => (
                     <Pressable

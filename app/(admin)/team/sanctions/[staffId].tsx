@@ -362,62 +362,80 @@ export default function StaffSanctions() {
                 animationType="slide"
                 onRequestClose={() => setCreateOpen(false)}
             >
-                <View className="flex-1 bg-black/40 items-center justify-end">
-                    <View className="w-full rounded-t-3xl bg-white p-5">
-                        <View className="items-center mb-3">
-                            <View className="w-12 h-1.5 rounded-full bg-gray-300" />
-                        </View>
-
-                        <Text className="text-gray-900 font-kumbhBold text-lg mb-3">
-                            Create Sanction
-                        </Text>
-
-                        <Text className="text-gray-700 font-kumbh mb-2">
-                            Reason
-                        </Text>
-                        <TextInput
-                            placeholder="Enter reason"
-                            placeholderTextColor="#9CA3AF"
-                            value={createReason}
-                            onChangeText={(text) => {
-                                createReasonRef.current = text;
-                                setCreateReason(text);
+                <KeyboardAvoidingView
+                    className="flex-1"
+                    behavior={Platform.select({
+                        ios: "padding",
+                        android: "height",
+                    })}
+                >
+                    <View className="flex-1 bg-black/40">
+                        <ScrollView
+                            className="w-full"
+                            keyboardShouldPersistTaps="handled"
+                            contentContainerStyle={{
+                                flexGrow: 1,
+                                justifyContent: "flex-end",
                             }}
-                            onEndEditing={(e) => {
-                                createReasonRef.current = e.nativeEvent.text;
-                                setCreateReason(e.nativeEvent.text);
-                            }}
-                            className="bg-gray-50 text-gray-900 rounded-xl px-4 py-3 font-kumbh mb-6 border border-gray-200"
-                            multiline
-                        />
+                        >
+                            <View className="w-full rounded-t-3xl bg-white p-5">
+                                <View className="items-center mb-3">
+                                    <View className="w-12 h-1.5 rounded-full bg-gray-300" />
+                                </View>
 
-                        <View className="flex-row gap-3">
-                            <Pressable
-                                onPress={() => {
-                                    setCreateOpen(false);
-                                }}
-                                className="flex-1 rounded-2xl bg-gray-100 py-3 items-center"
-                            >
-                                <Text className="text-gray-800 font-kumbhBold">
-                                    Cancel
+                                <Text className="text-gray-900 font-kumbhBold text-lg mb-3">
+                                    Create Sanction
                                 </Text>
-                            </Pressable>
-                            <Pressable
-                                disabled={creating}
-                                onPress={handleCreate}
-                                className={`flex-1 rounded-2xl py-3 items-center ${
-                                    creating
-                                        ? "bg-[#7C3AED]/60"
-                                        : "bg-[#7C3AED]"
-                                }`}
-                            >
-                                <Text className="text-white font-kumbhBold">
-                                    {creating ? "Creating…" : "Create"}
+
+                                <Text className="text-gray-700 font-kumbh mb-2">
+                                    Reason
                                 </Text>
-                            </Pressable>
-                        </View>
+                                <TextInput
+                                    placeholder="Enter reason"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={createReason}
+                                    onChangeText={(text) => {
+                                        createReasonRef.current = text;
+                                        setCreateReason(text);
+                                    }}
+                                    onEndEditing={(e) => {
+                                        createReasonRef.current =
+                                            e.nativeEvent.text;
+                                        setCreateReason(e.nativeEvent.text);
+                                    }}
+                                    className="bg-gray-50 text-gray-900 rounded-xl px-4 py-3 font-kumbh mb-6 border border-gray-200"
+                                    multiline
+                                />
+
+                                <View className="flex-row gap-3">
+                                    <Pressable
+                                        onPress={() => {
+                                            setCreateOpen(false);
+                                        }}
+                                        className="flex-1 rounded-2xl bg-gray-100 py-3 items-center"
+                                    >
+                                        <Text className="text-gray-800 font-kumbhBold">
+                                            Cancel
+                                        </Text>
+                                    </Pressable>
+                                    <Pressable
+                                        disabled={creating}
+                                        onPress={handleCreate}
+                                        className={`flex-1 rounded-2xl py-3 items-center ${
+                                            creating
+                                                ? "bg-[#7C3AED]/60"
+                                                : "bg-[#7C3AED]"
+                                        }`}
+                                    >
+                                        <Text className="text-white font-kumbhBold">
+                                            {creating ? "Creating…" : "Create"}
+                                        </Text>
+                                    </Pressable>
+                                </View>
+                            </View>
+                        </ScrollView>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
 
             {/* Edit Modal */}

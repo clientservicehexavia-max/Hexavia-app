@@ -1,37 +1,43 @@
+import { STATUS_META, StatusKey, TAB_ORDER } from "@/features/staff/types";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { STATUS_META, StatusKey, TAB_ORDER } from "@/features/staff/types";
 
 type Props = { active: StatusKey; onChange: (k: StatusKey) => void };
 
 export default function StatusTabs({ active, onChange }: Props) {
-  return (
-    <View className="px-5 mt-6">
-      <View className="flex-row flex-wrap items-center" style={{ columnGap: 18 }}>
-        {TAB_ORDER.map((key) => {
-          const isActive = key === active;
-          return (
-            <Pressable key={key} onPress={() => onChange(key)}>
-              <View className="items-start">
-                <Text
-                  className="font-kumbh text-[13px]"
-                  style={{ color: isActive ? "#111827" : "#6B7280" }}
-                >
-                  {STATUS_META[key].title}
-                </Text>
-                <View
-                  className="mt-1"
-                  style={{
-                    height: 2,
-                    width: 64,
-                    backgroundColor: isActive ? "#111827" : "transparent",
-                  }}
-                />
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
+    return (
+        <View className="mt-2">
+            <View className="flex-row items-center">
+                {TAB_ORDER.map((key) => {
+                    const isActive = key === active;
+                    return (
+                        <Pressable
+                            key={key}
+                            onPress={() => onChange(key)}
+                            className="flex-1 px-1"
+                        >
+                            <View className="items-center py-3">
+                                <Text
+                                    className="font-kumbh text-[14px]"
+                                    style={{
+                                        color: isActive ? "#4C5FAB" : "#6B7280",
+                                    }}
+                                >
+                                    {STATUS_META[key].title}
+                                </Text>
+                                <View
+                                    className="mt-2 h-[3px] w-full rounded-full"
+                                    style={{
+                                        backgroundColor: isActive
+                                            ? "#4C5FAB"
+                                            : "transparent",
+                                    }}
+                                />
+                            </View>
+                        </Pressable>
+                    );
+                })}
+            </View>
+        </View>
+    );
 }

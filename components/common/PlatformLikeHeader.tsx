@@ -8,7 +8,8 @@ type Props = {
     description?: string;
     multilineTitle?: boolean;
     onTitlePress?: () => void;
-    // onBackPress: () => void;
+    onBackPress?: () => void;
+    left?: React.ReactNode;
     right?: React.ReactNode;
     backgroundColor?: string;
 };
@@ -19,7 +20,8 @@ export default function PlatformLikeHeader({
     multilineTitle = false,
     onTitlePress,
     backgroundColor,
-    // onBackPress,
+    onBackPress,
+    left,
     right,
 }: Props) {
     const router = useRouter();
@@ -35,14 +37,15 @@ export default function PlatformLikeHeader({
                 className="flex-1 flex-row items-center justify-between"
                 style={multilineTitle ? { alignItems: "center" } : undefined}
             >
-                <Pressable
-                    // onPress={onBackPress}
-                    onPress={() => router.back()}
-                    hitSlop={8}
-                    className="w-12 h-12 items-center justify-center"
-                >
-                    <ArrowLeft size={24} color="#111827" />
-                </Pressable>
+                {left ?? (
+                    <Pressable
+                        onPress={onBackPress ? onBackPress : () => router.back()}
+                        hitSlop={8}
+                        className="w-12 h-12 items-center justify-center"
+                    >
+                        <ArrowLeft size={24} color="#111827" />
+                    </Pressable>
+                )}
 
                 {multilineTitle ? (
                     <Pressable

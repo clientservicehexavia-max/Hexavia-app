@@ -1,6 +1,6 @@
 import type { ReplyMeta } from "@/types/chat";
 import type { Mentionable } from "@/utils/handles";
-import { Mic, Paperclip, Send, X } from "lucide-react-native";
+import { Mic, Paperclip, Pencil, Send, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     FlatList,
@@ -21,6 +21,8 @@ type Props = {
     trayOpen: boolean;
     replyTo?: ReplyMeta | null;
     onCancelReply?: () => void;
+    editingMessage?: { id: string; text: string } | null;
+    onCancelEdit?: () => void;
     isRecording?: boolean;
     recordDurationMs?: number;
     onMicPress?: () => void;
@@ -36,6 +38,8 @@ export default function Composer({
     trayOpen,
     replyTo,
     onCancelReply,
+    editingMessage,
+    onCancelEdit,
     isRecording,
     recordDurationMs = 0,
     onMicPress,
@@ -64,13 +68,23 @@ export default function Composer({
     }, [value, text]);
 
     useEffect(() => {
+        if (editingMessage) {
+            inputRef.current?.focus();
+        }
+    }, [editingMessage]);
+
+    useEffect(() => {
         if (Platform.OS === "android") {
             UIManager.setLayoutAnimationEnabledExperimental?.(true);
         }
     }, []);
 
-    const clampInputHeight = (next: number) =>
-        Math.max(MIN_INPUT_HEIGHT, Math.min(MAX_INPUT_HEIGHT, next));
+    useEffect(() => {
+        if (!isRecording) return;
+        setOpen(false);
+        setQuery("");
+        inputRef.current?.blur();
+    }, [isRecording]);
 
     // Filter mention suggestions by query
     const results = useMemo(() => {
@@ -134,6 +148,18 @@ export default function Composer({
     const onToggleTrayAnimated = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         onToggleTray();
+    };
+
+    const handleActionPress = () => {
+        if (isRecording) {
+            onMicPress?.();
+            return;
+        }
+        if (hasText) {
+            commit();
+            return;
+        }
+        onMicPress?.();
     };
 
     return (
@@ -203,35 +229,71 @@ export default function Composer({
                 </View>
             ) : null}
 
-            {isRecording ? (
-                <View className="mb-2 px-4 py-2 rounded-2xl bg-[#FFEFEF] flex-row items-center justify-between">
-                    <Text className="text-[13px] text-red-600 font-kumbhBold">
-                        ● Recording {durText}
-                    </Text>
+            {/* Edit message bar */}
+            {editingMessage ? (
+                <View className="mb-2 px-4 py-2 rounded-2xl bg-[#E1E4F6] flex-row items-center justify-between">
+                    <View className="flex-1 mr-2">
+                        <View className="flex-row items-center mb-0.5">
+                            <Pencil size={13} color="#4C5FAB" />
+                            <Text className="text-[12px] text-[#4C5FAB] font-kumbhBold ml-1.5">
+                                Editing message
+                            </Text>
+                        </View>
+                        <Text
+                            className="text-[12px] text-gray-700"
+                            numberOfLines={1}
+                        >
+                            {editingMessage.text}
+                        </Text>
+                    </View>
                     <Pressable
-                        onPress={onCancelRecording}
-                        className="h-6 px-3 rounded-lg bg-red-100 items-center justify-center"
+                        onPress={onCancelEdit}
+                        className="h-6 w-6 rounded-lg bg-white/60 items-center justify-center"
+                        hitSlop={8}
                     >
-                        <Text className="text-[12px] text-red-700">Cancel</Text>
+                        <X size={14} color="#111827" />
                     </Pressable>
                 </View>
             ) : null}
 
             <View className="flex-row items-end">
-                {/* Input */}
-                <View
-                    className="flex-1 rounded-[28px] border border-[#E7EAF3] flex-row items-end py-1"
-                    style={{
-                        // minHeight: 50,
-                        shadowColor: "#1F2A44",
-                        shadowOffset: { width: 0, height: 10 },
-                        shadowOpacity: Platform.OS === "ios" ? 0.08 : 0,
-                        shadowRadius: 24,
-                        // elevation: 3 ,
-                        paddingHorizontal: 4,
-                    }}
-                >
-                    {!isRecording && (
+                {isRecording ? (
+                    <View
+                        className="flex-1 rounded-[28px] border border-red-100 bg-[#FFEFEF] flex-row items-center justify-between"
+                        style={{
+                            minHeight: 50,
+                            paddingHorizontal: 14,
+                        }}
+                    >
+                        <View className="flex-row items-center flex-1">
+                            <View className="h-2.5 w-2.5 rounded-full bg-red-500 mr-2" />
+                            <Text className="text-[14px] text-red-700 font-kumbhBold">
+                                Recording {durText}
+                            </Text>
+                        </View>
+                        <Pressable
+                            onPress={onCancelRecording}
+                            className="h-8 px-3 rounded-full bg-red-100 items-center justify-center"
+                            hitSlop={8}
+                        >
+                            <Text className="text-[12px] text-red-700 font-kumbhBold">
+                                Cancel
+                            </Text>
+                        </Pressable>
+                    </View>
+                ) : (
+                    <View
+                        className="flex-1 rounded-[28px] border border-[#E7EAF3] flex-row items-end py-1"
+                        style={{
+                            // minHeight: 50,
+                            shadowColor: "#1F2A44",
+                            shadowOffset: { width: 0, height: 10 },
+                            shadowOpacity: Platform.OS === "ios" ? 0.08 : 0,
+                            shadowRadius: 24,
+                            // elevation: 3 ,
+                            paddingHorizontal: 4,
+                        }}
+                    >
                         <Pressable
                             onPress={onToggleTrayAnimated}
                             className="mr-1 h-[40px] w-[40px] items-center justify-center rounded-full"
@@ -248,35 +310,35 @@ export default function Composer({
                                 color={trayOpen ? "#4C5FAB" : "#52607A"}
                             />
                         </Pressable>
-                    )}
 
-                    <TextInput
-                        ref={inputRef}
-                        value={text}
-                        onChangeText={onChange}
-                        placeholder="Write a message"
-                        placeholderTextColor="#9CA3AF"
-                        // placeholderTextColor="#6B7280"
-                        className="flex-1 text-gray-900"
-                        style={{
-                            fontFamily: "KumbhSans-Regular",
-                            fontSize: 16,
-                            lineHeight: LINE_HEIGHT,
-                            minHeight: MIN_INPUT_HEIGHT,
-                            maxHeight: MAX_INPUT_HEIGHT,
-                            paddingVertical: INPUT_VERTICAL_PADDING,
-                            paddingLeft: 6,
-                            paddingRight: 8,
-                        }}
-                        multiline
-                        scrollEnabled
-                        textAlignVertical="top"
-                        returnKeyType="default"
-                    />
-                </View>
+                        <TextInput
+                            ref={inputRef}
+                            value={text}
+                            onChangeText={onChange}
+                            placeholder={editingMessage ? "Edit message..." : "Write a message"}
+                            placeholderTextColor="#9CA3AF"
+                            // placeholderTextColor="#6B7280"
+                            className="flex-1 text-gray-900"
+                            style={{
+                                fontFamily: "KumbhSans-Regular",
+                                fontSize: 16,
+                                lineHeight: LINE_HEIGHT,
+                                minHeight: MIN_INPUT_HEIGHT,
+                                maxHeight: MAX_INPUT_HEIGHT,
+                                paddingVertical: INPUT_VERTICAL_PADDING,
+                                paddingLeft: 6,
+                                paddingRight: 8,
+                            }}
+                            multiline
+                            scrollEnabled
+                            textAlignVertical="top"
+                            returnKeyType="default"
+                        />
+                    </View>
+                )}
 
                 <Pressable
-                    onPress={hasText ? commit : onMicPress}
+                    onPress={handleActionPress}
                     className="ml-2 items-center justify-center self-end rounded-full"
                     style={{
                         width: 48,

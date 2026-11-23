@@ -26,7 +26,12 @@ export type Message = {
     mediaUri?: string;
     mimeType?: string;
     durationMs?: number;
+    publicId?: string;
+    assetId?: string;
+    resourceType?: string;
     mentions?: Mention[];
+    edited?: boolean;
+    editedAt?: string | number;
 };
 
 export type AttachmentKind = "gallery" | "audio" | "camera" | "document";

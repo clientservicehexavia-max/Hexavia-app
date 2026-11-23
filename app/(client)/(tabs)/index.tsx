@@ -1,221 +1,344 @@
 import { useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { Bell, ChevronRight } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+    Alert,
+    Modal,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import LinkProjectCodeModal from "@/components/client/LinkProjectCodeModal";
 import { ClientHeader } from "@/components/common/UserHeader";
-import BotpressFab from "@/components/common/BotpressFab";
-import SanctionCard from "@/components/staff/SanctionCard";
-import TaskOverview from "@/components/staff/TaskOverviewCard";
-import CreateChannelModal from "@/components/staff/channels/CreateChannelModal";
-import HorizontalChannelList from "@/components/staff/channels/HorizontaChannelList";
-import HorizontalChannelSkeletonList from "@/components/staff/channels/HorizontalChannelSkeletonList";
-import useChannelCardLayout from "@/hooks/useChannelCardLayout";
+import { selectAllChannels } from "@/redux/channels/channels.slice";
 import {
-  selectAllChannels,
-  selectStatus
-} from "@/redux/channels/channels.selectors";
-import { fetchChannels, joinChannel } from "@/redux/channels/channels.thunks";
-import { selectUser } from "@/redux/user/user.slice";
+    fetchChannels,
+    inviteClientProjectMember,
+    removeClientProjectMember,
+} from "@/redux/channels/channels.thunks";
 import { fetchProfile } from "@/redux/user/user.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { Plus } from "lucide-react-native";
 
-const PALETTE = [
-  // "#14D699",
-  // "#60A5FA",
-  // "#F6A94A",
-  // "#29C57A",
-  // "#4C5FAB",
-  // "#9B7BF3",
-  "#4c5fab",
-];
-const colorFor = (key?: string) => {
-  const safeKey = String(key ?? "");
-  let hash = 0;
-  for (let i = 0; i < safeKey.length; i++) {
-    hash = (hash * 31 + safeKey.charCodeAt(i)) >>> 0;
-  }
-  return PALETTE[hash % PALETTE.length];
-};
+export default function ClientHome() {
+    const router = useRouter();
+    const dispatch = useAppDispatch();
+    const channels = useAppSelector(selectAllChannels);
+    const [showLinkModal, setShowLinkModal] = useState(false);
+    const [inviteModalOpen, setInviteModalOpen] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState("");
+    const [refreshing, setRefreshing] = useState(false);
 
-function firstNameOf(fullname?: string | null) {
-  if (!fullname) return "User";
-  return fullname.trim().split(/\s+/)[0];
-}
-function prettyRole(role?: string | null) {
-  if (!role) return "Project Member";
-  return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
+    const loadProjects = useCallback(async () => {
+        await Promise.all([
+            dispatch(fetchProfile()),
+            dispatch(fetchChannels()),
+        ]);
+    }, [dispatch]);
 
-const toStr = (v: any) => (v == null ? "" : String(v));
-const sameId = (a: any, b: any) => toStr(a) === toStr(b);
+    useEffect(() => {
+        void loadProjects();
+    }, [loadProjects]);
 
-const getCreatorId = (ch: any) =>
-  ch?.createdBy?._id ??
-  ch?.createdBy ?? // sometimes it's a string id
-  ch?.owner?._id ??
-  ch?.ownerId ??
-  null;
+    const onRefresh = useCallback(async () => {
+        if (refreshing) return;
+        setRefreshing(true);
+        try {
+            await loadProjects();
+        } finally {
+            setRefreshing(false);
+        }
+    }, [loadProjects, refreshing]);
 
-const getMemberId = (m: any) =>
-  (typeof m === "string" && m) ||
-  m?._id ||
-  m?.id ||
-  m?.user?._id ||
-  m?.userId ||
-  m?.memberId ||
-  null;
+    const projects = useMemo(
+        () => channels.filter((channel) => Boolean(channel.clientRole)),
+        [channels],
+    );
+    const activeProject = projects[0];
+    const activeProjectMembers = Array.from(
+        new Map(
+            ((activeProject?.members || []) as any[])
+                .filter((member: any) =>
+                    ["project_owner", "project_member"].includes(member?.type),
+                )
+                .map((member: any) => [
+                    String(
+                        member?._id?._id ||
+                            member?._id ||
+                            member?.email ||
+                            member?.fullname ||
+                            "",
+                    ),
+                    member,
+                ]),
+        ).values(),
+    ) as any[];
 
-const hasUser = (ch: any, uid: string) => {
-  const members = Array.isArray(ch?.members) ? ch.members : [];
-  
-  return (
-    sameId(getCreatorId(ch), uid) ||
-    members.some((m: any) => sameId(getMemberId(m), uid))
-  );
-};
+    const activeProjectTasks =
+        activeProject?.tasks?.filter((task) => task.visibility === "client") ||
+        [];
 
-export default function StaffHome() {
-  const router = useRouter();
-  const dispatch = useAppDispatch();
+    const handleInviteMember = async () => {
+        const cleanEmail = inviteEmail.trim();
+        if (!activeProject || !cleanEmail) return;
 
-  const user = useAppSelector(selectUser);
-  const userId = toStr(user?._id);
-  // console.log(userId)
-  const allChannels = useAppSelector(selectAllChannels) ?? [];
-  // console.log(allChannels);
-  // console.log(allChannels)
+        await dispatch(
+            inviteClientProjectMember({
+                channelId: activeProject._id,
+                email: cleanEmail,
+            }),
+        );
+        setInviteEmail("");
+        setInviteModalOpen(false);
+    };
 
-  // console.log(allChannels)
+    const handleRemoveMember = async (member: any) => {
+        if (!activeProject) return;
 
-  useEffect(() => {
-    if (!user) dispatch(fetchProfile());
-    dispatch(fetchChannels());
-  }, [dispatch]);
-  const channels = useMemo<any[]>(() => {
-    if (!userId) return [];
-    return allChannels.filter((ch: any) => hasUser(ch, userId));
-  }, [allChannels, userId]);
-  const myChannelIds = new Set(channels.map((c: any) => c._id));
-  // console.log(channels[0].members.map(m => m._id), userId)
+        const memberId = String(
+            member?._id?._id ||
+                member?._id ||
+                member?.userId ||
+                member?.email ||
+                "",
+        );
+        if (!memberId) return;
 
+        const memberName =
+            member?.fullname ||
+            member?.name ||
+            member?.email ||
+            "this member";
 
-  const status = useAppSelector(selectStatus);
-  // console.log("Channels:", channels);
+        Alert.alert(
+            "Remove member",
+            `Remove ${memberName} from this project?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Remove",
+                    style: "destructive",
+                    onPress: async () => {
+                        await dispatch(
+                            removeClientProjectMember({
+                                channelId: activeProject._id,
+                                userId: memberId,
+                            }),
+                        ).unwrap();
+                        await dispatch(fetchChannels());
+                    },
+                },
+            ],
+        );
+    };
 
-  useEffect(() => {
-    if (status === "idle") dispatch(fetchChannels());
-  }, [status, dispatch]);
+    const completedTasks = activeProjectTasks.filter(
+        (task) => task.status === "completed",
+    ).length;
+    const taskProgress = activeProjectTasks.length
+        ? (completedTasks / activeProjectTasks.length) * 100
+        : 0;
 
-  const [showCreate, setShowCreate] = useState(false);
+    return (
+        <SafeAreaView
+            className="flex-1 bg-white"
+            edges={["top", "left", "right"]}
+        >
+            <ScrollView
+                className="flex-1 px-4"
+                contentContainerStyle={{ paddingBottom: 32 }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={["#4C5FAB"]}
+                        tintColor="#4C5FAB"
+                    />
+                }
+            >
+                <ClientHeader />
 
-  const handleJoin = (code: string) => {
-    dispatch(joinChannel(code.replace(/^#/, "")));
-  };
+                {!activeProject ? (
+                    <View className="mt-5 rounded-[24px] border border-[#E5E7EB] bg-white p-5 shadow-sm">
+                        <Text className="text-lg text-[#111827] font-kumbhBold">
+                            No project connected
+                        </Text>
+                        <Text className="mt-2 text-gray-500 font-kumbh">
+                            Enter the project code shared by Hexavia. The first
+                            client to connect becomes the project owner.
+                        </Text>
+                        <Pressable
+                            onPress={() => setShowLinkModal(true)}
+                            className="mt-4 rounded-xl bg-[#4C5FAB] px-4 py-3"
+                        >
+                            <Text className="text-center text-white font-kumbhBold">
+                                Add project code
+                            </Text>
+                        </Pressable>
+                    </View>
+                ) : (
+                    <View className="mt-5 gap-5">
+                        <View className="rounded-[24px] bg-[#EEF2FF] p-4">
+                            <Text className="text-sm text-[#4C5FAB] font-kumbhBold uppercase tracking-[0.12em]">
+                                Project
+                            </Text>
+                            <Text className="mt-3 text-2xl text-[#111827] font-kumbhBold">
+                                {activeProject.name}
+                            </Text>
+                            <Text className="mt-1 text-sm text-gray-600 font-kumbh">
+                                Project linked and ready
+                            </Text>
+                        </View>
 
-  const { GAP, CARD_WIDTH } = useChannelCardLayout();
-  const CARD_WIDTH_NARROW = Math.max(250, CARD_WIDTH - 40);
-  const SNAP = CARD_WIDTH_NARROW + GAP;
+                        <View className="rounded-[24px] border border-[#E6EBFF] bg-white p-5 shadow-sm">
+                            <View className="mb-3 flex-row items-center justify-between">
+                                <Text className="text-sm text-gray-500 font-kumbh">
+                                    Client tasks
+                                </Text>
+                                <Text className="text-sm text-[#111827] font-kumbhBold">
+                                    {completedTasks} /{" "}
+                                    {activeProjectTasks.length}
+                                </Text>
+                            </View>
+                            <View className="h-2 overflow-hidden rounded-full bg-[#E5E7EB]">
+                                <View
+                                    className="h-full rounded-full bg-[#4C5FAB]"
+                                    style={{
+                                        width: `${activeProjectTasks.length ? taskProgress : 0}%`,
+                                    }}
+                                />
+                            </View>
+                        </View>
 
-  const greetingName = firstNameOf(user?.fullname);
-  const roleText = prettyRole(user?.role || "Hexavia Staff");
+                        {activeProjectMembers.length ? (
+                            <View className="px-1">
+                                <View className="mb-3 flex-row items-center justify-between">
+                                    <Text className="text-sm uppercase tracking-[0.12em] text-[#6B7280] font-kumbhBold">
+                                        Members
+                                    </Text>
+                                    <Pressable
+                                        onPress={() => {
+                                            setInviteEmail("");
+                                            setInviteModalOpen(true);
+                                        }}
+                                        className="h-8 w-8 items-center justify-center"
+                                    >
+                                        <Plus size={22} color="#4C5FAB" />
+                                    </Pressable>
+                                </View>
+                                <View className="gap-2">
+                                    {activeProjectMembers.map((member: any) => {
+                                        const name =
+                                            member.fullname ||
+                                            member.name ||
+                                            "Project member";
+                                        const isOwner =
+                                            member.type === "project_owner";
 
-  const listData = useMemo(
-    () =>
-      [
-        { kind: "create", id: "create" as const },
-        ...allChannels.map((c) => ({
-          kind: "channel" as const,
-          id: String(c._id),
-          title: c.name,
-          subtitle: c.description ?? "",
-          code: c.code,
-          logo: (c as any)?.logo ?? undefined,
-          color: colorFor(c._id || (c as any)?.code || c.name),
-          isMember: myChannelIds.has(c._id),
-        })),
-      ] as const,
-    [allChannels, myChannelIds]
-  );
+                                        return (
+                                            <View
+                                                key={String(
+                                                    member?._id?._id ||
+                                                        member?._id ||
+                                                        member?.email ||
+                                                        name,
+                                                )}
+                                                className="flex-row items-center justify-between rounded-xl py-1"
+                                            >
+                                                <View className="flex-1 pr-2">
+                                                    <Text className="text-[#111827] font-kumbhBold">
+                                                        {name}
+                                                    </Text>
+                                                    <Text className="text-[11px] text-[#4C5FAB] font-kumbhBold uppercase tracking-[0.08em]">
+                                                        {isOwner
+                                                            ? "Owner"
+                                                            : "Member"}
+                                                    </Text>
+                                                </View>
 
-  type ChannelCardItem = {
-    id: string;
-    title: string;
-    subtitle: string;
-    logo?: string;
-    color: string;
-    code: string;
-  };
+                                                {!isOwner ? (
+                                                    <Pressable
+                                                        onPress={() =>
+                                                            handleRemoveMember(member)
+                                                        }
+                                                        className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-2 py-1"
+                                                    >
+                                                        <Text className="text-[11px] text-[#B91C1C] font-kumbhBold">
+                                                            Remove
+                                                        </Text>
+                                                    </Pressable>
+                                                ) : null}
+                                            </View>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+                        ) : null}
+                    </View>
+                )}
+            </ScrollView>
 
-  const channelItems: ChannelCardItem[] = useMemo(
-    () =>
-      listData
-        .filter((x: any) => x.kind === "channel")
-        .map((x: any) => ({
-          id: x.id,
-          title: x.title,
-          subtitle: x.subtitle,
-          code: x.code,
-          logo: x.logo,
-          color: x.color,
-        })),
-    [listData]
-  );
+            <Modal
+                transparent
+                visible={inviteModalOpen}
+                animationType="fade"
+                onRequestClose={() => setInviteModalOpen(false)}
+            >
+                <View className="flex-1 items-center justify-center bg-black/30 px-5">
+                    <View className="w-full rounded-[24px] bg-white p-5">
+                        <Text className="text-xl text-[#111827] font-kumbhBold">
+                            Invite member
+                        </Text>
+                        <Text className="mt-2 text-sm text-gray-500 font-kumbh">
+                            Enter the email address of the person to add to this
+                            project.
+                        </Text>
 
-  const isLoading = status === "loading" && channels.length === 0;
-  const skeletons = Array.from({ length: 4 }, (_, i) => ({
-    kind: "skeleton" as const,
-    id: `skeleton-${i}`,
-  }));
+                        <TextInput
+                            value={inviteEmail}
+                            onChangeText={setInviteEmail}
+                            placeholder="name@email.com"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            className="mt-4 rounded-xl border border-[#D9E2FF] bg-[#F8F9FF] px-3 py-3 text-gray-900 font-kumbh"
+                        />
 
-  // console.log(channels);
+                        <View className="mt-5 flex-row justify-end gap-3">
+                            <Pressable
+                                onPress={() => setInviteModalOpen(false)}
+                                className="rounded-xl px-4 py-2"
+                            >
+                                <Text className="text-[#4C5FAB] font-kumbhBold">
+                                    Cancel
+                                </Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={handleInviteMember}
+                                className="rounded-xl bg-[#4C5FAB] px-4 py-2"
+                            >
+                                <Text className="text-white font-kumbhBold">
+                                    Invite
+                                </Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
-  return (
-    <SafeAreaView className="flex-1 bg-white">
-      <StatusBar style="dark" />
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
-        className="px-5"
-        showsVerticalScrollIndicator={false}
-        directionalLockEnabled
-        alwaysBounceVertical={false}
-      >
-        {/* Top Bar */}
-        <ClientHeader
-          subtitleBadge="Client"
-          rightIcon={<Bell size={20} color="#111827" />}
-        />
-        {/* Channels */}
-        <View className="mt-6 flex-row items-center justify-between">
-          <Text className="text-3xl text-gray-900 font-kumbh">Projects</Text>
-          <Pressable
-            onPress={() => router.push("/(client)/channels")}
-            className="flex-row items-center"
-          >
-            <Text className="text-primary mr-1 font-sans">See all</Text>
-            <ChevronRight size={16} color="#4C5FAB" />
-          </Pressable>
-        </View>
-
-        {isLoading ? (
-          <HorizontalChannelSkeletonList outerPadding={20} />
-        ) : (
-          <HorizontalChannelList items={channelItems} onJoin={handleJoin} />
-        )}
-        {/* Task */}
-        <TaskOverview />
-        {/* Sanction */}
-        <SanctionCard />
-      </ScrollView>
-
-      {/* Modal */}
-      <CreateChannelModal
-        visible={showCreate}
-        onClose={() => setShowCreate(false)}
-      />
-      <BotpressFab title="Hexavia Assistant" />
-    </SafeAreaView>
-  );
+            <LinkProjectCodeModal
+                visible={showLinkModal}
+                onClose={() => setShowLinkModal(false)}
+                onLinked={() => {
+                    setShowLinkModal(false);
+                    dispatch(fetchProfile());
+                    dispatch(fetchChannels());
+                }}
+            />
+        </SafeAreaView>
+    );
 }

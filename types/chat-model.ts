@@ -18,8 +18,13 @@ export type ChatMessage = {
     mediaUri?: string;
     mimeType?: string;
     durationMs?: number;
+    publicId?: string;
+    assetId?: string;
+    resourceType?: string;
     replyTo?: { id: string; preview: string; senderName?: string };
     taggedUsers?: ChatTaggedUser[];
+    edited?: boolean;
+    editedAt?: string | number;
 };
 
 export type ThreadId = string;

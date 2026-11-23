@@ -10,6 +10,7 @@ export type Partner = {
     address?: string;
     partnerType?: "individual" | "company" | "investor" | "vendor" | "other";
     industry?: string;
+    dateOfBirth?: string | null;
     engagementTags?: string[];
     notes?: string;
     profileImage?: string;

@@ -118,16 +118,40 @@ const N = (v: number | string) => {
 };
 
 function toISO(d: string) {
-    const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!m) return d;
-    const [_, dd, mm, yyyy] = m;
-    return `${yyyy}-${mm}-${dd}`;
+    if (!d) return new Date().toISOString();
+    const trimmed = d.trim();
+    const m = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) {
+        const dd = m[1].padStart(2, "0");
+        const mm = m[2].padStart(2, "0");
+        const yyyy = m[3];
+        return `${yyyy}-${mm}-${dd}`;
+    }
+    const parsed = parseDueDate(trimmed);
+    return parsed.toISOString();
 }
 function fmtDMY(d: Date) {
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
+}
+
+function parseDueDate(dueStr?: string): Date {
+    if (!dueStr) return new Date();
+    const trimmed = String(dueStr).trim();
+    const dmy = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmy) {
+        const d = new Date(+dmy[3], +dmy[2] - 1, +dmy[1]);
+        if (!Number.isNaN(d.getTime())) return d;
+    }
+    const ymd = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (ymd) {
+        const d = new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
+        if (!Number.isNaN(d.getTime())) return d;
+    }
+    const fallback = new Date(trimmed);
+    return !Number.isNaN(fallback.getTime()) ? fallback : new Date();
 }
 
 function slugFileName(s: string) {
@@ -149,16 +173,16 @@ function makeFriendlyFileName(s: string) {
 
 function ordinalWord(index: number) {
     const ordinals = [
-        "first",
-        "second",
-        "third",
-        "fourth",
-        "fifth",
-        "sixth",
-        "seventh",
-        "eighth",
-        "ninth",
-        "tenth",
+        "First",
+        "Second",
+        "Third",
+        "Fourth",
+        "Fifth",
+        "Sixth",
+        "Seventh",
+        "Eighth",
+        "Ninth",
+        "Tenth",
     ];
     return ordinals[index] || `${index + 1}th`;
 }
@@ -170,6 +194,13 @@ function yyyymmdd(d = new Date()) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
+const formatWithCommas = (digits: string | number) => {
+    if (!digits && digits !== 0) return "";
+    const clean = String(digits).replace(/[^\d]/g, "");
+    if (!clean) return "";
+    return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
 const AmountInput = ({
     value,
     onChange,
@@ -178,29 +209,44 @@ const AmountInput = ({
     value: string;
     onChange: (t: string) => void;
     editable?: boolean;
-}) => (
-    <View
-        className="rounded-xl px-4 py-2 flex-row items-center"
-        style={{ backgroundColor: "#F3F4F6" }}
-    >
-        <Text className="font-kumbh text-[#6B7280] text-base">₦</Text>
-        <TextInput
-            editable={editable}
-            value={value}
-            onChangeText={onChange}
-            placeholder="5000"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            className="font-kumbh text-[#111827]"
-            style={{
-                flex: 1,
-                marginLeft: 3,
-                paddingBottom: value.length === 0 ? 3 : 0,
-                paddingTop: value.length === 0 ? 0 : 3,
-            }}
-        />
-    </View>
-);
+}) => {
+    const rawValue = (value ?? "").toString().replace(/[^\d]/g, "");
+    const displayValue = formatWithCommas(rawValue);
+
+    return (
+        <View
+            className="rounded-xl px-4 py-2 flex-row items-center"
+            style={{ backgroundColor: "#F3F4F6" }}
+        >
+            <Text className="font-kumbh text-[#6B7280] text-base">₦</Text>
+            <TextInput
+                editable={editable}
+                value={displayValue}
+                onChangeText={(text) => {
+                    let digits = text.replace(/[^\d]/g, "");
+                    if (
+                        text.length < displayValue.length &&
+                        digits === rawValue &&
+                        digits.length > 0
+                    ) {
+                        digits = digits.slice(0, -1);
+                    }
+                    onChange(digits);
+                }}
+                placeholder="5,000"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+                className="font-kumbh text-[#111827]"
+                style={{
+                    flex: 1,
+                    marginLeft: 3,
+                    paddingBottom: displayValue.length === 0 ? 3 : 0,
+                    paddingTop: displayValue.length === 0 ? 0 : 3,
+                }}
+            />
+        </View>
+    );
+};
 
 /* ---------- invoice / receipt HTML (shared format) ---------- */
 function htmlForDocument(payload: {
@@ -243,7 +289,7 @@ function htmlForDocument(payload: {
             <td>${i + 1}</td>
             <td>${r.due || ""}</td>
             <td style="text-align:right">${N(amountNum)}</td>
-            <td>${r.paymentId ? `<span class="pill ok">Paid</span>` : `<span class="pill warn">Not Paid</span>`}</td>
+            <td>${r.isPaid ? `<span class="pill ok">Paid</span>` : `<span class="pill warn">Not Paid</span>`}</td>
           </tr>`;
               })
               .join("")
@@ -771,7 +817,7 @@ export default function ClientInstallments() {
 
             const fileTitle = mode === "receipt" ? "Receipt" : "Invoice";
             const filename = `${makeFriendlyFileName(COMPANY_NAME)} ${makeFriendlyFileName(
-                name || "Client",
+                project || "Company",
             )} ${fileTitle}.pdf`;
 
             const result = await Print.printToFileAsync({
@@ -835,7 +881,7 @@ export default function ClientInstallments() {
         });
 
         const filename = `${makeFriendlyFileName(COMPANY_NAME)} ${makeFriendlyFileName(
-            name || "Client",
+            project || "Company",
         )} ${receiptLabel} Receipt.pdf`;
 
         const result = await Print.printToFileAsync({
@@ -937,7 +983,11 @@ export default function ClientInstallments() {
                             await dispatch(deleteClient(clientId)).unwrap();
                             await dispatch(fetchClients(clientFilters));
                             showSuccess("External receivable deleted.");
-                            router.replace("/(admin)/finance");
+                            if (router.canGoBack()) {
+                                router.back();
+                            } else {
+                                router.replace("/(admin)/finance");
+                            }
                         } catch (e: any) {
                             showError(
                                 e?.message ||
@@ -961,6 +1011,7 @@ export default function ClientInstallments() {
         >
             <PlatformAdaptiveHeader
                 title="Installment Payment"
+                onBackPress={onHeaderBackPress}
                 headerRight={({ tintColor }) => (
                     <Pressable
                         onPress={handleSave}
@@ -1001,9 +1052,16 @@ export default function ClientInstallments() {
                     <View className="rounded-2xl p-3 bg-[#EEF1FF]">
                         <View className="gap-2">
                             <View className="flex-row justify-between items-end">
-                                <Text className="font-kumbhBold text-[#111827] text-[16px]">
-                                    {loadingClient ? "Loading…" : name || "—"}
-                                </Text>
+                                <View className="flex-1 pr-2">
+                                    <Text className="font-kumbhBold text-[#111827] text-[16px]">
+                                        {loadingClient
+                                            ? "Loading…"
+                                            : project || "—"}
+                                    </Text>
+                                    <Text className="font-kumbh text-[#111827] mt-1">
+                                        {loadingClient ? "" : name || "—"}
+                                    </Text>
+                                </View>
                                 <View
                                     className={clsx(
                                         "px-3 py-1 rounded-full",
@@ -1015,9 +1073,6 @@ export default function ClientInstallments() {
                                     </Text>
                                 </View>
                             </View>
-                            <Text className="font-kumbh text-[#111827] mt-1">
-                                {project || "—"}
-                            </Text>
                         </View>
 
                         <View className="flex-row mt-3" style={{ gap: 12 }}>
@@ -1066,7 +1121,7 @@ export default function ClientInstallments() {
 
                     {/* Plan rows */}
                     {rows.map((row, idx) => {
-                        const isPaid = row.isPaid ?? !!row.paymentId;
+                        const isPaid = Boolean(row.isPaid);
                         const rowKey =
                             row.paymentId || row._localId || `temp-${idx}`;
                         return (
@@ -1133,20 +1188,7 @@ export default function ClientInstallments() {
                                             disabled={false}
                                             onPress={() => {
                                                 setDateIdx(idx);
-                                                const parts = row.due.match(
-                                                    /^(\d{2})\/(\d{2})\/(\d{4})$/,
-                                                );
-                                                if (parts) {
-                                                    setPickerDate(
-                                                        new Date(
-                                                            +parts[3],
-                                                            +parts[2] - 1,
-                                                            +parts[1],
-                                                        ),
-                                                    );
-                                                } else {
-                                                    setPickerDate(new Date());
-                                                }
+                                                setPickerDate(parseDueDate(row.due));
                                             }}
                                             className={clsx(
                                                 "rounded-xl px-3 android:py-2.5 ios:py-3",
@@ -1244,16 +1286,18 @@ export default function ClientInstallments() {
                 visible={dateIdx !== null}
                 value={pickerDate}
                 onCancel={() => setDateIdx(null)}
-                onDone={() => {
-                    if (dateIdx !== null) {
-                        updateRow(dateIdx, { due: fmtDMY(pickerDate) });
+                onDone={(selectedDate) => {
+                    const finalDate =
+                        selectedDate instanceof Date
+                            ? selectedDate
+                            : pickerDate;
+                    if (dateIdx !== null && finalDate) {
+                        updateRow(dateIdx, { due: fmtDMY(finalDate) });
                     }
                     setDateIdx(null);
                 }}
                 onDateChange={(d) => {
-                    if (dateIdx === null) return;
                     setPickerDate(d);
-                    updateRow(dateIdx, { due: fmtDMY(d) });
                 }}
             />
         </SafeAreaView>

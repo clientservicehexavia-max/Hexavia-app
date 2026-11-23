@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import {
     Check,
+    CalendarDays,
     ChevronDown,
     ClipboardCheck,
     Pencil,
@@ -35,6 +36,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as XLSX from "xlsx";
 
+import { api } from "@/api/axios";
 import DatePickerModal from "@/components/admin/DatePickerModal";
 import OptionSheet from "@/components/common/OptionSheet";
 
@@ -53,6 +55,7 @@ import {
     updateClient,
 } from "@/redux/client/client.thunks";
 import type { Client } from "@/redux/client/client.types";
+import { birthdayInputFromDate, birthdayPickerDate } from "@/utils/birthday";
 
 type AdminUser = {
     _id: string;
@@ -139,22 +142,35 @@ const SOURCE_OPTIONS = [
     { label: "Moses Okoh", value: "Moses Okoh" },
     { label: "TMI", value: "TMI" },
     { label: "Private jet", value: "Private jet" },
+    { label: "Others", value: "Others" },
 ] as const;
 
 type SourceType = (typeof SOURCE_OPTIONS)[number]["value"] | "";
 
 const normalizeSource = (value?: unknown): SourceType => {
-    const normalized = String(value ?? "")
-        .toLowerCase()
-        .trim();
-    if (
-        normalized === "prospect" ||
-        normalized === "clients" ||
-        normalized === "partnership"
-    ) {
-        return normalized;
+    const trimmed = String(value ?? "").trim();
+    if (!trimmed) {
+        return "";
     }
-    return "";
+    const directMatch = SOURCE_OPTIONS.find(
+        (option) =>
+            option.value.toLowerCase() === trimmed.toLowerCase() &&
+            option.value !== "Others",
+    );
+    return directMatch ? (directMatch.value as SourceType) : "Others";
+};
+
+const normalizeSourceOther = (value?: unknown): string => {
+    const trimmed = String(value ?? "").trim();
+    if (!trimmed) {
+        return "";
+    }
+    const isKnownSource = SOURCE_OPTIONS.some(
+        (option) =>
+            option.value !== "Others" &&
+            option.value.toLowerCase() === trimmed.toLowerCase(),
+    );
+    return isKnownSource ? "" : trimmed;
 };
 
 const INDUSTRY_OPTIONS = [
@@ -378,6 +394,33 @@ function resolveIndustrySelection(value?: string) {
     return { selection: "Other", other: trimmed === "Other" ? "" : trimmed };
 }
 
+const extractPublicIdFromUrl = (url?: string) => {
+    if (!url) return null;
+    try {
+        const uploadIndex = url.indexOf("/upload/");
+        if (uploadIndex === -1) return null;
+
+        const after = url.substring(uploadIndex + "/upload/".length);
+        const parts = after.split("/");
+        if (parts[0]?.startsWith("v") && /^v\d+$/.test(parts[0])) {
+            parts.shift();
+        }
+
+        let publicId = parts.join("/").split("?")[0];
+        publicId = publicId.replace(/\.[^/.]+$/, "");
+
+        try {
+            publicId = decodeURIComponent(publicId);
+        } catch {
+            // keep raw value
+        }
+
+        return publicId || null;
+    } catch {
+        return null;
+    }
+};
+
 export default function ClientDetails() {
     const router = useRouter();
     const isIOS = Platform.OS === "ios";
@@ -446,7 +489,8 @@ export default function ClientDetails() {
                 isSuspended: false,
                 createdAt: clientFromStore.createdAt,
                 projectName: clientFromStore.projectName,
-                source: normalizeSource((clientFromStore as any).source),
+                source: String((clientFromStore as any).source ?? ""),
+                dateOfBirth: clientFromStore.dateOfBirth,
                 industry: clientFromStore.industry,
                 staffSize: clientFromStore.staffSize,
                 description: clientFromStore.description,
@@ -483,10 +527,16 @@ export default function ClientDetails() {
     );
     const [email, setEmail] = useState(baseUser.email ?? "");
     const [phoneNumber, setPhoneNumber] = useState(baseUser.phoneNumber ?? "");
+    const [dateOfBirth, setDateOfBirth] = useState(
+        toIsoDateInput((clientFromStore?.dateOfBirth ?? (baseUser as any)?.dateOfBirth) || ""),
+    );
 
     const [projectName, setProjectName] = useState(baseUser.projectName ?? "");
     const [source, setSource] = useState<SourceType>(
         normalizeSource(baseUser.source),
+    );
+    const [sourceOther, setSourceOther] = useState(
+        normalizeSourceOther(baseUser.source),
     );
     const [industry, setIndustry] = useState(resolvedIndustry.selection);
     const [industryOther, setIndustryOther] = useState(resolvedIndustry.other);
@@ -524,6 +574,7 @@ export default function ClientDetails() {
     const [uploadingDocument, setUploadingDocument] = useState(false);
     const [documentRemoved, setDocumentRemoved] = useState(false);
     const [showJoinedDatePicker, setShowJoinedDatePicker] = useState(false);
+    const [showBirthdayDatePicker, setShowBirthdayDatePicker] = useState(false);
     const [activeTab, setActiveTab] = useState<"details" | "notes">("details");
     const [clientNotes, setClientNotes] = useState<ClientNote[]>(
         clientFromStore?.notes ?? [],
@@ -536,6 +587,8 @@ export default function ClientDetails() {
         null,
     );
     const [showNoteModal, setShowNoteModal] = useState(false);
+    const effectiveSource =
+        source === "Others" ? sourceOther.trim() : source.trim();
     const effectiveIndustry =
         industry === "Other" ? industryOther.trim() : industry.trim();
     const documentLabel =
@@ -625,11 +678,57 @@ export default function ClientDetails() {
         }
     }, [uploadingDocument]);
 
-    const handleRemoveDocument = useCallback(() => {
-        setDocumentFile(null);
-        setDocumentName("");
-        setDocumentRemoved(true);
-    }, []);
+    const handleDeleteDocument = useCallback(() => {
+        if (!id || (!documentLink && !documentFile)) return;
+
+        Alert.alert(
+            "Delete Document",
+            "Are you sure you want to delete this document? This cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            if (documentLink) {
+                                const publicId =
+                                    extractPublicIdFromUrl(documentLink);
+                                if (publicId) {
+                                    await api.post("/upload/delete", {
+                                        publicId,
+                                    });
+                                }
+
+                                await dispatch(
+                                    updateClient({
+                                        id: String(id),
+                                        body: {
+                                            document: null,
+                                            documentUrl: null,
+                                        },
+                                    }),
+                                ).unwrap();
+                            }
+
+                            setDocumentFile(null);
+                            setDocumentName("");
+                            setDocumentRemoved(false);
+                            Alert.alert(
+                                "Deleted",
+                                "Document deleted successfully.",
+                            );
+                        } catch (err: any) {
+                            Alert.alert(
+                                "Delete failed",
+                                err?.message || "Unable to delete document.",
+                            );
+                        }
+                    },
+                },
+            ],
+        );
+    }, [id, documentLink, documentFile, dispatch]);
 
     const handleShareClientPdf = useCallback(async () => {
         const displayName = name.trim() || baseUser.fullname || "Client";
@@ -941,7 +1040,10 @@ export default function ClientDetails() {
             baseUser.fullname || baseUser.username || baseUser.email || "";
         const baseEmail = baseUser.email ?? "";
         const basePhone = baseUser.phoneNumber ?? "";
-        const baseSource = normalizeSource(baseUser.source);
+        const baseDateOfBirth = toIsoDateInput(
+            (clientFromStore?.dateOfBirth ?? (baseUser as any)?.dateOfBirth) || "",
+        );
+        const baseSource = String(baseUser.source ?? "").trim();
         const baseIndustry = (baseUser.industry ?? "").trim();
         const baseJoined = toIsoDateInput(baseUser.createdAt);
 
@@ -949,7 +1051,8 @@ export default function ClientDetails() {
             name !== baseName ||
             email !== baseEmail ||
             phoneNumber !== basePhone ||
-            source !== baseSource ||
+            dateOfBirth !== baseDateOfBirth ||
+            effectiveSource !== baseSource ||
             projectName !== (baseUser.projectName ?? "") ||
             effectiveIndustry !== baseIndustry ||
             staffSize !== String(baseUser.staffSize ?? "") ||
@@ -972,9 +1075,10 @@ export default function ClientDetails() {
         name,
         email,
         phoneNumber,
-        source,
+        effectiveSource,
         projectName,
         effectiveIndustry,
+        dateOfBirth,
         staffSize,
         description,
         problems,
@@ -996,7 +1100,11 @@ export default function ClientDetails() {
         setProjectName(baseUser.projectName ?? "");
         setEmail(baseUser.email ?? "");
         setPhoneNumber(baseUser.phoneNumber ?? "");
+        setDateOfBirth(
+            toIsoDateInput((clientFromStore?.dateOfBirth ?? (baseUser as any)?.dateOfBirth) || ""),
+        );
         setSource(normalizeSource(baseUser.source));
+        setSourceOther(normalizeSourceOther(baseUser.source));
         setIndustry(resolvedIndustry.selection);
         setIndustryOther(resolvedIndustry.other);
         setstaffSize(String(baseUser.staffSize ?? ""));
@@ -1235,7 +1343,8 @@ export default function ClientDetails() {
             projectName: toNullableText(projectName),
             email: toNullableText(email),
             phoneNumber: toNullableText(phoneNumber),
-            source: toNullableText(source),
+            dateOfBirth: dateOfBirth ? new Date(dateOfBirth).toISOString() : null,
+            source: toNullableText(effectiveSource),
             industry: toNullableText(effectiveIndustry),
             staffSize: hasStaffSize ? parsedStaffSize : null,
             description: toNullableText(description),
@@ -1468,6 +1577,25 @@ export default function ClientDetails() {
                                         />
                                     </View>
 
+                                    {/* Date of Birth */}
+                                    <View className="mt-4">
+                                        <FieldLabel>Date of Birth</FieldLabel>
+                                        <Pressable
+                                            onPress={() => setShowBirthdayDatePicker(true)}
+                                            className="flex-row items-center justify-between rounded-2xl bg-gray-200 px-4 py-4"
+                                        >
+                                            <Text className={`font-kumbh ${dateOfBirth ? "text-text" : "text-gray-500"}`}>
+                                                {dateOfBirth || "Select date of birth"}
+                                            </Text>
+                                            <CalendarDays size={18} color="#4C5FAB" />
+                                        </Pressable>
+                                        {dateOfBirth ? (
+                                            <Pressable onPress={() => setDateOfBirth("")} className="mt-2 self-start">
+                                                <Text className="font-kumbh text-xs text-[#4C5FAB]">Clear date</Text>
+                                            </Pressable>
+                                        ) : null}
+                                    </View>
+
                                     {/* Source */}
                                     <View className="mt-4">
                                         <FieldLabel>Source</FieldLabel>
@@ -1490,6 +1618,18 @@ export default function ClientDetails() {
                                             />
                                         </Pressable>
                                     </View>
+                                    {source === "Others" ? (
+                                        <View className="mt-4">
+                                            <FieldLabel>
+                                                Other Source
+                                            </FieldLabel>
+                                            <Input
+                                                value={sourceOther}
+                                                onChangeText={setSourceOther}
+                                                placeholder="Enter Source"
+                                            />
+                                        </View>
+                                    ) : null}
 
                                     {/* Industry | Staff Size */}
                                     <View className="mt-4">
@@ -1825,7 +1965,7 @@ export default function ClientDetails() {
                                                 </Pressable>
                                             </View>
                                             <Pressable
-                                                onPress={handleRemoveDocument}
+                                                onPress={handleDeleteDocument}
                                                 disabled={
                                                     !documentLink &&
                                                     !documentFile
@@ -1846,7 +1986,7 @@ export default function ClientDetails() {
                                                     className="font-kumbhBold"
                                                     style={{ color: "#DC2626" }}
                                                 >
-                                                    Remove Document
+                                                    Delete Document
                                                 </Text>
                                             </Pressable>
                                         </View>
@@ -2084,6 +2224,9 @@ export default function ClientDetails() {
                         onClose={() => setShowSourceSheet(false)}
                         onSelect={(value) => {
                             setSource(value as SourceType);
+                            if (value !== "Others") {
+                                setSourceOther("");
+                            }
                             setShowSourceSheet(false);
                         }}
                         title="Select Source"
@@ -2117,6 +2260,17 @@ export default function ClientDetails() {
                             setJoinedPickerDate(d);
                             setJoined(toIsoDateInput(d.toISOString()));
                         }}
+                    />
+
+                    <DatePickerModal
+                        visible={showBirthdayDatePicker}
+                        value={birthdayPickerDate(dateOfBirth)}
+                        maximumDate={new Date()}
+                        onCancel={() => setShowBirthdayDatePicker(false)}
+                        onDone={() => setShowBirthdayDatePicker(false)}
+                        onDateChange={(date) =>
+                            setDateOfBirth(birthdayInputFromDate(date))
+                        }
                     />
 
                     <Modal

@@ -248,9 +248,10 @@ export default function FinanceForm() {
                 visible={showPicker}
                 value={pickerDate}
                 onCancel={() => setShowPicker(false)}
-                onDone={() => {
+                onDone={(selectedDate) => {
                     setShowPicker(false);
-                    setDate(fmtDMY(pickerDate));
+                    const finalDate = selectedDate instanceof Date ? selectedDate : pickerDate;
+                    setDate(fmtDMY(finalDate));
                 }}
                 onDateChange={(d: Date) => {
                     setPickerDate(d);

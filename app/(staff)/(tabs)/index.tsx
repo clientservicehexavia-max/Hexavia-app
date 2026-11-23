@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Bell, ChevronRight } from "lucide-react-native";
+import { ChevronRight } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     FlatList,
@@ -110,7 +110,7 @@ export default function StaffHome() {
         () =>
             [
                 { kind: "create", id: "create" as const },
-                ...allChannels.map((c: any) => ({
+                ...channels.map((c: any) => ({
                     kind: "channel" as const,
                     id: String(c._id),
                     title: c.name,
@@ -135,7 +135,7 @@ export default function StaffHome() {
     return (
         <SafeAreaView
             className="flex-1 bg-white"
-            edges={isIOS ? ["top", "left", "right"] : ["top", "left", "right"]}
+            edges={["top", "left", "right"]}
         >
             <ScrollView
                 className="flex-1"
@@ -148,7 +148,7 @@ export default function StaffHome() {
                 }
             >
                 {/* Top Bar */}
-                <StaffHeader rightIcon={<Bell size={20} color="#111827" />} />
+                <StaffHeader />
 
                 {/* Channels */}
                 <View className="mt-2 flex-row items-center justify-between">

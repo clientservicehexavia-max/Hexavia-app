@@ -1,7 +1,8 @@
 // Change ONLY this one value whenever you want to switch backend:
 // - Local example:  http://192.168.1.20:6000
 // - Deployed example: https://hexavia.cloud
-const BACKEND_ORIGIN = "https://deep-lynx-free.ngrok-free.app";
+// const BACKEND_ORIGIN = "https://deep-lynx-free.ngrok-free.app";
+const BACKEND_ORIGIN = "https://hexavia-backend-25d12a9a0dc7.herokuapp.com";
 // const BACKEND_ORIGIN = "https://hexavia.cloud";
 
 export const ENV = {

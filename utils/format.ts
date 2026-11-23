@@ -18,6 +18,11 @@ export const getDateKey = (ts: number) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+const MONTH_NAMES_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 export const formatDateLabel = (ts: number, nowTs: number = Date.now()) => {
   const todayStart = startOfDay(new Date(nowTs));
   const msgStart = startOfDay(new Date(ts));
@@ -26,10 +31,10 @@ export const formatDateLabel = (ts: number, nowTs: number = Date.now()) => {
   if (msgStart === todayStart) return "Today";
   if (msgStart === todayStart - dayMs) return "Yesterday";
 
-  const fmt = new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  return fmt.format(new Date(ts));
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "";
+  const month = MONTH_NAMES_SHORT[d.getMonth()];
+  const day = d.getDate();
+  const year = d.getFullYear();
+  return `${month} ${day}, ${year}`;
 };

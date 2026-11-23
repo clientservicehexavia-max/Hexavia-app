@@ -29,7 +29,7 @@ export type Deal = {
     agreedFixedAmount?: number;
     expectedPartnerReturn?: number;
     recurringRevenue: boolean;
-    recurringFrequency?: "monthly" | "quarterly" | "yearly";
+    recurringFrequency?: "monthly" | "quarterly" | "yearly" | "as needed";
     description?: string;
     nextActionDate?: string;
     closeDate?: string;
@@ -46,18 +46,33 @@ export type Deal = {
     financialReconciliation?: {
         dealValue?: number;
         agreedAmount?: number;
+        revenueSharePercentage?: number;
+        totalRevenueGenerated?: number;
+        totalPartnerEarnings?: number;
         amountPaid: number;
         balanceOutstanding?: number;
         paymentDate?: string;
         paymentStatus:
             | "Not Due"
+            | "Not Paid"
             | "Pending"
+            | "Partially Paid"
             | "Part Paid"
             | "Fully Paid"
             | "Disputed";
         approvalStatus: "Pending" | "Approved" | "Rejected";
         invoiceUrl?: string;
         receiptUrl?: string;
+        revenueEntries?: {
+            investorName: string;
+            investmentDate: string;
+            investmentAmount: number;
+            commissionPercentage: number;
+            calculatedCommission: number;
+            notes?: string;
+            createdAt?: string;
+            updatedAt?: string;
+        }[];
         payments?: {
             amount: number;
             paymentDate: string;

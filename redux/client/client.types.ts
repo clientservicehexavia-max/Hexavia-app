@@ -37,6 +37,7 @@ export interface Client {
     weakness?: string;
     threats?: string;
     deliverables?: string;
+    dateOfBirth?: string | null;
     payableAmount?: number;
     isExternal?: boolean;
     document?: string | null;
@@ -85,7 +86,7 @@ export interface ClientCreateInput {
     projectName?: string;
     phoneNumber?: string;
     email?: string;
-    source?: "Lujo heights" | "Boing" | "Moses Okoh" | "TMI" | "Private jet";
+    source?: string;
     engagement?: string;
     industry?: string;
     staffSize?: number;
@@ -96,6 +97,7 @@ export interface ClientCreateInput {
     weakness?: string;
     threats?: string;
     deliverables?: string;
+    dateOfBirth?: string | null;
     payableAmount?: number;
     isExternal?: boolean;
     document?: string | null;

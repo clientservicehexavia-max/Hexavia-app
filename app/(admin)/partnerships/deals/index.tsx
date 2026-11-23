@@ -199,7 +199,7 @@ function Pill({
     return (
         <Pressable
             onPress={onPress}
-            className={`px-3 py-2 justify-center items-center rounded-full border ${
+            className={`px-3 h-8 justify-center items-center rounded-full border ${
                 active
                     ? "bg-blue-500 border-blue-500"
                     : "bg-white border-gray-200"

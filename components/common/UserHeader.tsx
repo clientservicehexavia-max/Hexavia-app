@@ -5,6 +5,7 @@ import type { RootState } from "@/store";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
+import { Bell } from "lucide-react-native";
 import React, { useEffect } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 

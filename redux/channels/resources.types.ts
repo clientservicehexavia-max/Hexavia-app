@@ -23,6 +23,7 @@ export type ApiResource = {
   category: ChannelResourceCategory;
   resourceUpload: string;
   publicId: string;
+  resourceType?: string | null;
 };
 
 export type UploadResourcesBody = {

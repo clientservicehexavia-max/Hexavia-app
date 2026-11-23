@@ -1,12 +1,15 @@
-import { useRouter } from "expo-router";
+import { BirthdaySummary, fetchBirthdaySummary } from "@/api/birthdays";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
     BarChart3,
     Bell,
+    BriefcaseBusiness,
     ChevronRight,
     FolderKanban,
     Handshake,
     UserPlus,
     Users,
+    UsersRound,
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -25,8 +28,10 @@ import { AdminHeader } from "@/components/common/UserHeader";
 import { selectUser } from "@/redux/user/user.slice";
 import { fetchProfile } from "@/redux/user/user.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { birthdayTodayMessage } from "@/utils/birthday";
 import {
     canAccessFinanceManagement,
+    canAccessHbcMembers,
     canAccessTeamManagement,
     normalizeRole,
 } from "@/utils/roles";
@@ -37,17 +42,35 @@ export default function AdminDashboard() {
     const user = useAppSelector(selectUser);
     const isIOS = Platform.OS === "ios";
     const [refreshing, setRefreshing] = useState(false);
+    const [birthdaySummary, setBirthdaySummary] =
+        useState<BirthdaySummary | null>(null);
     const showTeam = canAccessTeamManagement(user?.role);
     const showFinance = canAccessFinanceManagement(user?.role);
+    const showHbcMembers = canAccessHbcMembers(user?.role);
     const subtitleBadge =
         normalizeRole(user?.role) === "clientservice"
             ? "Clientservice"
             : "Admin";
 
+    useFocusEffect(
+        useCallback(() => {
+            const loadBirthdays = async () => {
+                try {
+                    setBirthdaySummary(await fetchBirthdaySummary());
+                } catch {
+                    setBirthdaySummary(null);
+                }
+            };
+
+            void loadBirthdays();
+        }, []),
+    );
+
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
             await dispatch(fetchProfile()).unwrap();
+            setBirthdaySummary(await fetchBirthdaySummary());
         } finally {
             setRefreshing(false);
         }
@@ -101,6 +124,24 @@ export default function AdminDashboard() {
             icon: <BarChart3 size={20} color="#1D4ED8" />,
             bg: "#EFF6FF",
             onPress: () => router.push("/(admin)/finance"),
+        });
+    }
+
+    quickActions.push({
+        title: "Recruitment",
+        subtitle: "Manage roles",
+        icon: <BriefcaseBusiness size={20} color="#0369A1" />,
+        bg: "#E0F2FE",
+        onPress: () => router.push("/(admin)/recruitment"),
+    });
+
+    if (showHbcMembers) {
+        quickActions.push({
+            title: "HBC",
+            subtitle: "Community members",
+            icon: <UsersRound size={20} color="#047857" />,
+            bg: "#D1FAE5",
+            onPress: () => router.push("/(admin)/hbc"),
         });
     }
 
@@ -195,6 +236,31 @@ export default function AdminDashboard() {
                         ))}
                     </View>
                 </View>
+
+                {birthdaySummary && birthdaySummary.counts.month > 0 ? (
+                    <Pressable
+                        onPress={() => router.push("/(admin)/birthdays")}
+                        className="mt-2 mb-1 flex-row items-center justify-between rounded-[24px] border border-amber-100 bg-amber-50 p-4"
+                    >
+                        <View className="mr-3 flex-1">
+                            <Text className="font-kumbhBold text-amber-900">
+                                Birthday reminders
+                            </Text>
+                            <Text className="mt-1 font-kumbh text-sm text-amber-800">
+                                {birthdaySummary.counts.today > 0
+                                    ? birthdayTodayMessage(
+                                          birthdaySummary.today.map(
+                                              (person) => person.name,
+                                          ),
+                                      )
+                                    : birthdaySummary.counts.week > 0
+                                      ? `${birthdaySummary.counts.week} birthday${birthdaySummary.counts.week === 1 ? "" : "s"} this week`
+                                      : `${birthdaySummary.counts.month} birthday${birthdaySummary.counts.month === 1 ? "" : "s"} this month`}
+                            </Text>
+                        </View>
+                        <ChevronRight size={22} color="#92400E" />
+                    </Pressable>
+                ) : null}
 
                 <View className="mt-3">
                     <View className="mb-3 flex-row items-center justify-between px-1">

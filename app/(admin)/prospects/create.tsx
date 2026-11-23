@@ -20,7 +20,6 @@ import * as yup from "yup";
 import Field from "@/components/admin/Field";
 import Input from "@/components/admin/Input";
 import OptionSheet from "@/components/common/OptionSheet";
-
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { selectClientMutationLoading } from "@/redux/client/client.selectors";
 import { createClient } from "@/redux/client/client.thunks";
@@ -38,7 +37,9 @@ type FormValues = {
         | "Moses Okoh"
         | "TMI"
         | "Private jet"
+        | "Others"
         | "";
+    sourceOther?: string;
     industry?: string;
     industryOther?: string;
     staffSize?: string;
@@ -68,8 +69,17 @@ const schema: yup.ObjectSchema<FormValues> = yup.object({
             "Moses Okoh",
             "TMI",
             "Private jet",
+            "Others",
         ])
         .optional(),
+    sourceOther: yup
+        .string()
+        .trim()
+        .when("source", {
+            is: "Others",
+            then: (schema) => schema.required("Please specify the source"),
+            otherwise: (schema) => schema.optional(),
+        }),
     industry: yup.string().trim().optional(),
     industryOther: yup
         .string()
@@ -116,6 +126,7 @@ const SOURCE_OPTIONS: Array<{
     { label: "Moses Okoh", value: "Moses Okoh" },
     { label: "TMI", value: "TMI" },
     { label: "Private jet", value: "Private jet" },
+    { label: "Others", value: "Others" },
 ];
 
 const STAFF_SIZE_OPTIONS = [
@@ -217,6 +228,7 @@ export default function CreateClient() {
             email: "",
             phoneNumber: "",
             source: "",
+            sourceOther: "",
             industry: "",
             industryOther: "",
             staffSize: "",
@@ -236,12 +248,16 @@ export default function CreateClient() {
     const onSubmit = async (values: FormValues) => {
         const industryValue = values.industry?.trim();
         const industryOtherValue = values.industryOther?.trim();
+        const sourceValue =
+            values.source === "Others"
+                ? values.sourceOther?.trim()
+                : values.source?.trim();
         const payload: ClientCreateInput = {
             name: values.name?.trim() || "",
             projectName: values.projectName?.trim() || "",
             phoneNumber: values.phoneNumber?.trim() || undefined,
             email: values.email?.trim() || undefined,
-            source: values.source || undefined,
+            source: sourceValue || undefined,
             engagement: values.engagement?.trim() || undefined,
             industry:
                 industryValue === "Other"
@@ -285,10 +301,8 @@ export default function CreateClient() {
             className="flex-1 bg-white"
         >
             {/* Header */}
-
             <PlatformAdaptiveHeader
                 title="Add New Prospect"
-                // onBackPress={onHeaderBackPress}
                 headerRight={({ tintColor }) => (
                     <Pressable
                         onPress={handleSubmit(onSubmit)}
@@ -418,6 +432,28 @@ export default function CreateClient() {
                     </Field>
                     {errors.source?.message ? (
                         <ErrorText msg={errors.source.message} />
+                    ) : null}
+                    {watch("source") === "Others" ? (
+                        <View className="mt-3">
+                            <Field label="Other Source">
+                                <Controller
+                                    control={control}
+                                    name="sourceOther"
+                                    render={({
+                                        field: { value, onChange },
+                                    }) => (
+                                        <Input
+                                            placeholder="Enter Source"
+                                            value={value}
+                                            onChangeText={onChange}
+                                        />
+                                    )}
+                                />
+                            </Field>
+                            {errors.sourceOther?.message ? (
+                                <ErrorText msg={errors.sourceOther.message} />
+                            ) : null}
+                        </View>
                     ) : null}
 
                     {/* Industry + Staff size */}
@@ -866,6 +902,9 @@ export default function CreateClient() {
                         "source",
                         value as NonNullable<FormValues["source"]>,
                     );
+                    if (value !== "Others") {
+                        setValue("sourceOther", "");
+                    }
                     setShowSourceSheet(false);
                 }}
                 title="Select Source"

@@ -1,7 +1,7 @@
 import { Channel } from "@/redux/channels/channels.types";
 import * as Clipboard from "expo-clipboard";
 import { Copy } from "lucide-react-native";
-import React from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { showSuccess } from "../ui/toast";
 
@@ -14,7 +14,7 @@ type Props = {
     onCopyCode?: () => void;
 };
 
-export default function ChannelCard({
+const ChannelCard = memo(function ChannelCard({
     item,
     tint,
     onPress,
@@ -22,45 +22,52 @@ export default function ChannelCard({
     onLongPress,
     onCopyCode,
 }: Props) {
-    const title = item.name ?? "";
-    const code = item.code ?? "";
-    const description = item.description ?? undefined;
+    const title = useMemo(() => item.name ?? "", [item.name]);
+    const code = useMemo(() => item.code ?? "", [item.code]);
+    const description = useMemo(
+        () => item.description ?? undefined,
+        [item.description],
+    );
     const memberCount = item.members?.length ?? 0;
 
-    const initials = title
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase() ?? "")
-        .join("");
+    const initials = useMemo(
+        () =>
+            title
+                .trim()
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((part) => part[0]?.toUpperCase() ?? "")
+                .join(""),
+        [title],
+    );
 
     const timestampSource = item.updatedAt ?? item.createdAt;
     const timestamp = timestampSource
         ? new Date(timestampSource)
         : undefined;
 
-    const timeLabel = timestamp && !Number.isNaN(timestamp.getTime())
-        ? new Intl.DateTimeFormat("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-          }).format(timestamp)
-        : code;
+    const timeLabel =
+        timestamp && !Number.isNaN(timestamp.getTime())
+            ? new Intl.DateTimeFormat("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+              }).format(timestamp)
+            : code;
 
     const preview = description || `Project code: ${code}`;
 
-    const copyCode = async (code?: string) => {
-        if (!code) {
+    const copyCode = useCallback(async (value?: string) => {
+        if (!value) {
             Alert.alert("No code", "This Project has no code to copy.");
             return;
         }
         try {
-            await Clipboard.setStringAsync(code);
-            // Alert.alert("Copied", "Project code copied to clipboard.");
+            await Clipboard.setStringAsync(value);
             showSuccess("Project code copied to clipboard.");
-        } catch (e) {
+        } catch {
             Alert.alert("Error", "Failed to copy Project code.");
         }
-    };
+    }, []);
 
     return (
         <Pressable
@@ -119,4 +126,6 @@ export default function ChannelCard({
             </View>
         </Pressable>
     );
-}
+});
+
+export default ChannelCard;

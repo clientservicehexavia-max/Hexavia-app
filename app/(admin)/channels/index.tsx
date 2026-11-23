@@ -31,6 +31,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+const PAGE_SIZE = 15;
 const TINTS = [
     "#707fbc",
     "#60A5FA",
@@ -63,7 +64,8 @@ export default function ChannelsIndex() {
     const dispatch = useAppDispatch();
     const isIOS = Platform.OS === "ios";
 
-    const [channels, setChannels] = useState<Channel[]>([]);
+    const [allChannels, setAllChannels] = useState<Channel[]>([]);
+    const [visibleChannels, setVisibleChannels] = useState<Channel[]>([]);
     const [status, setStatus] = useState<
         "idle" | "loading" | "succeeded" | "failed"
     >("idle");
@@ -71,65 +73,98 @@ export default function ChannelsIndex() {
 
     const [query, setQuery] = useState("");
     const [refreshing, setRefreshing] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [sheetOpen, setSheetOpen] = useState(false);
     const [actionTarget, setActionTarget] = useState<Channel | null>(null);
     const [editChannel, setEditChannel] = useState<Channel | null>(null);
     const [editOpen, setEditOpen] = useState(false);
 
-    const loadChannels = useCallback(async () => {
-        setStatus("loading");
-        setError(null);
+    const loadChannels = useCallback(async (page = 1) => {
+        if (page === 1) {
+            setStatus("loading");
+            setError(null);
+        }
+
         try {
-            const { data } = await api.get<AdminChannelsResponse>("/channel");
+            const { data } = await api.get<AdminChannelsResponse>(
+                `/channel?page=${page}&limit=${PAGE_SIZE}`,
+            );
             const list = Array.isArray(data?.data)
                 ? data.data
                 : Array.isArray(data?.channels)
                   ? data.channels
                   : [];
-            setChannels(list);
+
+            if (page === 1) {
+                setAllChannels(list);
+                setVisibleChannels(list);
+                setHasMore(list.length === PAGE_SIZE);
+            } else {
+                setVisibleChannels((prev) => [...prev, ...list]);
+                setHasMore(list.length === PAGE_SIZE);
+            }
+
             setStatus("succeeded");
         } catch (err: any) {
-            setChannels([]);
-            setStatus("failed");
-            setError(
-                err?.response?.data?.message ||
-                    err?.message ||
-                    "Failed to load projects.",
-            );
+            if (page === 1) {
+                setAllChannels([]);
+                setVisibleChannels([]);
+                setHasMore(false);
+                setStatus("failed");
+                setError(
+                    err?.response?.data?.message ||
+                        err?.message ||
+                        "Failed to load projects.",
+                );
+            }
         }
     }, []);
 
     useEffect(() => {
-        loadChannels();
+        loadChannels(1);
     }, [loadChannels]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
-            await loadChannels();
+            await loadChannels(1);
         } finally {
             setRefreshing(false);
         }
     }, [loadChannels]);
 
+    const loadMoreChannels = useCallback(async () => {
+        if (loadingMore || !hasMore) return;
+
+        setLoadingMore(true);
+        try {
+            const nextPage = Math.floor(visibleChannels.length / PAGE_SIZE) + 1;
+            await loadChannels(nextPage);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [hasMore, loadingMore, loadChannels, visibleChannels.length]);
+
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
-        const sorted = [...channels].sort((a, b) => {
+        const sorted = [...visibleChannels].sort((a, b) => {
             const aDate = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
             const bDate = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
             return bDate - aDate;
         });
 
+        if (!q) return sorted;
         return sorted.filter((channel) => {
             const name = (channel.name || "").toLowerCase();
             const code = (channel.code || "").toLowerCase();
             const desc = (channel.description || "").toLowerCase();
-            return !q || name.includes(q) || code.includes(q) || desc.includes(q);
+            return name.includes(q) || code.includes(q) || desc.includes(q);
         });
-    }, [channels, query]);
+    }, [visibleChannels, query]);
 
-    const initialLoading = status === "loading" && channels.length === 0;
+    const initialLoading = status === "loading" && visibleChannels.length === 0;
 
     const openActions = (channel: Channel) => {
         setActionTarget(channel);
@@ -155,7 +190,7 @@ export default function ChannelsIndex() {
                             await dispatch(
                                 deleteChannelById({ channelId }),
                             ).unwrap();
-                            await loadChannels();
+                            await loadChannels(1);
                         } catch (err) {
                             // errors already toasted in thunk
                         } finally {
@@ -223,6 +258,15 @@ export default function ChannelsIndex() {
                     />
                 }
                 contentContainerStyle={{ paddingBottom: 24 }}
+                onEndReached={loadMoreChannels}
+                onEndReachedThreshold={0.2}
+                ListFooterComponent={
+                    loadingMore ? (
+                        <View className="items-center py-4">
+                            <ActivityIndicator size="small" color={PRIMARY} />
+                        </View>
+                    ) : null
+                }
                 ListHeaderComponent={
                     <View className="px-4 pb-4">
                         <View className="mt-1 rounded-[26px] bg-[#F3F4F6] px-4 py-4">
@@ -387,7 +431,7 @@ export default function ChannelsIndex() {
                 onClose={() => {
                     setEditOpen(false);
                     setEditChannel(null);
-                    loadChannels();
+                    loadChannels(1);
                 }}
             />
         </SafeAreaView>

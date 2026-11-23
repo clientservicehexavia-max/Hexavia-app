@@ -9,6 +9,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface Option {
     label: string;
@@ -29,6 +30,7 @@ interface OptionSheetProps {
     multiSelect?: boolean;
     applyText?: string;
     emptyText?: string;
+    fullScreen?: boolean;
 }
 
 const EMPTY_SELECTED_VALUES: (string | number)[] = [];
@@ -55,6 +57,7 @@ export default function OptionSheet({
     multiSelect = false,
     applyText = "Apply",
     emptyText = "No options found",
+    fullScreen = false,
 }: OptionSheetProps) {
     const [query, setQuery] = useState("");
     const [draftSelectedValues, setDraftSelectedValues] =
@@ -119,94 +122,188 @@ export default function OptionSheet({
         >
             <Pressable
                 onPress={onClose}
-                className="flex-1 justify-end bg-black/50"
+                className={`flex-1 ${fullScreen ? "justify-start" : "justify-end"} bg-black/50`}
             >
-                <View className="bg-white rounded-t-xl max-h-[500px]">
-                    <View className="px-6 py-3 border-b border-gray-200 justify-center items-center">
-                        <Text className="text-xl font-kumbhBold text-center">
-                            {title}
-                        </Text>
-                    </View>
-                    {searchable && (
-                        <View className="px-6 pt-4">
-                            <TextInput
-                                value={query}
-                                onChangeText={setQuery}
-                                placeholder={searchPlaceholder}
-                                placeholderTextColor="#9CA3AF"
-                                className="rounded-xl bg-gray-100 px-4 py-3 text-gray-800 font-kumbh"
-                            />
+                {fullScreen ? (
+                    <SafeAreaView
+                        edges={["top", "bottom"]}
+                        className="bg-white flex-1"
+                    >
+                        <View className="px-6 py-3 border-b border-gray-200 justify-center items-center">
+                            <Text className="text-xl font-kumbhBold text-center">
+                                {title}
+                            </Text>
                         </View>
-                    )}
-                    <ScrollView className="px-1 py-2">
-                        {filteredOptions.length === 0 ? (
-                            <View className="py-8">
-                                <Text className="text-center text-gray-500 font-kumbh">
-                                    {emptyText}
-                                </Text>
+                        {searchable && (
+                            <View className="px-6 pt-4">
+                                <TextInput
+                                    value={query}
+                                    onChangeText={setQuery}
+                                    placeholder={searchPlaceholder}
+                                    placeholderTextColor="#9CA3AF"
+                                    className="rounded-xl bg-gray-100 px-4 py-1 h-12 text-gray-800 font-kumbh"
+                                />
                             </View>
-                        ) : (
-                            filteredOptions.map((option, index) => {
-                                const selected = isSelected(option.value);
-
-                                return (
-                                    <TouchableOpacity
-                                        key={option.value}
-                                        onPress={() =>
-                                            handleSelect(option.value)
-                                        }
-                                        className={clsx(
-                                            "py-4 border-b border-gray-100 px-4 rounded-xl",
-                                            selected
-                                                ? "bg-blue-50 border-b-0"
-                                                : "",
-                                            filteredOptions.length - 1 === index
-                                                ? "border-b-0"
-                                                : "",
-                                        )}
-                                    >
-                                        <View className="flex-row items-center justify-between">
-                                            <Text
-                                                className={`text-base font-kumbh capitalize w-full ${
-                                                    selected
-                                                        ? "text-blue-600 font-kumbhBold"
-                                                        : "text-gray-700"
-                                                }`}
-                                            >
-                                                {option.label}
-                                            </Text>
-                                            {multiSelect && selected && (
-                                                <Text className="text-blue-600 font-kumbhBold">
-                                                    Done
-                                                </Text>
-                                            )}
-                                        </View>
-                                    </TouchableOpacity>
-                                );
-                            })
                         )}
-                    </ScrollView>
-                    <View className="px-6 py-4">
-                        {multiSelect && (
+                        <ScrollView className="px-1 py-2">
+                            {filteredOptions.length === 0 ? (
+                                <View className="py-8">
+                                    <Text className="text-center text-gray-500 font-kumbh">
+                                        {emptyText}
+                                    </Text>
+                                </View>
+                            ) : (
+                                filteredOptions.map((option, index) => {
+                                    const selected = isSelected(option.value);
+
+                                    return (
+                                        <TouchableOpacity
+                                            key={option.value}
+                                            onPress={() =>
+                                                handleSelect(option.value)
+                                            }
+                                            className={clsx(
+                                                "py-4 border-b border-gray-100 px-4 rounded-xl",
+                                                selected
+                                                    ? "bg-blue-50 border-b-0"
+                                                    : "",
+                                                filteredOptions.length - 1 ===
+                                                    index
+                                                    ? "border-b-0"
+                                                    : "",
+                                            )}
+                                        >
+                                            <View className="flex-row items-center justify-between">
+                                                <Text
+                                                    className={`text-base font-kumbh capitalize w-full ${
+                                                        selected
+                                                            ? "text-blue-600 font-kumbhBold"
+                                                            : "text-gray-700"
+                                                    }`}
+                                                >
+                                                    {option.label}
+                                                </Text>
+                                                {multiSelect && selected && (
+                                                    <Text className="text-blue-600 font-kumbhBold">
+                                                        Done
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })
+                            )}
+                        </ScrollView>
+                        <View className="px-6 py-4">
+                            {multiSelect && (
+                                <TouchableOpacity
+                                    onPress={handleApply}
+                                    className="mb-3 py-3 bg-primary-500 rounded-lg"
+                                >
+                                    <Text className="text-center text-white font-kumbhBold">
+                                        {applyText}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                             <TouchableOpacity
-                                onPress={handleApply}
-                                className="mb-3 py-3 bg-primary-500 rounded-lg"
+                                onPress={onClose}
+                                className="py-3 bg-gray-100 rounded-lg"
                             >
-                                <Text className="text-center text-white font-kumbhBold">
-                                    {applyText}
+                                <Text className="text-center text-gray-600 font-kumbhBold">
+                                    Cancel
                                 </Text>
                             </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                            onPress={onClose}
-                            className="py-3 bg-gray-100 rounded-lg"
-                        >
-                            <Text className="text-center text-gray-600 font-kumbhBold">
-                                Cancel
+                        </View>
+                    </SafeAreaView>
+                ) : (
+                    <View className="bg-white rounded-t-xl max-h-[500px]">
+                        <View className="px-6 py-3 border-b border-gray-200 justify-center items-center">
+                            <Text className="text-xl font-kumbhBold text-center">
+                                {title}
                             </Text>
-                        </TouchableOpacity>
+                        </View>
+                        {searchable && (
+                            <View className="px-6 pt-4">
+                                <TextInput
+                                    value={query}
+                                    onChangeText={setQuery}
+                                    placeholder={searchPlaceholder}
+                                    placeholderTextColor="#9CA3AF"
+                                    className="rounded-xl bg-gray-100 px-4 py-3 text-gray-800 font-kumbh"
+                                />
+                            </View>
+                        )}
+                        <ScrollView className="px-1 py-2">
+                            {filteredOptions.length === 0 ? (
+                                <View className="py-8">
+                                    <Text className="text-center text-gray-500 font-kumbh">
+                                        {emptyText}
+                                    </Text>
+                                </View>
+                            ) : (
+                                filteredOptions.map((option, index) => {
+                                    const selected = isSelected(option.value);
+
+                                    return (
+                                        <TouchableOpacity
+                                            key={option.value}
+                                            onPress={() =>
+                                                handleSelect(option.value)
+                                            }
+                                            className={clsx(
+                                                "py-4 border-b border-gray-100 px-4 rounded-xl",
+                                                selected
+                                                    ? "bg-blue-50 border-b-0"
+                                                    : "",
+                                                filteredOptions.length - 1 ===
+                                                    index
+                                                    ? "border-b-0"
+                                                    : "",
+                                            )}
+                                        >
+                                            <View className="flex-row items-center justify-between">
+                                                <Text
+                                                    className={`text-base font-kumbh capitalize w-full ${
+                                                        selected
+                                                            ? "text-blue-600 font-kumbhBold"
+                                                            : "text-gray-700"
+                                                    }`}
+                                                >
+                                                    {option.label}
+                                                </Text>
+                                                {multiSelect && selected && (
+                                                    <Text className="text-blue-600 font-kumbhBold">
+                                                        Done
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })
+                            )}
+                        </ScrollView>
+                        <View className="px-6 py-4">
+                            {multiSelect && (
+                                <TouchableOpacity
+                                    onPress={handleApply}
+                                    className="mb-3 py-3 bg-primary-500 rounded-lg"
+                                >
+                                    <Text className="text-center text-white font-kumbhBold">
+                                        {applyText}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity
+                                onPress={onClose}
+                                className="py-3 bg-gray-100 rounded-lg"
+                            >
+                                <Text className="text-center text-gray-600 font-kumbhBold">
+                                    Cancel
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
+                )}
             </Pressable>
         </Modal>
     );

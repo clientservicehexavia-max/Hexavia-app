@@ -6,15 +6,15 @@ import { useDispatch, useSelector } from "react-redux";
 import FilterModal, { Filters } from "@/components/FIlterModal";
 import SearchBar from "@/components/SearchBar";
 import ChannelCard from "@/components/staff/channels/ChannelCard";
-import JoinableChannelCard from "@/components/staff/channels/JoinableChannelCard"; // NEW
 import useDebounced from "@/hooks/useDebounced";
+import { useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import {
     selectAllChannels,
     selectMyChannelsByUserId,
-} from "@/redux/channels/channels.selectors"; // NOTE: bring selectAllChannels
+} from "@/redux/channels/channels.selectors";
 import {
     fetchChannelByCode,
     fetchChannels,
@@ -61,58 +61,65 @@ export default function AllChannelsScreen() {
 
     const [query, setQuery] = useState("");
     const debouncedQuery = useDebounced(query, 250);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const [codeSearchResult, setCodeSearchResult] = useState<any>(null);
-    const [codeSearchStatus, setCodeSearchStatus] = useState<
-        "idle" | "loading" | "succeeded" | "failed"
-    >("idle");
-
-    useEffect(() => {
-        dispatch(fetchProfile());
-    }, [dispatch]);
+    // Refresh channels and profile whenever the screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            dispatch(fetchProfile());
+            dispatch(fetchChannels());
+        }, [dispatch]),
+    );
 
     const userId = user?._id ?? null;
 
-    // My channels (existing list)
+    // My channels (joined / created)
     const myChannels = useAppSelector((s) =>
         selectMyChannelsByUserId(s, userId),
     );
-    const myChannelIds = new Set(
-        myChannels.map((c: any) => String(c?._id ?? c?.id)),
+    // All loaded channels
+    const allChannels = useAppSelector(selectAllChannels);
+
+    const myChannelIds = useMemo(
+        () => new Set(myChannels.map((c: any) => String(c?._id ?? c?.id))),
+        [myChannels],
     );
 
-    // All channels (for the code-based search)
-    const allChannels = useAppSelector(selectAllChannels);
-    // console.log(allChannels)
-
-    useEffect(() => {
-        if (status === "idle") dispatch(fetchChannels());
-    }, [status, dispatch]);
-
-    // Effect for code search
+    // Code search effect (dynamic fetch if user enters a 4-char code not yet in cache)
     useEffect(() => {
         const normalized = normalizeCodeLoose(debouncedQuery);
         if (normalized.length === 4) {
-            setCodeSearchStatus("loading");
-            dispatch(fetchChannelByCode(normalized))
-                .unwrap()
-                .then((channel) => {
-                    setCodeSearchResult(channel);
-                    setCodeSearchStatus("succeeded");
-                })
-                .catch(() => {
-                    setCodeSearchResult(null);
-                    setCodeSearchStatus("failed");
-                });
-        } else {
-            setCodeSearchResult(null);
-            setCodeSearchStatus("idle");
+            dispatch(fetchChannelByCode(normalized));
         }
     }, [debouncedQuery, dispatch]);
 
-    const onRefresh = useCallback(() => {
-        dispatch(fetchChannels());
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                dispatch(fetchProfile()).unwrap(),
+                dispatch(fetchChannels()).unwrap(),
+            ]);
+        } catch {
+            // error handled by thunk
+        } finally {
+            setRefreshing(false);
+        }
     }, [dispatch]);
+
+    const handleJoin = useCallback(
+        async (code: string) => {
+            const cleanCode = normalizeCodeLoose(code);
+            if (!cleanCode) return;
+            try {
+                await dispatch(joinChannel(cleanCode)).unwrap();
+                await dispatch(fetchChannels()).unwrap();
+            } catch (err) {
+                // error is already toasted by thunk
+            }
+        },
+        [dispatch],
+    );
 
     const [filters, setFilters] = useState<Filters>({
         department: "All",
@@ -121,29 +128,11 @@ export default function AllChannelsScreen() {
     });
     const [filterOpen, setFilterOpen] = useState(false);
 
-    // ----- code lookup via API (when exactly 4 chars normalized)
-    const codeMatch = useMemo(() => {
-        const normalized = normalizeCodeLoose(debouncedQuery);
-        if (normalized.length === 4 && codeSearchStatus === "succeeded") {
-            return codeSearchResult;
-        }
-        return null;
-    }, [debouncedQuery, codeSearchResult, codeSearchStatus]);
-
-    const alreadyMember = useMemo(() => {
-        if (!codeMatch || !userId) return false;
-        const myIds = new Set(
-            myChannels.map((c: any) => String(c?._id ?? c?.id)),
-        );
-        const targetId = String(
-            (codeMatch as any)?._id ?? (codeMatch as any)?.id,
-        );
-        return myIds.has(targetId);
-    }, [codeMatch, myChannels, userId]);
-
-    // ------- existing data list (for MY channels), still searchable by name
     const data = useMemo(() => {
-        const keyed = allChannels
+        const isSearching = Boolean(debouncedQuery.trim());
+        const baseChannels = isSearching ? allChannels : myChannels;
+
+        const keyed = baseChannels
             .filter(Boolean)
             .map((c: any) => ({ ...c, __key: makeKey(c) }))
             .filter((c: any) => c.__key.length > 0);
@@ -157,36 +146,31 @@ export default function AllChannelsScreen() {
             }
         }
 
-        let list = deduped
-            .filter((c) => {
-                if (codeMatch && !alreadyMember) {
-                    const targetId = String(
-                        (codeMatch as any)?._id ?? (codeMatch as any)?.id,
-                    );
-                    const cId = String(c?._id ?? c?.id);
-                    return cId !== targetId;
-                }
-                return true;
-            })
-            .map((c) => ({
-                ...c,
-                isMember: myChannelIds.has(String(c._id ?? c.id)),
-            }));
+        let list = deduped.map((c) => ({
+            ...c,
+            isMember: myChannelIds.has(String(c._id ?? c.id)),
+        }));
 
         const q = debouncedQuery.trim().toLowerCase();
-
-        // keep existing behavior: name/desc/department search for MY list
+        const normalizedQ = normalizeCodeLoose(debouncedQuery);
         if (q) {
-            list = list.filter((c) =>
-                [
-                    c?.name ?? "",
-                    c?.description ?? "",
-                    (c as any)?.department ?? "",
-                ]
-                    .join(" ")
-                    .toLowerCase()
-                    .includes(q),
-            );
+            list = list.filter((c) => {
+                const name = (c?.name || "").toLowerCase();
+                const desc = (c?.description || "").toLowerCase();
+                const dept = ((c as any)?.department || "").toLowerCase();
+                const code = (c?.code || "").toLowerCase();
+                const normalizedCode = normalizeCodeLoose(c?.code || "");
+
+                return (
+                    name.includes(q) ||
+                    desc.includes(q) ||
+                    dept.includes(q) ||
+                    code.includes(q) ||
+                    (Boolean(normalizedQ) &&
+                        Boolean(normalizedCode) &&
+                        normalizedCode.includes(normalizedQ))
+                );
+            });
         }
         if (filters.department !== "All") {
             list = list.filter(
@@ -205,29 +189,11 @@ export default function AllChannelsScreen() {
             );
         }
         return list;
-    }, [
-        debouncedQuery,
-        filters,
-        allChannels,
-        codeMatch,
-        alreadyMember,
-        myChannelIds,
-    ]);
+    }, [debouncedQuery, filters, myChannels, allChannels, myChannelIds]);
 
     const viewStyle = {
         flex: 1,
     };
-
-    // click handler for the join button
-    const handleJoin = useCallback(
-        (channel: any) => {
-            const code = normalizeCodeLoose(channel?.code || "");
-            if (code) {
-                dispatch(joinChannel(code));
-            }
-        },
-        [dispatch],
-    );
 
     return (
         <SafeAreaView
@@ -243,46 +209,6 @@ export default function AllChannelsScreen() {
                     onOpenFilter={() => setFilterOpen(true)}
                 />
 
-                {/* --- CODE MATCH AREA: shows when user typed a code that matches any channel --- */}
-                {!!debouncedQuery &&
-                    normalizeCodeLoose(debouncedQuery).length === 4 && (
-                        <View>
-                            {codeSearchStatus === "loading" ? (
-                                <View className="mx-4 mt-4 px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200">
-                                    <Text className="text-gray-700 font-kumbh">
-                                        Searching for project...
-                                    </Text>
-                                </View>
-                            ) : codeMatch ? (
-                                <JoinableChannelCard
-                                    item={{
-                                        id: String(
-                                            (codeMatch as any)?._id ??
-                                                (codeMatch as any)?.id,
-                                        ),
-                                        name: (codeMatch as any)?.name,
-                                        description: (codeMatch as any)
-                                            ?.description,
-                                        code: (codeMatch as any)?.code,
-                                    }}
-                                    onJoin={handleJoin}
-                                    disabled={alreadyMember}
-                                />
-                            ) : codeSearchStatus === "failed" ? (
-                                <View className="mx-4 mt-4 px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200">
-                                    <Text className="text-gray-700 font-kumbh">
-                                        No Project found with that code.
-                                    </Text>
-                                    <Text className="text-gray-500 mt-1 text-[12px] font-kumbh">
-                                        Tip: Try pasting the exact code (with or
-                                        without #, any case).
-                                    </Text>
-                                </View>
-                            ) : null}
-                        </View>
-                    )}
-
-                {/* --- EXISTING LIST: my channels --- */}
                 <FlatList
                     data={data}
                     keyExtractor={(item: any) => item.__key}
@@ -299,7 +225,7 @@ export default function AllChannelsScreen() {
                     contentContainerStyle={{ paddingBottom: 24, paddingTop: 0 }}
                     refreshControl={
                         <RefreshControl
-                            refreshing={status === "loading"}
+                            refreshing={refreshing}
                             onRefresh={onRefresh}
                         />
                     }
@@ -313,7 +239,9 @@ export default function AllChannelsScreen() {
                             <Text className="mt-2 text-gray-500 font-kumbh">
                                 {status === "loading"
                                     ? "Loading Projects..."
-                                    : "No Projects found"}
+                                    : debouncedQuery.trim()
+                                      ? "No Projects found matching your search"
+                                      : "No Projects found"}
                             </Text>
                         </View>
                     }

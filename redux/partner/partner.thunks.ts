@@ -76,6 +76,7 @@ export const createPartner = createAsyncThunk<
             | "vendor"
             | "other";
         industry?: string;
+        dateOfBirth?: string | null;
         engagementTags?: string[];
         notes?: string;
         profileImage?: string;

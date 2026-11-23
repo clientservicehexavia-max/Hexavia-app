@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check } from "lucide-react-native";
+import { CalendarDays, Check } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import DatePickerModal from "@/components/admin/DatePickerModal";
 import {
     selectPartnerById,
     selectPartnerLoading,
@@ -26,6 +27,7 @@ import {
 } from "@/redux/partner/partner.thunks";
 import type { Partner } from "@/redux/partner/partner.types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { birthdayInputFromDate, birthdayPickerDate, toBirthdayInput } from "@/utils/birthday";
 
 type FormData = Partial<Partner> & {
     engagementTags: string[];
@@ -54,6 +56,7 @@ export default function PartnerFormScreen() {
         address: "",
         partnerType: undefined,
         industry: "",
+        dateOfBirth: "",
         engagementTags: [],
         notes: "",
         profileImage: "",
@@ -62,6 +65,7 @@ export default function PartnerFormScreen() {
 
     const [submitting, setSubmitting] = useState(false);
     const [tagInput, setTagInput] = useState("");
+    const [birthdayPickerVisible, setBirthdayPickerVisible] = useState(false);
 
     useEffect(() => {
         if (partnerId && !partner) {
@@ -82,6 +86,7 @@ export default function PartnerFormScreen() {
                 address: partner.address,
                 partnerType: partner.partnerType,
                 industry: partner.industry,
+                dateOfBirth: toBirthdayInput(partner.dateOfBirth),
                 engagementTags: partner.engagementTags || [],
                 notes: partner.notes,
                 profileImage: partner.profileImage,
@@ -134,6 +139,7 @@ export default function PartnerFormScreen() {
                     address,
                     partnerType,
                     industry,
+                    dateOfBirth,
                     engagementTags,
                     notes,
                     profileImage,
@@ -153,6 +159,7 @@ export default function PartnerFormScreen() {
                             address,
                             partnerType,
                             industry,
+                            dateOfBirth,
                             engagementTags,
                             notes,
                             profileImage,
@@ -174,6 +181,7 @@ export default function PartnerFormScreen() {
                     address,
                     partnerType,
                     industry,
+                    dateOfBirth,
                     engagementTags,
                     notes,
                     profileImage,
@@ -191,6 +199,7 @@ export default function PartnerFormScreen() {
                         address,
                         partnerType,
                         industry,
+                        dateOfBirth,
                         engagementTags,
                         notes,
                         profileImage,
@@ -393,6 +402,31 @@ export default function PartnerFormScreen() {
                             />
                         </View>
 
+                        {/* Date of Birth */}
+                        <View className="mb-6">
+                            <Text className="text-gray-700 font-semibold mb-2">
+                                Date of Birth
+                            </Text>
+                            <Pressable
+                                disabled={submitting}
+                                onPress={() => setBirthdayPickerVisible(true)}
+                                className="flex-row items-center justify-between rounded-lg border border-gray-300 px-4 py-3"
+                            >
+                                <Text className={form.dateOfBirth ? "text-base text-gray-900" : "text-base text-gray-400"}>
+                                    {form.dateOfBirth || "Select date of birth"}
+                                </Text>
+                                <CalendarDays size={18} color="#4C5FAB" />
+                            </Pressable>
+                            {form.dateOfBirth ? (
+                                <Pressable
+                                    onPress={() => handleUpdateForm("dateOfBirth", "")}
+                                    className="mt-2 self-start"
+                                >
+                                    <Text className="text-xs text-[#4C5FAB]">Clear date</Text>
+                                </Pressable>
+                            ) : null}
+                        </View>
+
                         {/* Industry */}
                         <View className="mb-6">
                             <Text className="text-gray-700 font-semibold mb-2">
@@ -553,6 +587,16 @@ export default function PartnerFormScreen() {
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
+            <DatePickerModal
+                visible={birthdayPickerVisible}
+                value={birthdayPickerDate(form.dateOfBirth)}
+                maximumDate={new Date()}
+                onCancel={() => setBirthdayPickerVisible(false)}
+                onDone={() => setBirthdayPickerVisible(false)}
+                onDateChange={(date) =>
+                    handleUpdateForm("dateOfBirth", birthdayInputFromDate(date))
+                }
+            />
         </SafeAreaView>
     );
 }

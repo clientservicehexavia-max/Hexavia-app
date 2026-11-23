@@ -40,6 +40,11 @@ export const canAccessFinanceManagement = (role?: string | null): boolean => {
     return normalized === "admin" || normalized === "super-admin";
 };
 
+export const canAccessHbcMembers = (role?: string | null): boolean => {
+    const normalized = normalizeRole(role);
+    return normalized === "admin" || normalized === "clientservice";
+};
+
 export const roleHomePath = (role?: string | null): string => {
     const normalized = normalizeRole(role);
     if (normalized === "client") return "/(client)/(tabs)";

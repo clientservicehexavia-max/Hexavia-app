@@ -46,7 +46,8 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { makeDescriptionFromName } from "@/utils/buildApiResources";
 import { getMimeFromName } from "@/utils/getMime";
 import { slugifyFilename } from "@/utils/slugAndCloudinary";
-import { Audio, Video } from "expo-av";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { ResizeMode, Video } from "expo-av";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -73,6 +74,7 @@ import React, {
 } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Animated,
     FlatList,
     Image,
@@ -82,6 +84,7 @@ import {
     Modal,
     Platform,
     Pressable,
+    RefreshControl,
     ScrollView,
     SectionList,
     Text,
@@ -230,8 +233,6 @@ export default function ChannelResourcesScreen() {
     const [editingNote, setEditingNote] = useState<ChannelNote | null>(null);
     const [noteSubmitting, setNoteSubmitting] = useState(false);
     const [noteToDelete, setNoteToDelete] = useState<ChannelNote | null>(null);
-    const [resourceToDelete, setResourceToDelete] =
-        useState<ChannelResource | null>(null);
     const [resourceDeleting, setResourceDeleting] = useState(false);
     const [previewNote, setPreviewNote] = useState<ChannelNote | null>(null);
     const [previewMedia, setPreviewMedia] = useState<{
@@ -240,6 +241,7 @@ export default function ChannelResourcesScreen() {
         name?: string;
         mime?: string;
     } | null>(null);
+    const [resourceRefreshing, setResourceRefreshing] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [sortOrder, setSortOrder] = useState<{
@@ -356,12 +358,14 @@ export default function ChannelResourcesScreen() {
         await api.post("/channel/upload-resources", form, {
             headers: {
                 Accept: "application/json",
+                "Content-Type": "multipart/form-data",
             },
             onUploadProgress: (evt) => {
                 if (!evt.total) return;
                 const pct = Math.round((evt.loaded / evt.total) * 100);
                 setUploadProgress(pct);
             },
+            timeout: 120_000,
             transformRequest: (v) => v,
         });
     };
@@ -399,9 +403,10 @@ export default function ChannelResourcesScreen() {
 
                 // 3) verify what you're about to send
                 const info = await FileSystem.getInfoAsync(finalUri);
+                const fileSize = "size" in info ? info.size : undefined;
                 console.log("UPLOAD FILE:", {
                     exists: info.exists,
-                    size: info.size,
+                    size: fileSize,
                     uri: finalUri,
                     name: normalized.name,
                     mime: normalized.mime,
@@ -777,12 +782,11 @@ export default function ChannelResourcesScreen() {
         }
     };
 
-    const handleDeleteResource = async () => {
-        if (!channelId || !resourceToDelete || resourceDeleting) return;
-        const resourceId = resourceToDelete._id;
+    const handleDeleteResource = async (resource: ChannelResource) => {
+        if (!channelId || resourceDeleting) return;
+        const resourceId = resource._id;
         if (!resourceId) {
             showError("Resource ID is missing. Unable to delete.");
-            setResourceToDelete(null);
             return;
         }
 
@@ -804,9 +808,28 @@ export default function ChannelResourcesScreen() {
             showError(String(message));
         } finally {
             setResourceDeleting(false);
-            setResourceToDelete(null);
         }
     };
+
+    const confirmDeleteResource = useCallback(
+        (resource: ChannelResource) => {
+            Alert.alert(
+                "Delete resource",
+                "This will remove the resource from this project permanently.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => {
+                            void handleDeleteResource(resource);
+                        },
+                    },
+                ],
+            );
+        },
+        [handleDeleteResource],
+    );
 
     const downloadResource = async (r: ChannelResource) => {
         try {
@@ -1021,6 +1044,16 @@ export default function ChannelResourcesScreen() {
         await dispatch(fetchChannelNotes(channelId));
     }, [channelId, dispatch]);
 
+    const refreshResources = useCallback(async () => {
+        if (!channelId || resourceRefreshing) return;
+        try {
+            setResourceRefreshing(true);
+            await dispatch(fetchChannelById(channelId)).unwrap();
+        } finally {
+            setResourceRefreshing(false);
+        }
+    }, [channelId, dispatch, resourceRefreshing]);
+
     const toggleSortOrder = useCallback((tab: ChannelTab) => {
         setSortOrder((prev) => ({
             ...prev,
@@ -1157,7 +1190,24 @@ export default function ChannelResourcesScreen() {
                                         <SkeletonCard width={170} />
                                     </View>
                                 ) : sections.length === 0 ? (
-                                    <View className="flex-1 px-5 pt-8">
+                                    <ScrollView
+                                        className="flex-1"
+                                        contentContainerStyle={{
+                                            flexGrow: 1,
+                                            paddingLeft: 20,
+                                            paddingRight: 20,
+                                            paddingTop: 32,
+                                            paddingBottom: 110,
+                                        }}
+                                        refreshControl={
+                                            <RefreshControl
+                                                refreshing={resourceRefreshing}
+                                                onRefresh={refreshResources}
+                                                tintColor={PRIMARY}
+                                                colors={[PRIMARY]}
+                                            />
+                                        }
+                                    >
                                         <View className="rounded-[28px] bg-white border border-gray-100 px-5 py-10 items-center">
                                             <View className="h-14 w-14 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-4">
                                                 <CloudUpload
@@ -1245,10 +1295,18 @@ export default function ChannelResourcesScreen() {
                                                 </View>
                                             )}
                                         </View>
-                                    </View>
+                                    </ScrollView>
                                 ) : (
                                     <SectionList
                                         sections={sections}
+                                        refreshControl={
+                                            <RefreshControl
+                                                refreshing={resourceRefreshing}
+                                                onRefresh={refreshResources}
+                                                tintColor={PRIMARY}
+                                                colors={[PRIMARY]}
+                                            />
+                                        }
                                         keyExtractor={(item, idx) =>
                                             (item._id || item.resourceUpload) +
                                             ":" +
@@ -1653,17 +1711,6 @@ export default function ChannelResourcesScreen() {
                 onConfirm={handleDeleteNote}
             />
 
-            <ConfirmModal
-                visible={Boolean(resourceToDelete)}
-                title="Delete resource"
-                message="This will remove the resource from this project permanently."
-                onCancel={() => {
-                    if (resourceDeleting) return;
-                    setResourceToDelete(null);
-                }}
-                onConfirm={handleDeleteResource}
-            />
-
             <Modal
                 visible={Boolean(previewNote)}
                 animationType="slide"
@@ -1787,7 +1834,7 @@ export default function ChannelResourcesScreen() {
                                     setActionFor(null);
                                     return;
                                 }
-                                setResourceToDelete(actionFor);
+                                confirmDeleteResource(actionFor);
                                 setActionFor(null);
                             }}
                             className="py-3"
@@ -1854,69 +1901,33 @@ function ZoomableImage({ uri }: { uri: string }) {
 }
 
 function AudioPreview({ uri }: { uri: string }) {
-    const [sound, setSound] = useState<Audio.Sound | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [position, setPosition] = useState(0);
-    const [duration, setDuration] = useState(0);
+    const player = useAudioPlayer(uri, { updateInterval: 200 });
+    const status = useAudioPlayerStatus(player);
     const [barWidth, setBarWidth] = useState(0);
 
-    useEffect(() => {
-        let cancelled = false;
-        let localSound: Audio.Sound | null = null;
-
-        const load = async () => {
-            try {
-                const { sound: s } = await Audio.Sound.createAsync(
-                    { uri },
-                    { shouldPlay: false },
-                );
-                if (cancelled) {
-                    await s.unloadAsync();
-                    return;
-                }
-                localSound = s;
-                setSound(s);
-                s.setOnPlaybackStatusUpdate((status) => {
-                    if (!status.isLoaded) return;
-                    setIsPlaying(status.isPlaying);
-                    setPosition(status.positionMillis ?? 0);
-                    setDuration(status.durationMillis ?? 0);
-                });
-            } catch {
-                // ignore
-            }
-        };
-
-        load();
-
-        return () => {
-            cancelled = true;
-            if (localSound) {
-                localSound.unloadAsync();
-            }
-            setSound(null);
-        };
-    }, [uri]);
-
     const toggle = async () => {
-        if (!sound) return;
-        const status = await sound.getStatusAsync();
         if (!status.isLoaded) return;
-        if (status.isPlaying) {
-            await sound.pauseAsync();
+        if (status.playing) {
+            player.pause();
         } else {
-            await sound.playAsync();
+            player.play();
         }
     };
 
     const seekTo = async (ratio: number) => {
-        if (!sound || !duration) return;
-        const ms = Math.max(
+        if (!status.isLoaded || !status.duration) return;
+        const seconds = Math.max(
             0,
-            Math.min(duration, Math.floor(duration * ratio)),
+            Math.min(status.duration, status.duration * ratio),
         );
-        await sound.setPositionAsync(ms);
+        await player.seekTo(seconds);
     };
+
+    const durationMs = Math.max(0, Math.floor((status.duration ?? 0) * 1000));
+    const positionMs = Math.max(
+        0,
+        Math.floor((status.currentTime ?? 0) * 1000),
+    );
 
     return (
         <View className="w-full max-w-[340px] rounded-2xl bg-white/10 px-4 py-4">
@@ -1936,8 +1947,8 @@ function AudioPreview({ uri }: { uri: string }) {
                     className="h-2 bg-white/80"
                     style={{
                         width:
-                            duration > 0 && barWidth > 0
-                                ? (position / duration) * barWidth
+                            durationMs > 0 && barWidth > 0
+                                ? (positionMs / durationMs) * barWidth
                                 : 0,
                     }}
                 />
@@ -1948,11 +1959,12 @@ function AudioPreview({ uri }: { uri: string }) {
                     className="px-4 py-2 rounded-full bg-white"
                 >
                     <Text className="font-kumbhBold text-gray-900">
-                        {isPlaying ? "Pause" : "Play"}
+                        {status.playing ? "Pause" : "Play"}
                     </Text>
                 </Pressable>
                 <Text className="text-white font-kumbh">
-                    {formatAudioTime(position)} / {formatAudioTime(duration)}
+                    {formatAudioTime(positionMs)} /{" "}
+                    {formatAudioTime(durationMs)}
                 </Text>
             </View>
         </View>
@@ -1977,11 +1989,11 @@ function VideoPreview({ uri }: { uri: string }) {
                 source={{ uri }}
                 style={{ width: "100%", height: 260, borderRadius: 12 }}
                 useNativeControls
-                resizeMode="contain"
+                resizeMode={ResizeMode.CONTAIN}
                 shouldPlay
             />
             <Pressable
-                onPress={() => ref.current?.presentFullscreenPlayerAsync?.()}
+                onPress={() => ref.current?.presentFullscreenPlayer?.()}
                 className="mt-3 self-center flex-row items-center gap-2 rounded-full bg-white px-4 py-2"
             >
                 <Maximize2 size={16} color="#111827" />

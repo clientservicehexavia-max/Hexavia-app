@@ -25,6 +25,7 @@ import installmentsReducer from "@/redux/installments/installments.slice";
 import notificationsReducer from "@/redux/notifications/notifications.slice";
 import partnerReducer from "@/redux/partner/partner.slice";
 import partnershipReducer from "@/redux/partnership/partnership.slice";
+import recruitmentReducer from "@/redux/recruitment/recruitment.slice";
 import personalTasksReducer from "@/redux/personalTasks/personalTasks.slice";
 import sanctionsReducer from "@/redux/sanctions/sanctions.slice";
 import uploadReducer from "@/redux/upload/upload.slice";
@@ -49,6 +50,7 @@ export const rootReducer = combineReducers({
     partner: partnerReducer,
     deal: dealReducer,
     partnership: partnershipReducer,
+    recruitment: recruitmentReducer,
 });
 
 // 2) Export RootState from the reducer (no circular reference)

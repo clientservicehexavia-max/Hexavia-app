@@ -1,53 +1,55 @@
 export type StatusKey =
-  | "in-progress"
-  | "not-started"
-  | "completed"
-  | "canceled";
+    | "in-progress"
+    | "not-started"
+    | "completed"
+    | "canceled";
 
-export type Task = {
-  id: string;
-  title: string;
-  description?: string;
-  channelCode: string;
-  channelId?: string;
-  status: StatusKey;
-  createdAt: number;
-  assignees?: Array<{
+export type TaskAssignee = {
     id?: string;
     name?: string;
     email?: string;
-  }>;
+};
+
+export type Task = {
+    id: string;
+    title: string;
+    description?: string;
+    channelCode: string;
+    channelId?: string;
+    status: StatusKey;
+    createdAt: number;
+    assignee?: TaskAssignee;
 };
 
 export const TAB_ORDER: StatusKey[] = [
-  "in-progress",
-  "not-started",
-  "completed",
-  "canceled",
+    "not-started",
+    "in-progress",
+    "completed",
+    "canceled",
 ];
 
 export const STATUS_META: Record<
-  StatusKey,
-  { title: string; bgColor: string; arrowBg: string }
+    StatusKey,
+    { title: string; bgColor: string; arrowBg: string }
 > = {
-  "in-progress": {
-    title: "In Progress",
-    bgColor: "#F59E0B", // yellow
-    arrowBg: "#D97706", // darker yellow
-  },
-  "not-started": {
-    title: "Not Started",
-    bgColor: "#EF4444", // red
-    arrowBg: "#DC2626", // darker red
-  },
-  completed: {
-    title: "Completed",
-    bgColor: "#10B981", // green
-    arrowBg: "#059669", // darker green
-  },
-  canceled: {
-    title: "Canceled",
-    bgColor: "#9CA3AF", // grey
-    arrowBg: "#6B7280", // darker grey
-  },
+    "in-progress": {
+        title: "In Progress",
+        bgColor: "#F59E0B", // yellow
+        arrowBg: "#D97706", // darker yellow
+    },
+    "not-started": {
+        title: "Not Started",
+        bgColor: "#9CA3AF", // grey
+        arrowBg: "#6B7280", // darker grey
+    },
+    completed: {
+        title: "Completed",
+        bgColor: "#10B981", // green
+        arrowBg: "#059669", // darker green
+    },
+    canceled: {
+        title: "Canceled",
+        bgColor: "#EF4444", // red
+        arrowBg: "#DC2626", // darker red
+    },
 };

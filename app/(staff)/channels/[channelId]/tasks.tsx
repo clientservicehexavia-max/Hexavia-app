@@ -3,10 +3,19 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ArrowLeft, ChevronDown, Upload, X } from "lucide-react-native";
+import {
+    ArrowLeft,
+    CheckCircle2,
+    ChevronDown,
+    Circle,
+    Trash2,
+    Upload,
+    X,
+} from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     Modal,
     Platform,
@@ -18,6 +27,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as XLSX from "xlsx";
 
+import { api } from "@/api/axios";
 import BoardCard from "@/components/client/tasks/BoardCard";
 import OptionSheet from "@/components/common/OptionSheet";
 import FabCreate from "@/components/staff/tasks/FabCreate";
@@ -36,9 +46,9 @@ import {
     selectStatus as selectChannelsStatus,
 } from "@/redux/channels/channels.selectors";
 import {
+    deleteChannelTask,
     fetchChannelById,
     fetchChannelTasks,
-    importChannelTasks,
 } from "@/redux/channels/channels.thunks";
 import { selectUser } from "@/redux/user/user.slice";
 import { fetchProfile } from "@/redux/user/user.thunks";
@@ -115,6 +125,9 @@ const taskIdentityKey = (title?: string | null, description?: string | null) =>
         .trim()
         .replace(/\s+/g, " ")
         .toLowerCase()}`;
+
+const getTaskId = (task: ChannelTask) =>
+    String((task as any)?.id ?? (task as any)?._id ?? "");
 
 const indexedExcelColors: Record<number, string> = {
     3: "FF0000",
@@ -364,7 +377,25 @@ export default function StatusScreen() {
     );
     const [pickingFile, setPickingFile] = useState(false);
     const [importingTasks, setImportingTasks] = useState(false);
+    const [importProgress, setImportProgress] = useState({
+        completed: 0,
+        total: 0,
+    });
+    const [bulkDeleting, setBulkDeleting] = useState(false);
+    const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
     const [edit, setEdit] = useState(null);
+
+    const selectionMode = selectedTaskIds.length > 0;
+    const visibleTaskIds = useMemo(
+        () => list.map((task) => getTaskId(task)).filter(Boolean),
+        [list],
+    );
+    const allVisibleSelected = useMemo(() => {
+        if (!visibleTaskIds.length) return false;
+        return visibleTaskIds.every((taskId) =>
+            selectedTaskIds.includes(taskId),
+        );
+    }, [selectedTaskIds, visibleTaskIds]);
 
     const isLoading = channelsStatus === "loading" && !allChannelTasks.length;
 
@@ -390,6 +421,19 @@ export default function StatusScreen() {
         setTabIndex(initialTabIndex);
     }, [initialTabIndex]);
 
+    useEffect(() => {
+        setSelectedTaskIds([]);
+    }, [channelId, statusKey]);
+
+    useEffect(() => {
+        const validIds = new Set(
+            allChannelTasks.map((task) => getTaskId(task)),
+        );
+        setSelectedTaskIds((current) =>
+            current.filter((taskId) => validIds.has(taskId)),
+        );
+    }, [allChannelTasks]);
+
     const goTab = (key: ChannelStatusKey) => {
         router.setParams({ status: key, channelId: channelId ?? undefined });
     };
@@ -408,6 +452,92 @@ export default function StatusScreen() {
         }
     }, [dispatch, channelId]);
 
+    const clearSelection = useCallback(() => {
+        setSelectedTaskIds([]);
+    }, []);
+
+    const toggleTaskSelection = useCallback((taskId: string) => {
+        setSelectedTaskIds((current) =>
+            current.includes(taskId)
+                ? current.filter((id) => id !== taskId)
+                : [...current, taskId],
+        );
+    }, []);
+
+    const selectAllVisibleTasks = useCallback(() => {
+        if (!visibleTaskIds.length) return;
+        setSelectedTaskIds((current) => {
+            const merged = new Set(current);
+            visibleTaskIds.forEach((taskId) => merged.add(taskId));
+            return Array.from(merged);
+        });
+    }, [visibleTaskIds]);
+
+    const handleBulkDelete = useCallback(async () => {
+        if (!channelId || !selectedTaskIds.length || bulkDeleting) return;
+
+        try {
+            setBulkDeleting(true);
+            const results = await Promise.allSettled(
+                selectedTaskIds.map((taskId) =>
+                    dispatch(
+                        deleteChannelTask({
+                            channelId: String(channelId),
+                            taskId,
+                        }),
+                    ).unwrap(),
+                ),
+            );
+            const failed = results.filter(
+                (result) => result.status === "rejected",
+            ).length;
+
+            await dispatch(fetchChannelTasks(String(channelId))).unwrap();
+            setSelectedTaskIds([]);
+
+            if (failed > 0) {
+                showError(
+                    `${failed} task${failed === 1 ? "" : "s"} could not be deleted.`,
+                );
+            }
+        } finally {
+            setBulkDeleting(false);
+        }
+    }, [bulkDeleting, channelId, dispatch, selectedTaskIds]);
+
+    const confirmBulkDelete = useCallback(() => {
+        if (!selectedTaskIds.length || bulkDeleting) return;
+        const count = selectedTaskIds.length;
+
+        Alert.alert(
+            `Delete ${count} task${count === 1 ? "" : "s"}?`,
+            "This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: () => {
+                        handleBulkDelete();
+                    },
+                },
+            ],
+        );
+    }, [bulkDeleting, handleBulkDelete, selectedTaskIds.length]);
+
+    const handleTaskDeleted = useCallback(
+        async (taskId: string) => {
+            setSelectedTaskIds((current) =>
+                current.filter((item) => item !== taskId),
+            );
+            if (channelId) {
+                await dispatch(fetchChannelTasks(String(channelId))).unwrap();
+            }
+            setEdit(null);
+        },
+        [channelId, dispatch],
+    );
+
     const resetImport = useCallback(() => {
         setPickedFileName(null);
         setPendingWorkbook(null);
@@ -416,6 +546,7 @@ export default function StatusScreen() {
         setShowSheetPicker(false);
         setImportedTasks([]);
         setStatusPickerIndex(null);
+        setImportProgress({ completed: 0, total: 0 });
     }, []);
 
     const closeImport = useCallback(() => {
@@ -569,17 +700,43 @@ export default function StatusScreen() {
                 return;
             }
 
-            await dispatch(
-                importChannelTasks({
-                    channelId: String(channelId),
-                    tasks: tasksToImport.map((task) => ({
+            setImportProgress({ completed: 0, total: tasksToImport.length });
+
+            let completed = 0;
+            let failed = 0;
+            for (const task of tasksToImport) {
+                try {
+                    await api.post("/channel/create-task", {
+                        channelId: String(channelId),
                         name: task.name,
-                        description: task.description,
+                        description:
+                            task.description || "Imported from spreadsheet",
                         status: task.status,
-                    })),
-                }),
-            ).unwrap();
+                    });
+                    completed += 1;
+                } catch {
+                    failed += 1;
+                } finally {
+                    setImportProgress({
+                        completed: completed + failed,
+                        total: tasksToImport.length,
+                    });
+                }
+            }
+
+            if (!completed) {
+                showError("No tasks were imported. Please try again.");
+                return;
+            }
+
             await dispatch(fetchChannelTasks(String(channelId))).unwrap();
+
+            if (failed > 0) {
+                showError(
+                    `${failed} task${failed === 1 ? "" : "s"} could not be imported.`,
+                );
+            }
+
             finishImport();
             const nextStatus =
                 tasksToImport.find((task) => task.status === "not-started")
@@ -646,28 +803,113 @@ export default function StatusScreen() {
 
             {/* Header */}
             <PlatformAdaptiveHeader
-                title="Task Boards"
+                title={
+                    selectionMode
+                        ? `${selectedTaskIds.length} Selected`
+                        : "Task Boards"
+                }
+                headerLeft={
+                    selectionMode
+                        ? ({ tintColor }) => (
+                              <Pressable
+                                  disabled={bulkDeleting || allVisibleSelected}
+                                  onPress={selectAllVisibleTasks}
+                                  hitSlop={8}
+                                  accessibilityRole="button"
+                                  accessibilityLabel="Select all tasks"
+                                  className="px-3 py-2"
+                                  style={{
+                                      opacity:
+                                          bulkDeleting || allVisibleSelected
+                                              ? 0.55
+                                              : 1,
+                                  }}
+                              >
+                                  <Text
+                                      className="font-kumbhBold"
+                                      style={{ color: tintColor ?? "#111827" }}
+                                  >
+                                      Select all
+                                  </Text>
+                              </Pressable>
+                          )
+                        : undefined
+                }
                 headerRight={({ tintColor }) => (
-                    <Pressable
-                        disabled={pickingFile || showSheetPicker || !channelId}
-                        onPress={pickTaskSheet}
-                        hitSlop={8}
-                        accessibilityRole="button"
-                        accessibilityLabel="Import tasks from sheet"
-                        className="w-10 h-10 rounded-full items-center justify-center"
-                        style={{
-                            opacity:
-                                pickingFile || showSheetPicker || !channelId
-                                    ? 0.55
-                                    : 1,
-                        }}
-                    >
-                        {pickingFile ? (
-                            <ActivityIndicator size="small" color={PRIMARY} />
-                        ) : (
-                            <Upload size={21} color={tintColor} />
-                        )}
-                    </Pressable>
+                    <View className="flex-row items-center" style={{ gap: 10 }}>
+                        {selectionMode ? (
+                            <>
+                                <Pressable
+                                    disabled={bulkDeleting || !channelId}
+                                    onPress={confirmBulkDelete}
+                                    hitSlop={8}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Delete selected tasks"
+                                    className="w-10 h-10 rounded-full items-center justify-center"
+                                    style={{
+                                        opacity:
+                                            bulkDeleting || !channelId
+                                                ? 0.55
+                                                : 1,
+                                    }}
+                                >
+                                    {bulkDeleting ? (
+                                        <ActivityIndicator
+                                            size="small"
+                                            color="#B91C1C"
+                                        />
+                                    ) : (
+                                        <Trash2 size={21} color="#B91C1C" />
+                                    )}
+                                </Pressable>
+                                <Pressable
+                                    disabled={bulkDeleting}
+                                    onPress={clearSelection}
+                                    hitSlop={8}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Cancel task selection"
+                                    className="w-10 h-10 rounded-full items-center justify-center"
+                                    style={{ opacity: bulkDeleting ? 0.55 : 1 }}
+                                >
+                                    <X size={21} color="#6B7280" />
+                                </Pressable>
+                            </>
+                        ) : null}
+
+                        {!selectionMode ? (
+                            <Pressable
+                                disabled={
+                                    pickingFile ||
+                                    showSheetPicker ||
+                                    !channelId ||
+                                    bulkDeleting
+                                }
+                                onPress={pickTaskSheet}
+                                hitSlop={8}
+                                accessibilityRole="button"
+                                accessibilityLabel="Import tasks from sheet"
+                                className="w-10 h-10 rounded-full items-center justify-center"
+                                style={{
+                                    opacity:
+                                        pickingFile ||
+                                        showSheetPicker ||
+                                        !channelId ||
+                                        bulkDeleting
+                                            ? 0.55
+                                            : 1,
+                                }}
+                            >
+                                {pickingFile ? (
+                                    <ActivityIndicator
+                                        size="small"
+                                        color={PRIMARY}
+                                    />
+                                ) : (
+                                    <Upload size={21} color={tintColor} />
+                                )}
+                            </Pressable>
+                        ) : null}
+                    </View>
                 )}
             />
 
@@ -738,54 +980,97 @@ export default function StatusScreen() {
                                             );
                                         }
                                         const task = item.task;
+                                        const taskId = getTaskId(task);
+                                        const selected =
+                                            taskId &&
+                                            selectedTaskIds.includes(taskId);
+
                                         return (
                                             <Pressable
-                                                onPress={() =>
-                                                    setEdit(task as any)
-                                                }
+                                                onLongPress={() => {
+                                                    if (!taskId) return;
+                                                    toggleTaskSelection(taskId);
+                                                }}
+                                                onPress={() => {
+                                                    if (!taskId) return;
+                                                    if (selectionMode) {
+                                                        toggleTaskSelection(
+                                                            taskId,
+                                                        );
+                                                        return;
+                                                    }
+                                                    setEdit(task as any);
+                                                }}
                                             >
-                                                <BoardCard
-                                                    project={
-                                                        task.channelCode || "—"
-                                                    }
-                                                    title={task.title}
-                                                    description={
-                                                        task.description || ""
-                                                    }
-                                                    assignees={
-                                                        (task.assignees || [])
-                                                            .map(
-                                                                (assignee) =>
-                                                                    assignee.name ??
-                                                                    assignee.email ??
-                                                                    (assignee.id
-                                                                        ? memberLookup.get(
-                                                                              assignee.id,
-                                                                          )
-                                                                        : null) ??
-                                                                    assignee.id ??
-                                                                    null,
+                                                <View className="relative">
+                                                    <BoardCard
+                                                        project={
+                                                            task.channelCode ||
+                                                            "—"
+                                                        }
+                                                        title={task.title}
+                                                        description={
+                                                            task.description ||
+                                                            ""
+                                                        }
+                                                        assignees={
+                                                            (
+                                                                task.assignees ||
+                                                                []
                                                             )
-                                                            .filter(
-                                                                Boolean,
-                                                            ) as string[]
-                                                    }
-                                                    statusLabel={
-                                                        TABS.find(
-                                                            (t) =>
-                                                                t.key ===
-                                                                task.status,
-                                                        )?.label ?? task.status
-                                                    }
-                                                    cardBg={
-                                                        STATUS_META[task.status]
-                                                            .bgColor
-                                                    }
-                                                    pillBg={
-                                                        STATUS_META[task.status]
-                                                            .arrowBg
-                                                    }
-                                                />
+                                                                .map(
+                                                                    (
+                                                                        assignee,
+                                                                    ) =>
+                                                                        assignee.name ??
+                                                                        assignee.email ??
+                                                                        (assignee.id
+                                                                            ? memberLookup.get(
+                                                                                  assignee.id,
+                                                                              )
+                                                                            : null) ??
+                                                                        assignee.id ??
+                                                                        null,
+                                                                )
+                                                                .filter(
+                                                                    Boolean,
+                                                                ) as string[]
+                                                        }
+                                                        statusLabel={
+                                                            TABS.find(
+                                                                (t) =>
+                                                                    t.key ===
+                                                                    task.status,
+                                                            )?.label ??
+                                                            task.status
+                                                        }
+                                                        cardBg={
+                                                            STATUS_META[
+                                                                task.status
+                                                            ].bgColor
+                                                        }
+                                                        pillBg={
+                                                            STATUS_META[
+                                                                task.status
+                                                            ].arrowBg
+                                                        }
+                                                    />
+                                                    {selectionMode && taskId ? (
+                                                        <View className="absolute right-6 top-4">
+                                                            {selected ? (
+                                                                <CheckCircle2
+                                                                    size={25}
+                                                                    color="red"
+                                                                />
+                                                            ) : (
+                                                                <Circle
+                                                                    size={25}
+                                                                    color="#9CA3AF"
+                                                                />
+                                                            )}
+                                                        </View>
+                                                    ) : null}
+                                                </View>
                                             </Pressable>
                                         );
                                     }}
@@ -860,9 +1145,9 @@ export default function StatusScreen() {
                                 {importedTasks.length === 1 ? "" : "s"} found
                             </Text>
                             <Text className="mt-1 font-kumbh text-[12px] text-[#6B7280]">
-                                {
-                                    'Every task starts as "Not Started" unless you change it below.'
-                                }
+                                {importingTasks && importProgress.total > 0
+                                    ? `${importProgress.completed} out of ${importProgress.total} uploaded`
+                                    : 'Every task starts as "Not Started" unless you change it below.'}
                             </Text>
                         </View>
 
@@ -1023,7 +1308,11 @@ export default function StatusScreen() {
                                 }}
                             >
                                 <Text className="font-kumbhBold text-white">
-                                    {importingTasks ? "Importing..." : "Import"}
+                                    {importingTasks && importProgress.total > 0
+                                        ? `Importing ${importProgress.completed} / ${importProgress.total}`
+                                        : importingTasks
+                                          ? "Importing..."
+                                          : "Import"}
                                 </Text>
                             </Pressable>
                         </View>
@@ -1048,6 +1337,7 @@ export default function StatusScreen() {
                     visible={!!edit}
                     onClose={() => setEdit(null)}
                     task={edit as any}
+                    onTaskDeleted={handleTaskDeleted}
                 />
             )}
         </SafeAreaView>

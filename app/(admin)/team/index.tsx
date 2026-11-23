@@ -1,18 +1,19 @@
 // app/(admin)/team/index.tsx
-import OptionSheet from "@/components/common/OptionSheet";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useRouter } from "expo-router";
 import {
     ArrowRight,
-    ChevronDown,
     ChevronRight,
+    Funnel,
     Plus,
     Search,
+    X,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
+    Modal,
     Platform,
     Pressable,
     RefreshControl,
@@ -57,8 +58,7 @@ export default function TeamIndex() {
     const [query, setQuery] = useState("");
     const [sortBy, setSortBy] = useState<"name" | "createdAt">("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-    const [showSortSheet, setShowSortSheet] = useState(false);
-    const [showOrderSheet, setShowOrderSheet] = useState(false);
+    const [showFilterModal, setShowFilterModal] = useState(false);
 
     useEffect(() => {
         dispatch(fetchAdminUsers());
@@ -135,16 +135,25 @@ export default function TeamIndex() {
             <PlatformAdaptiveHeader
                 title="Team"
                 headerRight={({ tintColor }) => (
-                    <Pressable
-                        onPress={() => router.push("/(admin)/team/create")}
-                        className="w-10 h-10 rounded-full items-center justify-center ios:mr-3"
-                        hitSlop={8}
-                        style={{
-                            backgroundColor: PRIMARY,
-                        }}
-                    >
-                        <Plus size={20} color="white" />
-                    </Pressable>
+                    <View className="flex-row items-center gap-2 ios:mr-3">
+                        <Pressable
+                            onPress={() => setShowFilterModal(true)}
+                            className="w-11 h-11 rounded-full items-center justify-center bg-gray-100"
+                            hitSlop={8}
+                        >
+                            <Funnel size={22} color={tintColor ?? "#111827"} />
+                        </Pressable>
+                        <Pressable
+                            onPress={() => router.push("/(admin)/team/create")}
+                            className="w-11 h-11 rounded-full items-center justify-center"
+                            hitSlop={8}
+                            style={{
+                                backgroundColor: PRIMARY,
+                            }}
+                        >
+                            <Plus size={22} color="white" />
+                        </Pressable>
+                    </View>
                 )}
                 headerLeft={() => null}
             />
@@ -177,28 +186,6 @@ export default function TeamIndex() {
                         className="flex-1 px-2 py-3 font-kumbh text-text"
                         returnKeyType="search"
                     />
-                </View>
-
-                <View className="mt-3 flex-row gap-3">
-                    <Pressable
-                        onPress={() => setShowSortSheet(true)}
-                        className="flex-1 rounded-xl px-4 ios:py-4 android:py-3 bg-gray-200 flex-row items-center justify-between"
-                    >
-                        <Text className="text-gray-700 font-kumbh">
-                            {sortBy === "name" ? "Sort: Name" : "Sort: Joined"}
-                        </Text>
-                        <ChevronDown size={18} color="#111827" />
-                    </Pressable>
-
-                    <Pressable
-                        onPress={() => setShowOrderSheet(true)}
-                        className="flex-1 rounded-xl px-4 ios:py-4 android:py-3 bg-gray-200 flex-row items-center justify-between"
-                    >
-                        <Text className="text-gray-700 font-kumbh">
-                            {sortOrder === "asc" ? "Order: Asc" : "Order: Desc"}
-                        </Text>
-                        <ChevronDown size={18} color="#111827" />
-                    </Pressable>
                 </View>
             </View>
 
@@ -272,29 +259,104 @@ export default function TeamIndex() {
                 />
             )}
 
-            <OptionSheet
-                visible={showSortSheet}
-                onClose={() => setShowSortSheet(false)}
-                title="Sort team by"
-                selectedValue={sortBy}
-                onSelect={(v) => setSortBy(v as "name" | "createdAt")}
-                options={[
-                    { label: "Name", value: "name" },
-                    { label: "Joined date", value: "createdAt" },
-                ]}
-            />
+            <Modal
+                transparent
+                visible={showFilterModal}
+                animationType="slide"
+                onRequestClose={() => setShowFilterModal(false)}
+            >
+                <Pressable
+                    onPress={() => setShowFilterModal(false)}
+                    className="flex-1 bg-black/40"
+                >
+                    <Pressable
+                        onPress={(e: any) => e?.stopPropagation?.()}
+                        className="mt-auto rounded-t-3xl bg-white px-4 pb-6 pt-3"
+                    >
+                        <View className="mb-4 flex-row items-center justify-between">
+                            <Text className="text-lg font-kumbhBold text-gray-900">
+                                Filters
+                            </Text>
+                            <Pressable
+                                onPress={() => setShowFilterModal(false)}
+                                className="h-9 w-9 items-center justify-center rounded-full"
+                            >
+                                <X size={20} color="#111827" />
+                            </Pressable>
+                        </View>
 
-            <OptionSheet
-                visible={showOrderSheet}
-                onClose={() => setShowOrderSheet(false)}
-                title="Sort order"
-                selectedValue={sortOrder}
-                onSelect={(v) => setSortOrder(v as "asc" | "desc")}
-                options={[
-                    { label: "Ascending", value: "asc" },
-                    { label: "Descending", value: "desc" },
-                ]}
-            />
+                        <View className="mb-4">
+                            <Text className="mb-2 text-gray-700 font-kumbhBold">
+                                Sort by
+                            </Text>
+                            <View className="flex-row flex-wrap gap-2">
+                                {(["name", "createdAt"] as const).map(
+                                    (value) => {
+                                        const active = sortBy === value;
+                                        return (
+                                            <Pressable
+                                                key={value}
+                                                onPress={() => setSortBy(value)}
+                                                className={`rounded-full px-4 py-2 ${
+                                                    active
+                                                        ? "bg-gray-900"
+                                                        : "bg-gray-100"
+                                                }`}
+                                            >
+                                                <Text
+                                                    className={`font-kumbh ${
+                                                        active
+                                                            ? "text-white"
+                                                            : "text-gray-800"
+                                                    }`}
+                                                >
+                                                    {value === "name"
+                                                        ? "Name"
+                                                        : "Joined date"}
+                                                </Text>
+                                            </Pressable>
+                                        );
+                                    },
+                                )}
+                            </View>
+                        </View>
+
+                        <View>
+                            <Text className="mb-2 text-gray-700 font-kumbhBold">
+                                Order
+                            </Text>
+                            <View className="flex-row flex-wrap gap-2">
+                                {(["asc", "desc"] as const).map((value) => {
+                                    const active = sortOrder === value;
+                                    return (
+                                        <Pressable
+                                            key={value}
+                                            onPress={() => setSortOrder(value)}
+                                            className={`rounded-full px-4 py-2 ${
+                                                active
+                                                    ? "bg-gray-900"
+                                                    : "bg-gray-100"
+                                            }`}
+                                        >
+                                            <Text
+                                                className={`font-kumbh ${
+                                                    active
+                                                        ? "text-white"
+                                                        : "text-gray-800"
+                                                }`}
+                                            >
+                                                {value === "asc"
+                                                    ? "Ascending"
+                                                    : "Descending"}
+                                            </Text>
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </SafeAreaView>
     );
 }
