@@ -8,12 +8,18 @@ const variant =
 
 const isDevelopment = variant === "development";
 const isPreview = variant === "preview";
+const isRedesign = variant === "redesign";
 
-const identifierSuffix = isDevelopment ? ".dev" : isPreview ? ".preview" : "";
+const identifierSuffix = isDevelopment
+    ? ".dev"
+    : isPreview || isRedesign
+      ? ".preview"
+      : "";
 
 const getAppName = () => {
     if (isDevelopment) return "HBM Dev";
     if (isPreview) return "HBM Preview";
+    if (isRedesign) return "HBM 2.0";
     return baseExpoConfig.name;
 };
 

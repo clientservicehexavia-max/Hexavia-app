@@ -28,6 +28,16 @@
                 "buildType": "apk"
             }
         },
+        "redesign": {
+            "distribution": "internal",
+            "channel": "redesign",
+            "env": {
+                "APP_VARIANT": "redesign"
+            },
+            "android": {
+                "buildType": "apk"
+            }
+        },
         "production": {
             "autoIncrement": true,
             "channel": "production",
