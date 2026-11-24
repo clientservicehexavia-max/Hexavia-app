@@ -305,27 +305,28 @@ export default function CreateClient() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             {/* Header */}
 
             <PlatformAdaptiveHeader
                 title="Add New Client"
+                backgroundColor="#F5F7FB"
                 // onBackPress={onHeaderBackPress}
-                headerRight={({ tintColor }) => (
+                headerRight={() => (
                     <Pressable
                         onPress={handleSubmit(onSubmit)}
                         disabled={!isValid || loading}
-                        className="w-10 h-10 rounded-full items-center justify-center"
+                        className={`w-10 h-10 rounded-full items-center justify-center ios:mr-3 ${
+                            !isValid || loading ? "bg-gray-200" : "bg-primary"
+                        }`}
                     >
                         {loading ? (
-                            <ActivityIndicator size="small" color={tintColor} />
+                            <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
                             <Plus
-                                size={28}
-                                color={
-                                    !isValid || loading ? "#9CA3AF" : tintColor
-                                }
+                                size={20}
+                                color={!isValid || loading ? "#9CA3AF" : "#FFFFFF"}
                             />
                         )}
                     </Pressable>
@@ -333,7 +334,7 @@ export default function CreateClient() {
             />
 
             <KeyboardAvoidingView
-                className="flex-1 mt-3"
+                className="flex-1"
                 behavior={Platform.select({
                     ios: "padding",
                     android: "height",
@@ -344,9 +345,13 @@ export default function CreateClient() {
             >
                 <ScrollView
                     className="flex-1"
-                    contentContainerClassName="pb-10 px-4"
+                    contentContainerClassName="pb-12 pt-2 px-5"
                     keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
                 >
+                    <Text className="mb-3 text-xs font-kumbhBold uppercase tracking-wider text-[#6B7280]">
+                        Basic Information
+                    </Text>
                     {/* Name */}
                     <Field label="Name">
                         <Controller
@@ -427,9 +432,9 @@ export default function CreateClient() {
                             render={({ field: { value, onChange } }) => (
                                 <Pressable
                                     onPress={() => setBirthdayPickerVisible(true)}
-                                    className="flex-row items-center justify-between rounded-2xl bg-gray-200 px-4 py-4"
+                                    className="h-14 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-white px-4"
                                 >
-                                    <Text className={`font-kumbh ${value ? "text-text" : "text-gray-500"}`}>
+                                    <Text className={`font-kumbh text-[15px] ${value ? "text-[#111827]" : "text-[#9CA3AF]"}`}>
                                         {value || "Select date of birth"}
                                     </Text>
                                     <CalendarDays size={18} color="#4C5FAB" />
@@ -455,12 +460,12 @@ export default function CreateClient() {
                                 <Pressable
                                     disabled={loading}
                                     onPress={() => setShowSourceSheet(true)}
-                                    className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
+                                    className="h-14 flex-row items-center justify-between border border-gray-200 bg-white rounded-2xl px-4"
                                 >
-                                    <Text className="text-gray-700 font-kumbh capitalize flex-1">
+                                    <Text className={`font-kumbh text-[15px] capitalize flex-1 ${value ? "text-[#111827]" : "text-[#9CA3AF]"}`}>
                                         {value || "Select Source"}
                                     </Text>
-                                    <ChevronDown size={18} color="#111827" />
+                                    <ChevronDown size={18} color="#4C5FAB" />
                                 </Pressable>
                             )}
                         />
@@ -506,14 +511,17 @@ export default function CreateClient() {
                                             onPress={() =>
                                                 setShowIndustrySheet(true)
                                             }
-                                            className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
+                                            className="h-14 flex-row items-center justify-between border border-gray-200 bg-white rounded-2xl px-4"
                                         >
-                                            <Text className="text-gray-700 font-kumbh capitalize">
+                                            <Text
+                                                className={`font-kumbh text-[14px] capitalize flex-1 mr-1 ${value ? "text-[#111827]" : "text-[#9CA3AF]"}`}
+                                                numberOfLines={1}
+                                            >
                                                 {value || "Select Industry"}
                                             </Text>
                                             <ChevronDown
                                                 size={18}
-                                                color="#111827"
+                                                color="#4C5FAB"
                                             />
                                         </Pressable>
                                     )}
@@ -537,9 +545,12 @@ export default function CreateClient() {
                                             onPress={() =>
                                                 setShowStaffSizeSheet(true)
                                             }
-                                            className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
+                                            className="h-14 flex-row items-center justify-between border border-gray-200 bg-white rounded-2xl px-4"
                                         >
-                                            <Text className="text-gray-700 font-kumbh">
+                                            <Text
+                                                className={`font-kumbh text-[14px] flex-1 mr-1 ${value ? "text-[#111827]" : "text-[#9CA3AF]"}`}
+                                                numberOfLines={1}
+                                            >
                                                 {value
                                                     ? STAFF_SIZE_OPTIONS.find(
                                                           (opt) =>
@@ -550,7 +561,7 @@ export default function CreateClient() {
                                             </Text>
                                             <ChevronDown
                                                 size={18}
-                                                color="#111827"
+                                                color="#4C5FAB"
                                             />
                                         </Pressable>
                                     )}
@@ -825,14 +836,14 @@ export default function CreateClient() {
                                             onPress={() =>
                                                 setShowStatusMenu(true)
                                             }
-                                            className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4"
+                                            className="h-14 flex-row items-center justify-between border border-gray-200 bg-white rounded-2xl px-4"
                                         >
-                                            <Text className="text-gray-700 font-kumbh">
+                                            <Text className="text-[#111827] font-kumbh text-[15px]">
                                                 {capitalize(value)}
                                             </Text>
                                             <ChevronDown
                                                 size={18}
-                                                color="#111827"
+                                                color="#4C5FAB"
                                             />
                                         </Pressable>
                                     )}
@@ -843,6 +854,22 @@ export default function CreateClient() {
                             ) : null}
                         </View>
                     </View>
+
+                    <Pressable
+                        onPress={handleSubmit(onSubmit)}
+                        disabled={!isValid || loading}
+                        className={`mt-4 h-14 rounded-2xl items-center justify-center ${
+                            !isValid || loading ? "bg-primary/50" : "bg-primary"
+                        }`}
+                    >
+                        {loading ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                            <Text className="font-kumbhBold text-[15px] text-white">
+                                Create Client
+                            </Text>
+                        )}
+                    </Pressable>
 
                     {/* Bottom actions – left as requested (disabled while loading) */}
                     {/* <View className="mt-8">

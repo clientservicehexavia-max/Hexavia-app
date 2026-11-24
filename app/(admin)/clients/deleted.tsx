@@ -126,31 +126,33 @@ export default function DeletedClientsScreen() {
               )}`
             )
           }
-          className="bg-white rounded-3xl px-5 py-4 mb-4 border border-gray-100 shadow-[0_10px_20px_rgba(15,23,42,0.08)]"
+          className="bg-white rounded-[24px] px-5 py-4 mb-3 border border-gray-100"
         >
-          <Text className="text-lg font-semibold text-gray-900 font-kumbh">
+          <Text className="text-[17px] text-[#111827] font-kumbhBold">
             {item.name ?? "Client"}
           </Text>
           {subtitleParts.length > 0 ? (
-            <Text className="text-sm text-gray-500 mt-1 font-kumbh">
+            <Text className="text-sm text-[#6B7280] mt-1 font-kumbh">
               {subtitleParts.join(" • ")}
             </Text>
           ) : null}
           <View className="flex-row items-center justify-between gap-3 mt-3">
-            <Text className="text-xs uppercase tracking-wide text-gray-400 font-semibold font-kumbh">
-              Status: {item.status ?? "deleted"}
-            </Text>
+            <View className="px-2.5 py-1 rounded-full bg-gray-100">
+              <Text className="text-[11px] uppercase tracking-wide text-[#6B7280] font-kumbhBold">
+                {item.status ?? "deleted"}
+              </Text>
+            </View>
             {item.payableAmount != null ? (
-              <Text className="text-sm font-semibold text-primary font-kumbh">
+              <Text className="text-sm font-kumbhBold text-primary">
                 {formatMoney(item.payableAmount)}
               </Text>
             ) : null}
           </View>
-          <Text className="text-xs text-gray-400 mt-2 font-kumbh">
+          <Text className="text-xs text-[#9CA3AF] mt-2 font-kumbh">
             Deleted {formatDate(item.deletedAt ?? item.updatedAt)}
           </Text>
           {item.email ? (
-            <Text className="text-xs text-gray-500 mt-1 font-kumbh">
+            <Text className="text-xs text-[#6B7280] mt-1 font-kumbh">
               {item.email}
             </Text>
           ) : null}
@@ -161,13 +163,13 @@ export default function DeletedClientsScreen() {
                 event.stopPropagation();
                 handleRestore(item);
               }}
-              className="bg-[#4c5fab] rounded-full px-4 py-2 min-w-[88px] items-center"
+              className="bg-primary rounded-full px-5 py-2.5 min-w-[92px] items-center"
               style={{ opacity: isRestoring ? 0.7 : 1 }}
             >
               {isRestoring ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text className="text-white text-sm font-semibold font-kumbh">
+                <Text className="text-white text-sm font-kumbhBold">
                   Restore
                 </Text>
               )}
@@ -191,19 +193,19 @@ export default function DeletedClientsScreen() {
   }, [loading]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#f4f5fb]">
-      <View className="px-5 pt-5 pb-4 bg-white border-b border-gray-200 flex-row items-center gap-3">
+    <SafeAreaView className="flex-1 bg-[#F5F7FB]">
+      <View className="px-5 pt-4 pb-4 bg-white border-b border-gray-100 flex-row items-center gap-3">
         <Pressable
           onPress={() => router.back()}
-          className="h-10 w-10 rounded-full bg-gray-100 items-center justify-center"
+          className="h-10 w-10 rounded-full bg-[#F5F7FB] border border-gray-100 items-center justify-center"
         >
           <ArrowLeft size={20} color="#111827" />
         </Pressable>
         <View className="flex-1">
-          <Text className="text-2xl font-semibold text-gray-900 font-kumbh">
+          <Text className="text-xl text-[#111827] font-kumbhBold">
             Deleted Clients
           </Text>
-          <Text className="text-sm text-gray-500 mt-1 font-kumbh">
+          <Text className="text-xs text-[#6B7280] mt-0.5 font-kumbh">
             Tap a card to view details or restore a removed client.
           </Text>
         </View>

@@ -1,21 +1,8 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { CalendarDays, Check } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
-import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-
-import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import DatePickerModal from "@/components/admin/DatePickerModal";
+import Field from "@/components/admin/Field";
+import Input from "@/components/admin/Input";
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import {
     selectPartnerById,
     selectPartnerLoading,
@@ -28,6 +15,20 @@ import {
 import type { Partner } from "@/redux/partner/partner.types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { birthdayInputFromDate, birthdayPickerDate, toBirthdayInput } from "@/utils/birthday";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { CalendarDays, Check } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type FormData = Partial<Partner> & {
     engagementTags: string[];
@@ -218,11 +219,36 @@ export default function PartnerFormScreen() {
 
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
         >
+            <PlatformAdaptiveHeader
+                title={partnerId ? "Edit Partner" : "Add Partner"}
+                backgroundColor="#F5F7FB"
+                headerRight={() => (
+                    <Pressable
+                        onPress={handleSubmit}
+                        disabled={submitting || loading}
+                        className={`w-10 h-10 rounded-full items-center justify-center ios:mr-3 ${
+                            submitting || loading ? "bg-gray-200" : "bg-primary"
+                        }`}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                            <Check
+                                size={20}
+                                color={
+                                    submitting || loading ? "#9CA3AF" : "#FFFFFF"
+                                }
+                            />
+                        )}
+                    </Pressable>
+                )}
+            />
+
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 className="flex-1"
@@ -230,362 +256,289 @@ export default function PartnerFormScreen() {
                     Platform.select({ ios: 70, android: 0 }) as number
                 }
             >
-                <View className="flex-1 px-4">
-                    <PlatformAdaptiveHeader
-                        title={partnerId ? "Edit Partner" : "Add Partner"}
-                        headerRight={({ tintColor }) => (
-                            <Pressable
-                                onPress={handleSubmit}
-                                disabled={submitting || loading}
-                                className="w-10 h-10 rounded-full items-center justify-center"
-                            >
-                                {submitting ? (
-                                    <ActivityIndicator
-                                        size="small"
-                                        color={tintColor}
-                                    />
-                                ) : (
-                                    <Check
-                                        size={28}
-                                        color={
-                                            submitting || loading
-                                                ? "#9CA3AF"
-                                                : tintColor
-                                        }
-                                    />
-                                )}
-                            </Pressable>
-                        )}
-                    />
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerClassName="px-4 pt-3 pb-12"
+                >
+                    <Field label="Partner Name *">
+                        <Input
+                            placeholder="Enter partner name"
+                            value={form.name}
+                            onChangeText={(v) => handleUpdateForm("name", v)}
+                        />
+                    </Field>
 
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                        {/* Partner Name */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Partner Name *
-                            </Text>
-                            <TextInput
-                                placeholder="Enter partner name"
-                                placeholderTextColor="#9CA3AF"
-                                value={form.name}
-                                onChangeText={(v) =>
-                                    handleUpdateForm("name", v)
-                                }
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                editable={!submitting}
-                            />
-                        </View>
+                    <Field label="Company">
+                        <Input
+                            placeholder="Enter company name"
+                            value={form.company}
+                            onChangeText={(v) => handleUpdateForm("company", v)}
+                        />
+                    </Field>
 
-                        {/* Company */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Company
-                            </Text>
-                            <TextInput
-                                placeholder="Enter company name"
-                                placeholderTextColor="#9CA3AF"
-                                value={form.company}
-                                onChangeText={(v) =>
-                                    handleUpdateForm("company", v)
-                                }
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                editable={!submitting}
-                            />
-                        </View>
+                    <Field label="Description">
+                        <Input
+                            placeholder="Enter description"
+                            value={form.description}
+                            onChangeText={(v) =>
+                                handleUpdateForm("description", v)
+                            }
+                            multiline
+                        />
+                    </Field>
 
-                        {/* Description */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Description
-                            </Text>
-                            <TextInput
-                                placeholder="Enter description"
-                                placeholderTextColor="#9CA3AF"
-                                value={form.description}
-                                onChangeText={(v) =>
-                                    handleUpdateForm("description", v)
-                                }
-                                multiline
-                                numberOfLines={4}
-                                textAlignVertical="top"
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                editable={!submitting}
-                            />
-                        </View>
-
-                        {/* Email */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Email
-                            </Text>
-                            <TextInput
+                    <Field label="Email">
+                        <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                            <CustomTextInput
                                 placeholder="Enter email address"
-                                placeholderTextColor="#9CA3AF"
                                 value={form.contactEmail}
                                 onChangeText={(v) =>
                                     handleUpdateForm("contactEmail", v)
                                 }
                                 keyboardType="email-address"
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
+                                autoCapitalize="none"
                                 editable={!submitting}
                             />
                         </View>
+                    </Field>
 
-                        {/* Phone */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Phone
-                            </Text>
-                            <TextInput
-                                placeholder="Enter phone number"
-                                placeholderTextColor="#9CA3AF"
-                                value={form.contactPhone}
-                                onChangeText={(v) =>
-                                    handleUpdateForm("contactPhone", v)
-                                }
-                                keyboardType="phone-pad"
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                editable={!submitting}
-                            />
-                        </View>
+                    <Field label="Phone">
+                        <Input
+                            placeholder="Enter phone number"
+                            value={form.contactPhone}
+                            onChangeText={(v) =>
+                                handleUpdateForm("contactPhone", v)
+                            }
+                            keyboardType="numeric"
+                        />
+                    </Field>
 
-                        {/* Alternate Email */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Alternate Email (Optional)
-                            </Text>
-                            <TextInput
+                    <Field label="Alternate Email (Optional)">
+                        <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                            <CustomTextInput
                                 placeholder="Enter alternate email address"
-                                placeholderTextColor="#9CA3AF"
                                 value={form.alternateContactEmail}
                                 onChangeText={(v) =>
                                     handleUpdateForm("alternateContactEmail", v)
                                 }
                                 keyboardType="email-address"
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
+                                autoCapitalize="none"
                                 editable={!submitting}
                             />
                         </View>
+                    </Field>
 
-                        {/* Alternate Phone */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Alternate Phone (Optional)
-                            </Text>
-                            <TextInput
-                                placeholder="Enter alternate phone number"
-                                placeholderTextColor="#9CA3AF"
-                                value={form.alternateContactPhone}
-                                onChangeText={(v) =>
-                                    handleUpdateForm("alternateContactPhone", v)
-                                }
-                                keyboardType="phone-pad"
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                editable={!submitting}
-                            />
-                        </View>
+                    <Field label="Alternate Phone (Optional)">
+                        <Input
+                            placeholder="Enter alternate phone number"
+                            value={form.alternateContactPhone}
+                            onChangeText={(v) =>
+                                handleUpdateForm("alternateContactPhone", v)
+                            }
+                            keyboardType="numeric"
+                        />
+                    </Field>
 
-                        {/* Address */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Address
-                            </Text>
-                            <TextInput
-                                placeholder="Enter address"
-                                placeholderTextColor="#9CA3AF"
-                                value={form.address}
-                                onChangeText={(v) =>
-                                    handleUpdateForm("address", v)
-                                }
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                editable={!submitting}
-                            />
-                        </View>
+                    <Field label="Address">
+                        <Input
+                            placeholder="Enter address"
+                            value={form.address}
+                            onChangeText={(v) => handleUpdateForm("address", v)}
+                        />
+                    </Field>
 
-                        {/* Date of Birth */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Date of Birth
-                            </Text>
-                            <Pressable
-                                disabled={submitting}
-                                onPress={() => setBirthdayPickerVisible(true)}
-                                className="flex-row items-center justify-between rounded-lg border border-gray-300 px-4 py-3"
+                    <Field label="Date of Birth">
+                        <Pressable
+                            disabled={submitting}
+                            onPress={() => setBirthdayPickerVisible(true)}
+                            className="h-14 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-white px-4"
+                        >
+                            <Text
+                                className={`font-kumbh text-[15px] ${
+                                    form.dateOfBirth
+                                        ? "text-[#111827]"
+                                        : "text-[#9CA3AF]"
+                                }`}
                             >
-                                <Text className={form.dateOfBirth ? "text-base text-gray-900" : "text-base text-gray-400"}>
-                                    {form.dateOfBirth || "Select date of birth"}
-                                </Text>
-                                <CalendarDays size={18} color="#4C5FAB" />
-                            </Pressable>
-                            {form.dateOfBirth ? (
-                                <Pressable
-                                    onPress={() => handleUpdateForm("dateOfBirth", "")}
-                                    className="mt-2 self-start"
-                                >
-                                    <Text className="text-xs text-[#4C5FAB]">Clear date</Text>
-                                </Pressable>
-                            ) : null}
-                        </View>
-
-                        {/* Industry */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Industry
+                                {form.dateOfBirth || "Select date of birth"}
                             </Text>
-                            <TextInput
-                                placeholder="Enter industry"
-                                placeholderTextColor="#9CA3AF"
-                                value={form.industry}
-                                onChangeText={(v) =>
-                                    handleUpdateForm("industry", v)
+                            <CalendarDays size={18} color="#4C5FAB" />
+                        </Pressable>
+                        {form.dateOfBirth ? (
+                            <Pressable
+                                onPress={() =>
+                                    handleUpdateForm("dateOfBirth", "")
                                 }
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                editable={!submitting}
-                            />
-                        </View>
+                                className="mt-2 self-start"
+                            >
+                                <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
+                                    Clear date
+                                </Text>
+                            </Pressable>
+                        ) : null}
+                    </Field>
 
-                        {/* Partner Type */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Partner Type
-                            </Text>
-                            <View className="flex-row flex-wrap gap-2">
-                                {(
-                                    [
-                                        "individual",
-                                        "company",
-                                        "investor",
-                                        "vendor",
-                                        "other",
-                                    ] as const
-                                ).map((t) => (
+                    <Field label="Industry">
+                        <Input
+                            placeholder="Enter industry"
+                            value={form.industry}
+                            onChangeText={(v) =>
+                                handleUpdateForm("industry", v)
+                            }
+                        />
+                    </Field>
+
+                    <Field label="Partner Type">
+                        <View className="flex-row flex-wrap gap-2">
+                            {(
+                                [
+                                    "individual",
+                                    "company",
+                                    "investor",
+                                    "vendor",
+                                    "other",
+                                ] as const
+                            ).map((t) => {
+                                const active = form.partnerType === t;
+                                return (
                                     <Pressable
                                         key={t}
                                         onPress={() =>
                                             handleUpdateForm("partnerType", t)
                                         }
-                                        className={`px-3 py-2 rounded-lg border ${
-                                            form.partnerType === t
-                                                ? "border-blue-500 bg-blue-50"
-                                                : "border-gray-300 bg-white"
+                                        className={`px-3.5 py-2 rounded-full border ${
+                                            active
+                                                ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                : "border-gray-200 bg-white"
                                         }`}
                                     >
                                         <Text
-                                            className={`font-medium text-sm ${
-                                                form.partnerType === t
-                                                    ? "text-blue-700"
-                                                    : "text-gray-700"
+                                            className={`font-kumbhBold text-[13px] ${
+                                                active
+                                                    ? "text-white"
+                                                    : "text-[#374151]"
                                             }`}
                                         >
                                             {t.charAt(0).toUpperCase() +
                                                 t.slice(1)}
                                         </Text>
                                     </Pressable>
-                                ))}
-                            </View>
+                                );
+                            })}
                         </View>
+                    </Field>
 
-                        {/* Status */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Status
-                            </Text>
-                            <View className="flex-row gap-2">
-                                {(["active", "inactive"] as const).map((s) => (
+                    <Field label="Status">
+                        <View className="flex-row gap-2.5">
+                            {(["active", "inactive"] as const).map((s) => {
+                                const active = form.status === s;
+                                return (
                                     <Pressable
                                         key={s}
                                         onPress={() =>
                                             handleUpdateForm("status", s)
                                         }
-                                        className={`flex-1 px-3 py-2 rounded-lg border ${
-                                            form.status === s
-                                                ? "border-blue-500 bg-blue-50"
-                                                : "border-gray-300 bg-white"
+                                        className={`flex-1 h-12 rounded-2xl border items-center justify-center ${
+                                            active
+                                                ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                : "border-gray-200 bg-white"
                                         }`}
                                     >
                                         <Text
-                                            className={`text-center font-medium ${
-                                                form.status === s
-                                                    ? "text-blue-700"
-                                                    : "text-gray-700"
+                                            className={`font-kumbhBold text-[13px] ${
+                                                active
+                                                    ? "text-white"
+                                                    : "text-[#374151]"
                                             }`}
                                         >
                                             {s.charAt(0).toUpperCase() +
                                                 s.slice(1)}
                                         </Text>
                                     </Pressable>
-                                ))}
-                            </View>
+                                );
+                            })}
                         </View>
+                    </Field>
 
-                        {/* Engagement Tags */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Engagement Tags
-                            </Text>
-                            <View className="flex-row mb-2 gap-2">
-                                <TextInput
+                    <Field label="Engagement Tags">
+                        <View className="flex-row mb-2.5 gap-2">
+                            <View className="flex-1 h-12 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                                <CustomTextInput
                                     placeholder="Add tags..."
-                                    placeholderTextColor="#9CA3AF"
                                     value={tagInput}
                                     onChangeText={setTagInput}
-                                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-base"
                                     editable={!submitting}
                                 />
-                                <Pressable
-                                    onPress={handleAddTag}
-                                    disabled={!tagInput.trim() || submitting}
-                                    className="px-4 py-2 bg-blue-500 rounded-lg justify-center"
+                            </View>
+                            <Pressable
+                                onPress={handleAddTag}
+                                disabled={!tagInput.trim() || submitting}
+                                className={`h-12 px-5 rounded-2xl items-center justify-center ${
+                                    !tagInput.trim() || submitting
+                                        ? "bg-gray-200"
+                                        : "bg-[#4C5FAB]"
+                                }`}
+                            >
+                                <Text
+                                    className={`font-kumbhBold text-lg ${
+                                        !tagInput.trim() || submitting
+                                            ? "text-gray-400"
+                                            : "text-white"
+                                    }`}
                                 >
-                                    <Text className="text-white font-semibold">
-                                        +
+                                    +
+                                </Text>
+                            </Pressable>
+                        </View>
+                        <View className="flex-row flex-wrap gap-2">
+                            {(form.engagementTags || []).map((tag) => (
+                                <View
+                                    key={tag}
+                                    className="bg-[#EEF2FF] rounded-full px-3 py-1.5 flex-row items-center gap-1.5"
+                                >
+                                    <Text className="text-[#4C5FAB] text-xs font-kumbhBold">
+                                        {tag}
                                     </Text>
-                                </Pressable>
-                            </View>
-                            <View className="flex-row flex-wrap gap-2">
-                                {(form.engagementTags || []).map((tag) => (
-                                    <View
-                                        key={tag}
-                                        className="bg-blue-100 rounded-full px-3 py-1 flex-row items-center gap-1"
+                                    <Pressable
+                                        onPress={() => handleRemoveTag(tag)}
                                     >
-                                        <Text className="text-blue-800 text-sm font-medium">
-                                            {tag}
+                                        <Text className="text-[#4C5FAB] font-kumbhBold">
+                                            ×
                                         </Text>
-                                        <Pressable
-                                            onPress={() => handleRemoveTag(tag)}
-                                        >
-                                            <Text className="text-blue-800 font-bold">
-                                                ×
-                                            </Text>
-                                        </Pressable>
-                                    </View>
-                                ))}
-                            </View>
+                                    </Pressable>
+                                </View>
+                            ))}
                         </View>
+                    </Field>
 
-                        {/* Notes */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Notes
+                    <Field label="Notes" className="mb-6">
+                        <Input
+                            placeholder="Enter notes"
+                            value={form.notes}
+                            onChangeText={(v) => handleUpdateForm("notes", v)}
+                            multiline
+                        />
+                    </Field>
+
+                    <Pressable
+                        onPress={handleSubmit}
+                        disabled={submitting || loading}
+                        className={`h-14 rounded-2xl items-center justify-center ${
+                            submitting || loading
+                                ? "bg-primary/50"
+                                : "bg-primary"
+                        }`}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                            <Text className="font-kumbhBold text-[15px] text-white">
+                                {partnerId ? "Update Partner" : "Save Partner"}
                             </Text>
-                            <TextInput
-                                placeholder="Enter notes"
-                                placeholderTextColor="#9CA3AF"
-                                value={form.notes}
-                                onChangeText={(v) =>
-                                    handleUpdateForm("notes", v)
-                                }
-                                multiline
-                                numberOfLines={4}
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                textAlignVertical="top"
-                                editable={!submitting}
-                            />
-                        </View>
-
-                        <View className="mb-10" />
-                    </ScrollView>
-                </View>
+                        )}
+                    </Pressable>
+                </ScrollView>
             </KeyboardAvoidingView>
             <DatePickerModal
                 visible={birthdayPickerVisible}

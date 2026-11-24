@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Field from "@/components/admin/Field";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import HexButton from "@/components/ui/HexButton";
 
 import { showError, showSuccess } from "@/components/ui/toast";
@@ -45,16 +46,16 @@ export default function EditChannel() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-background">
+        <SafeAreaView className="flex-1 bg-[#F5F7FB]">
             {/* Header */}
-            <View className="px-5 pt-6 pb-2 flex-row items-center justify-between gap-4">
+            <View className="px-5 pt-4 pb-3 flex-row items-center justify-between gap-4">
                 <Pressable
                     onPress={() => router.back()}
-                    className="w-10 h-10 rounded-full items-center justify-center"
+                    className="w-10 h-10 rounded-full bg-white border border-gray-100 items-center justify-center"
                 >
-                    <ArrowLeft size={24} color="#111827" />
+                    <ArrowLeft size={20} color="#111827" />
                 </Pressable>
-                <Text className="text-3xl font-kumbh text-text">
+                <Text className="text-2xl font-kumbhBold text-[#111827]">
                     Edit Channel
                 </Text>
                 <View className="w-10" />
@@ -72,32 +73,39 @@ export default function EditChannel() {
             >
                 <ScrollView
                     className="flex-1"
-                    contentContainerClassName="px-5 pb-10 pt-4"
+                    contentContainerClassName="px-5 pb-10 pt-3"
                     keyboardShouldPersistTaps="handled"
                 >
-                    <Field label="Name of Channel">
-                        <TextInput
-                            placeholder="Enter Channel Name"
-                            placeholderTextColor="#9CA3AF"
-                            value={name}
-                            onChangeText={setName}
-                            className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
-                            autoCapitalize="words"
-                        />
-                    </Field>
+                    <View className="rounded-[28px] bg-white border border-gray-100 p-5">
+                        <Field label="Name of Channel">
+                            <View className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 h-12 justify-center">
+                                <CustomTextInput
+                                    placeholder="Enter Channel Name"
+                                    value={name}
+                                    onChangeText={setName}
+                                    className="py-3"
+                                    autoCapitalize="words"
+                                />
+                            </View>
+                        </Field>
 
-                    <Field label="Descriptions">
-                        <TextInput
-                            placeholder="Enter Description"
-                            placeholderTextColor="#9CA3AF"
-                            value={desc}
-                            onChangeText={setDesc}
-                            multiline
-                            className="bg-gray-200 rounded-2xl px-4 py-4 min-h-[88px] font-kumbh text-text"
-                        />
-                    </Field>
+                        <Field label="Descriptions">
+                            <View className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3">
+                                <CustomTextInput
+                                    placeholder="Enter Description"
+                                    value={desc}
+                                    onChangeText={setDesc}
+                                    multiline
+                                    textAlignVertical="top"
+                                    className="min-h-[88px]"
+                                />
+                            </View>
+                        </Field>
 
-                    <HexButton title="Save" onPress={onSave} />
+                        <View className="mt-2">
+                            <HexButton title="Save" onPress={onSave} />
+                        </View>
+                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>

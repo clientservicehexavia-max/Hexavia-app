@@ -44,28 +44,28 @@ export default function ClientChatEntryScreen() {
 
     if (channelsStatus === "loading" && !projectId) {
         return (
-            <View className="flex-1 items-center justify-center bg-white">
+            <View className="flex-1 items-center justify-center bg-[#F5F7FB]">
                 <ActivityIndicator color="#4C5FAB" />
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-white px-6 justify-center">
-            <View className="rounded-3xl border border-gray-200 p-6 bg-[#F8FAFF]">
+        <View className="flex-1 bg-[#F5F7FB] px-6 justify-center">
+            <View className="rounded-[28px] border border-gray-100 p-6 bg-white">
                 <Text className="text-xl text-[#111827] font-kumbhBold text-center">
                     Project Not Linked
                 </Text>
-                <Text className="mt-2 text-sm text-gray-500 font-kumbh text-center">
+                <Text className="mt-2 text-sm text-[#6B7280] font-kumbh text-center leading-5">
                     You have not linked your project yet. Add your project code
                     to access your project chat.
                 </Text>
 
                 <Pressable
                     onPress={() => setShowLinkModal(true)}
-                    className="mt-5 h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center"
+                    className="mt-6 h-12 rounded-2xl bg-primary items-center justify-center"
                 >
-                    <Text className="text-white font-kumbhBold">
+                    <Text className="text-white font-kumbhBold text-[15px]">
                         Add Project Code
                     </Text>
                 </Pressable>

@@ -1,3 +1,4 @@
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
     BriefcaseBusiness,
@@ -9,6 +10,8 @@ import {
     Phone,
     Plus,
     Search,
+    Users,
+    X,
 } from "lucide-react-native";
 import React, {
     useCallback,
@@ -24,7 +27,6 @@ import {
     Pressable,
     RefreshControl,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -159,20 +161,22 @@ export default function PartnersListScreen() {
                     params: { id: item._id },
                 })
             }
-            className="bg-white p-4 mb-3 rounded-xl border border-gray-200"
+            className="bg-white p-4 mb-3 rounded-[24px] border border-gray-100 active:opacity-85"
         >
             <View className="flex-row items-start justify-between">
-                <View className="flex-1 pr-3">
-                    <Text
-                        className="text-lg font-kumbhBold text-gray-900"
-                        numberOfLines={1}
-                    >
-                        {item.company || "No company added"}
-                    </Text>
-                    <View className="flex-row items-center mt-1">
-                        <Landmark size={14} color="#6B7280" />
+                <View className="flex-row items-center flex-1 pr-3">
+                    <View className="h-11 w-11 rounded-2xl bg-[#EEF2FF] items-center justify-center mr-3">
+                        <Landmark size={18} color="#4C5FAB" />
+                    </View>
+                    <View className="flex-1">
                         <Text
-                            className="ml-1 text-sm font-kumbh text-gray-600"
+                            className="text-[16px] font-kumbhBold text-[#111827]"
+                            numberOfLines={1}
+                        >
+                            {item.company || item.name || "No company added"}
+                        </Text>
+                        <Text
+                            className="mt-0.5 text-[13px] font-kumbh text-[#6B7280]"
                             numberOfLines={1}
                         >
                             {item.name}
@@ -188,7 +192,7 @@ export default function PartnersListScreen() {
                     }`}
                 >
                     <Text
-                        className={`text-xs font-kumbhBold ${
+                        className={`text-[11px] font-kumbhBold capitalize ${
                             item.status === "active"
                                 ? "text-emerald-700"
                                 : "text-slate-700"
@@ -199,43 +203,53 @@ export default function PartnersListScreen() {
                 </View>
             </View>
 
-            <View className="mt-3 flex-row flex-wrap">
-                {item.partnerType ? (
-                    <PartnerMeta
-                        icon={<BriefcaseBusiness size={13} color="#6B7280" />}
-                        text={item.partnerType}
-                    />
-                ) : null}
-                {item.industry ? (
-                    <PartnerMeta
-                        icon={<Building2 size={13} color="#6B7280" />}
-                        text={item.industry}
-                    />
-                ) : null}
-                {item.contactEmail ? (
-                    <PartnerMeta
-                        icon={<Mail size={13} color="#6B7280" />}
-                        text={item.contactEmail}
-                    />
-                ) : null}
-                {item.contactPhone ? (
-                    <PartnerMeta
-                        icon={<Phone size={13} color="#6B7280" />}
-                        text={item.contactPhone}
-                    />
-                ) : null}
-            </View>
+            {item.partnerType ||
+            item.industry ||
+            item.contactEmail ||
+            item.contactPhone ? (
+                <View className="mt-3 rounded-2xl bg-[#F5F7FB] px-3.5 py-2.5 flex-row flex-wrap">
+                    {item.partnerType ? (
+                        <PartnerMeta
+                            icon={
+                                <BriefcaseBusiness
+                                    size={13}
+                                    color="#6B7280"
+                                />
+                            }
+                            text={item.partnerType}
+                        />
+                    ) : null}
+                    {item.industry ? (
+                        <PartnerMeta
+                            icon={<Building2 size={13} color="#6B7280" />}
+                            text={item.industry}
+                        />
+                    ) : null}
+                    {item.contactEmail ? (
+                        <PartnerMeta
+                            icon={<Mail size={13} color="#6B7280" />}
+                            text={item.contactEmail}
+                        />
+                    ) : null}
+                    {item.contactPhone ? (
+                        <PartnerMeta
+                            icon={<Phone size={13} color="#6B7280" />}
+                            text={item.contactPhone}
+                        />
+                    ) : null}
+                </View>
+            ) : null}
 
-            <View className="mt-3 pt-3 border-t border-gray-100 flex-row items-center justify-between">
-                <View className="px-2.5 py-1 rounded-full bg-blue-50">
-                    <Text className="text-xs font-kumbhBold text-blue-700">
+            <View className="mt-3 pt-2.5 border-t border-gray-100 flex-row items-center justify-between">
+                <View className="px-2.5 py-1 rounded-full bg-[#EEF2FF]">
+                    <Text className="text-[11px] font-kumbhBold text-[#4C5FAB]">
                         {item.dealCount ?? 0}{" "}
                         {(item.dealCount ?? 0) === 1 ? "deal" : "deals"}
                     </Text>
                 </View>
 
                 <View className="flex-row items-center">
-                    <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
+                    <Text className="text-[12px] font-kumbhBold text-[#4C5FAB] mr-1">
                         View partner
                     </Text>
                     <ChevronRight size={14} color="#4C5FAB" />
@@ -246,7 +260,7 @@ export default function PartnersListScreen() {
 
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
@@ -254,8 +268,9 @@ export default function PartnersListScreen() {
             <View className="flex-1">
                 <PlatformAdaptiveHeader
                     title="Partners"
+                    backgroundColor="#F5F7FB"
                     headerRight={({ tintColor }) => (
-                        <View className="flex-row items-center gap-1">
+                        <View className="flex-row items-center gap-2 ios:mr-3">
                             <Pressable
                                 onPress={() =>
                                     router.push({
@@ -263,12 +278,12 @@ export default function PartnersListScreen() {
                                         params: { filter: "partners" },
                                     })
                                 }
-                                className="w-10 h-10 rounded-full items-center justify-center"
+                                className="h-10 w-10 items-center justify-center rounded-full bg-white border border-gray-200"
                                 hitSlop={8}
                             >
-                                <Gift size={24} color={tintColor} />
+                                <Gift size={18} color={tintColor ?? "#111827"} />
                                 {birthdayCount > 0 ? (
-                                    <View className="absolute right-0.5 top-0.5 min-w-4 h-4 rounded-full bg-amber-500 px-1 items-center justify-center">
+                                    <View className="absolute -right-0.5 -top-0.5 min-w-4 h-4 rounded-full bg-amber-500 px-1 items-center justify-center">
                                         <Text className="text-[9px] leading-3 font-kumbhBold text-white">
                                             {birthdayCount > 99
                                                 ? "99+"
@@ -283,74 +298,90 @@ export default function PartnersListScreen() {
                                         "/(admin)/partnerships/partners/create",
                                     )
                                 }
-                                className="w-10 h-10 rounded-full items-center justify-center"
+                                className="w-10 h-10 rounded-full items-center justify-center bg-[#4C5FAB]"
                                 hitSlop={8}
                             >
-                                <Plus size={28} color={tintColor} />
+                                <Plus size={20} color="#FFFFFF" />
                             </Pressable>
                         </View>
                     )}
                 />
 
-                <View className="px-4">
-                    <View className="bg-gray-50 rounded-lg px-4 py-2 mb-4 flex-row items-center">
-                        <Search size={18} color="#666" />
-                        <TextInput
+                <View className="px-4 pt-2 pb-3">
+                    <View className="h-14 w-full flex-row items-center rounded-2xl border border-gray-200 bg-white px-4">
+                        <Search size={18} color="#6B7280" />
+                        <CustomTextInput
                             placeholder="Search partners..."
                             value={query}
                             onChangeText={setQuery}
-                            className="flex-1 ml-2 text-base"
-                            placeholderTextColor="#999"
+                            className="flex-1 h-full ml-3"
+                            returnKeyType="search"
                         />
-                    </View>
-                </View>
-
-                <View className="flex-row gap-2 mb-4 px-4">
-                    {["all", "active", "inactive"].map((s) => (
-                        <Pressable
-                            key={s}
-                            onPress={() =>
-                                setStatus(s === "all" ? undefined : s)
-                            }
-                            className={`px-3 py-2 rounded-full border ${
-                                (s === "all" && !status) ||
-                                (s !== "all" && status === s)
-                                    ? "bg-blue-500 border-blue-500"
-                                    : "bg-white border-gray-200"
-                            }`}
-                        >
-                            <Text
-                                className={
-                                    (s === "all" && !status) ||
-                                    (s !== "all" && status === s)
-                                        ? "text-white font-medium text-sm"
-                                        : "text-gray-700 font-medium text-sm"
-                                }
+                        {query.length > 0 ? (
+                            <Pressable
+                                onPress={() => setQuery("")}
+                                hitSlop={8}
+                                className="ml-2 h-7 w-7 rounded-full bg-[#F3F4F6] items-center justify-center"
                             >
-                                {s.charAt(0).toUpperCase() + s.slice(1)}
-                            </Text>
-                        </Pressable>
-                    ))}
+                                <X size={14} color="#6B7280" />
+                            </Pressable>
+                        ) : null}
+                    </View>
+
+                    <View className="mt-3 h-11 flex-row rounded-2xl border border-gray-200 bg-white p-1">
+                        {["all", "active", "inactive"].map((s) => {
+                            const active =
+                                (s === "all" && !status) ||
+                                (s !== "all" && status === s);
+                            return (
+                                <Pressable
+                                    key={s}
+                                    onPress={() =>
+                                        setStatus(s === "all" ? undefined : s)
+                                    }
+                                    className={`flex-1 rounded-xl items-center justify-center ${
+                                        active ? "bg-[#4C5FAB]" : ""
+                                    }`}
+                                >
+                                    <Text
+                                        className={`text-xs font-kumbhBold ${
+                                            active
+                                                ? "text-white"
+                                                : "text-[#6B7280]"
+                                        }`}
+                                    >
+                                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                                    </Text>
+                                </Pressable>
+                            );
+                        })}
+                    </View>
                 </View>
 
                 {/* Error Display */}
                 {error && (
-                    <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                        <Text className="text-red-800 text-sm">{error}</Text>
+                    <View className="mx-4 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-3">
+                        <Text className="text-red-700 text-xs font-kumbh">
+                            {error}
+                        </Text>
                     </View>
                 )}
 
                 {/* Partners List */}
                 {isInitialLoading ? (
                     <View className="flex-1 justify-center items-center">
-                        <ActivityIndicator size="large" color="#3b82f6" />
+                        <ActivityIndicator size="large" color="#4C5FAB" />
                     </View>
                 ) : (
                     <FlatList
                         data={filteredPartners}
                         keyExtractor={(item) => item._id}
                         renderItem={renderPartnerItem}
-                        contentContainerClassName="px-4"
+                        contentContainerStyle={{
+                            paddingHorizontal: 16,
+                            paddingBottom: 28,
+                        }}
+                        showsVerticalScrollIndicator={false}
                         onEndReachedThreshold={0.25}
                         onEndReached={loadMore}
                         refreshControl={
@@ -364,15 +395,21 @@ export default function PartnersListScreen() {
                                 <View className="py-4 items-center">
                                     <ActivityIndicator
                                         size="small"
-                                        color="#3b82f6"
+                                        color="#4C5FAB"
                                     />
                                 </View>
                             ) : null
                         }
                         ListEmptyComponent={
-                            <View className="flex-1 justify-center items-center">
-                                <Text className="text-gray-500 text-base">
+                            <View className="mt-2 rounded-[24px] bg-white border border-gray-100 px-5 py-12 items-center">
+                                <View className="h-12 w-12 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-3">
+                                    <Users size={22} color="#4C5FAB" />
+                                </View>
+                                <Text className="text-[#111827] font-kumbhBold text-base">
                                     No partners found
+                                </Text>
+                                <Text className="mt-1 text-center text-[#6B7280] font-kumbh text-sm">
+                                    Try adjusting your search or status filter.
                                 </Text>
                             </View>
                         }

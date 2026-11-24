@@ -1,5 +1,6 @@
 import { api } from "@/api/axios";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { selectDealById, selectDealLoading } from "@/redux/deal/deal.selectors";
 import {
     deleteDeal,
@@ -38,7 +39,6 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -156,7 +156,11 @@ const hasValue = (value: unknown) =>
     value !== undefined && value !== null && String(value).trim() !== "";
 
 function Card({ children }: { children: React.ReactNode }) {
-    return <View className="bg-gray-50 rounded-lg p-4 mb-3">{children}</View>;
+    return (
+        <View className="bg-white border border-gray-100 rounded-[24px] p-4 mb-3">
+            {children}
+        </View>
+    );
 }
 
 function FieldRow({
@@ -167,11 +171,11 @@ function FieldRow({
     value?: React.ReactNode;
 }) {
     return (
-        <View className="py-1 border-b border-gray-100 last:border-b-0">
-            <Text className="text-xs font-medium text-gray-500 mb-0.5 capitalize">
+        <View className="py-2.5 border-b border-gray-100 last:border-b-0">
+            <Text className="text-[11px] font-kumbh text-[#6B7280] mb-0.5 capitalize">
                 {label}
             </Text>
-            <Text className="text-base text-gray-900 capitalize">
+            <Text className="text-[14px] font-kumbhBold text-[#111827] capitalize">
                 {value || "—"}
             </Text>
         </View>
@@ -193,27 +197,29 @@ function ActionButton({
 }) {
     const styles =
         variant === "primary"
-            ? "bg-blue-500"
+            ? "bg-[#4C5FAB]"
             : variant === "danger"
               ? "bg-red-50 border border-red-100"
-              : "bg-gray-100";
+              : "bg-[#F9FAFB] border border-gray-200";
     const textStyles =
         variant === "primary"
             ? "text-white"
             : variant === "danger"
               ? "text-red-700"
-              : "text-gray-900";
+              : "text-[#111827]";
 
     return (
         <Pressable
             onPress={onPress}
             disabled={disabled}
-            className={`h-11 px-3 rounded-lg flex-row items-center justify-center ${styles} ${
+            className={`h-12 px-4 rounded-2xl flex-row items-center justify-center ${styles} ${
                 disabled ? "opacity-60" : ""
             }`}
         >
             {icon}
-            <Text className={`font-semibold ml-2 ${textStyles}`}>{label}</Text>
+            <Text className={`font-kumbhBold text-[13px] ml-2 ${textStyles}`}>
+                {label}
+            </Text>
         </Pressable>
     );
 }
@@ -230,15 +236,15 @@ function Pill({
     return (
         <Pressable
             onPress={onPress}
-            className={`px-3 py-2 rounded-full border ${
+            className={`px-3.5 py-2 rounded-full border ${
                 active
-                    ? "bg-blue-500 border-blue-500"
+                    ? "bg-[#4C5FAB] border-[#4C5FAB]"
                     : "bg-white border-gray-200"
             }`}
         >
             <Text
-                className={`text-sm font-medium capitalize ${
-                    active ? "text-white" : "text-gray-700"
+                className={`text-xs font-kumbhBold capitalize ${
+                    active ? "text-white" : "text-[#4B5563]"
                 }`}
             >
                 {label}
@@ -261,19 +267,20 @@ function FormModal({
     return (
         <Modal visible={visible} animationType="slide" transparent>
             <KeyboardAvoidingView
-                className="flex-1 bg-black/30 justify-end"
+                className="flex-1 bg-black/40 justify-end"
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
             >
-                <View className="bg-white rounded-t-3xl max-h-[88%]">
-                    <View className="px-5 py-4 border-b border-gray-100 flex-row items-center justify-between">
-                        <Text className="text-xl font-bold text-gray-900">
+                <View className="bg-white rounded-t-[28px] pt-3 max-h-[88%]">
+                    <View className="w-10 h-1 rounded-full bg-gray-200 self-center mb-3" />
+                    <View className="px-5 pb-3.5 border-b border-gray-100 flex-row items-center justify-between">
+                        <Text className="text-[18px] font-kumbhBold text-[#111827]">
                             {title}
                         </Text>
                         <Pressable
                             onPress={onClose}
                             className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center"
                         >
-                            <X size={18} color="#111827" />
+                            <X size={17} color="#374151" />
                         </Pressable>
                     </View>
                     <ScrollView
@@ -305,18 +312,24 @@ function LabeledInput({
 }) {
     return (
         <View className="mb-4">
-            <Text className="text-gray-700 font-semibold mb-2">{label}</Text>
-            <TextInput
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={placeholder}
-                placeholderTextColor="#9CA3AF"
-                keyboardType={keyboardType}
-                multiline={multiline}
-                className={`border border-gray-300 rounded-lg px-4 py-3 text-base ${
-                    multiline ? "min-h-[92px]" : ""
+            <Text className="text-[#374151] font-kumbhBold text-sm mb-2">
+                {label}
+            </Text>
+            <View
+                className={`border border-gray-200 bg-[#F9FAFB] rounded-2xl px-4 ${
+                    multiline ? "py-3" : "h-12 justify-center"
                 }`}
-            />
+            >
+                <CustomTextInput
+                    value={value}
+                    onChangeText={onChangeText}
+                    placeholder={placeholder}
+                    keyboardType={keyboardType}
+                    multiline={multiline}
+                    textAlignVertical={multiline ? "top" : "center"}
+                    style={multiline ? { minHeight: 84 } : undefined}
+                />
+            </View>
         </View>
     );
 }
@@ -1321,16 +1334,18 @@ export default function DealDetails() {
 
     if (loading && !deal) {
         return (
-            <SafeAreaView className="flex-1 bg-white justify-center items-center">
-                <ActivityIndicator size="large" color="#3b82f6" />
+            <SafeAreaView className="flex-1 bg-[#F5F7FB] justify-center items-center">
+                <ActivityIndicator size="large" color="#4C5FAB" />
             </SafeAreaView>
         );
     }
 
     if (!deal) {
         return (
-            <SafeAreaView className="flex-1 bg-white justify-center items-center">
-                <Text className="text-gray-500">Deal not found</Text>
+            <SafeAreaView className="flex-1 bg-[#F5F7FB] justify-center items-center">
+                <Text className="text-[#6B7280] font-kumbh">
+                    Deal not found
+                </Text>
             </SafeAreaView>
         );
     }
@@ -1752,53 +1767,59 @@ export default function DealDetails() {
                             index: paymentIndex,
                         })) || []),
                 ].map(({ document, key, source, index }) => (
-                    <Pressable
-                        key={key}
-                        onPress={() => Linking.openURL(document.url)}
-                        className="bg-gray-50 rounded-lg p-3 mb-2 flex-row items-center justify-between gap-5"
-                    >
-                        <View className="flex-1">
-                            <Text className="text-gray-900 font-medium">
-                                {document.name || document.type || "Document"}
-                            </Text>
-                            <Text className="text-gray-500 text-sm">
-                                {document.type || "supporting"} •{" "}
-                                {formatDate(document.uploadedAt)}
-                            </Text>
-                        </View>
-                        <View className="flex-row gap-1 items-center">
-                            <Pressable
-                                onPress={() => handleDownloadDocument(document)}
-                                disabled={saving}
-                                className="p-2"
-                            >
-                                <Download
-                                    size={18}
-                                    color={saving ? "#d1d5db" : "#10b981"}
-                                />
-                            </Pressable>
-                            <Pressable
-                                onPress={() =>
-                                    source === "documents"
-                                        ? handleDeleteDocument(index)
-                                        : handleDeletePayment(index)
-                                }
-                                disabled={saving}
-                                className="p-2"
-                            >
-                                <Trash2
-                                    size={18}
-                                    color={saving ? "#d1d5db" : "#dc2626"}
-                                />
-                            </Pressable>
-                            <Pressable
-                                onPress={() => Linking.openURL(document.url)}
-                                className="p-2"
-                            >
-                                <ExternalLink size={18} color="#3b82f6" />
-                            </Pressable>
-                        </View>
-                    </Pressable>
+                        <Pressable
+                            key={key}
+                            onPress={() => Linking.openURL(document.url)}
+                            className="bg-white border border-gray-100 rounded-[22px] p-4 mb-2.5 flex-row items-center justify-between gap-3"
+                        >
+                            <View className="flex-1">
+                                <Text className="text-[#111827] font-kumbhBold text-[14px]">
+                                    {document.name ||
+                                        document.type ||
+                                        "Document"}
+                                </Text>
+                                <Text className="text-[#6B7280] font-kumbh text-[12px] mt-0.5">
+                                    {document.type || "supporting"} •{" "}
+                                    {formatDate(document.uploadedAt)}
+                                </Text>
+                            </View>
+                            <View className="flex-row gap-1.5 items-center">
+                                <Pressable
+                                    onPress={() =>
+                                        handleDownloadDocument(document)
+                                    }
+                                    disabled={saving}
+                                    className="h-9 w-9 rounded-full bg-emerald-50 items-center justify-center"
+                                >
+                                    <Download
+                                        size={16}
+                                        color={saving ? "#d1d5db" : "#059669"}
+                                    />
+                                </Pressable>
+                                <Pressable
+                                    onPress={() =>
+                                        source === "documents"
+                                            ? handleDeleteDocument(index)
+                                            : handleDeletePayment(index)
+                                    }
+                                    disabled={saving}
+                                    className="h-9 w-9 rounded-full bg-red-50 items-center justify-center"
+                                >
+                                    <Trash2
+                                        size={16}
+                                        color={saving ? "#d1d5db" : "#dc2626"}
+                                    />
+                                </Pressable>
+                                <Pressable
+                                    onPress={() =>
+                                        Linking.openURL(document.url)
+                                    }
+                                    className="h-9 w-9 rounded-full bg-[#EEF2FF] items-center justify-center"
+                                >
+                                    <ExternalLink size={16} color="#4C5FAB" />
+                                </Pressable>
+                            </View>
+                        </Pressable>
                 ))
             ) : (
                 <Text className="text-gray-500">No documents uploaded.</Text>
@@ -1816,109 +1837,112 @@ export default function DealDetails() {
 
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
         >
-            <View className="flex-1 px-4">
-                <PlatformAdaptiveHeader
-                    title="Deal Details"
-                    headerRight={({ tintColor }) => (
-                        <View className="flex-row gap-2">
-                            <Pressable
-                                onPress={() =>
-                                    router.push({
-                                        pathname:
-                                            "/(admin)/partnerships/deals/create",
-                                        params: { dealId: deal._id },
-                                    })
-                                }
-                                className="w-10 h-10 rounded-full items-center justify-center"
-                            >
-                                <Edit2 size={20} color={tintColor} />
-                            </Pressable>
-                            <Pressable
-                                onPress={handleDelete}
-                                disabled={deleting}
-                                className="w-10 h-10 rounded-full items-center justify-center bg-red-500"
-                            >
-                                {deleting ? (
-                                    <ActivityIndicator
-                                        size="small"
-                                        color="white"
-                                    />
-                                ) : (
-                                    <Trash2 size={20} color="white" />
-                                )}
-                            </Pressable>
-                        </View>
-                    )}
-                />
+            <PlatformAdaptiveHeader
+                title="Deal Details"
+                backgroundColor="#F5F7FB"
+                headerRight={() => (
+                    <View className="flex-row gap-2 ios:mr-3">
+                        <Pressable
+                            onPress={() =>
+                                router.push({
+                                    pathname:
+                                        "/(admin)/partnerships/deals/create",
+                                    params: { dealId: deal._id },
+                                })
+                            }
+                            className="w-9 h-9 rounded-full bg-white border border-gray-200 items-center justify-center"
+                        >
+                            <Edit2 size={16} color="#4C5FAB" />
+                        </Pressable>
+                        <Pressable
+                            onPress={handleDelete}
+                            disabled={deleting}
+                            className="w-9 h-9 rounded-full items-center justify-center bg-red-50 border border-red-100"
+                        >
+                            {deleting ? (
+                                <ActivityIndicator
+                                    size="small"
+                                    color="#DC2626"
+                                />
+                            ) : (
+                                <Trash2 size={16} color="#DC2626" />
+                            )}
+                        </Pressable>
+                    </View>
+                )}
+            />
 
-                <ScrollView showsVerticalScrollIndicator={false}>
-                    <View className="bg-blue-50 rounded-lg p-4 mb-4">
-                        <Text className="text-3xl font-bold text-gray-900 mb-2">
-                            {deal.title}
-                        </Text>
-                        <Text className="text-gray-600 text-lg">
-                            Partner: {partner?.name || deal.partnerId}
-                        </Text>
-                        {headerBadges}
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerClassName="px-4 pt-3 pb-12"
+            >
+                <View className="bg-white border border-gray-100 rounded-[28px] p-5 mb-4">
+                    <Text className="text-[22px] font-kumbhBold text-[#111827] mb-1">
+                        {deal.title}
+                    </Text>
+                    <Text className="text-[#6B7280] font-kumbh text-[14px]">
+                        Partner: {partner?.name || deal.partnerId}
+                    </Text>
+                    {headerBadges}
+                    <View className="flex-row gap-2.5 mt-4">
                         <Pressable
                             onPress={() => setStageModalVisible(true)}
-                            className="mt-4 h-11 rounded-lg bg-blue-500 items-center justify-center"
+                            className="flex-1 h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center"
                         >
-                            <Text className="text-white font-semibold">
+                            <Text className="text-white font-kumbhBold text-[13px]">
                                 Change Stage
                             </Text>
                         </Pressable>
-                        <View className="mt-3">
-                            <ActionButton
-                                label={
-                                    isGeneratingReport
-                                        ? "Generating..."
-                                        : "Generate Deal Report"
-                                }
-                                icon={
-                                    isGeneratingReport ? (
-                                        <ActivityIndicator
-                                            size="small"
-                                            color="#111827"
-                                        />
-                                    ) : (
-                                        <Share2 size={18} color="#111827" />
-                                    )
-                                }
-                                variant="secondary"
-                                disabled={isGeneratingReport}
-                                onPress={handleGenerateDealReport}
-                            />
-                        </View>
-                    </View>
-
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        className="mb-4"
-                    >
-                        <View className="flex-row gap-2">
-                            {TABS.map((tab) => (
-                                <Pill
-                                    key={tab}
-                                    label={tab}
-                                    active={activeTab === tab}
-                                    onPress={() => setActiveTab(tab)}
+                        <Pressable
+                            disabled={isGeneratingReport}
+                            onPress={handleGenerateDealReport}
+                            className="flex-1 h-12 rounded-2xl bg-[#EEF2FF] flex-row items-center justify-center px-3"
+                            style={{ opacity: isGeneratingReport ? 0.6 : 1 }}
+                        >
+                            {isGeneratingReport ? (
+                                <ActivityIndicator
+                                    size="small"
+                                    color="#4C5FAB"
                                 />
-                            ))}
-                        </View>
-                    </ScrollView>
+                            ) : (
+                                <Share2 size={16} color="#4C5FAB" />
+                            )}
+                            <Text
+                                className="ml-1.5 text-[#4C5FAB] font-kumbhBold text-[13px]"
+                                numberOfLines={1}
+                            >
+                                {isGeneratingReport
+                                    ? "Generating..."
+                                    : "Deal Report"}
+                            </Text>
+                        </Pressable>
+                    </View>
+                </View>
 
-                    {renderTabContent()}
-
-                    <View className="mb-10" />
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    className="mb-4"
+                >
+                    <View className="flex-row gap-2">
+                        {TABS.map((tab) => (
+                            <Pill
+                                key={tab}
+                                label={tab}
+                                active={activeTab === tab}
+                                onPress={() => setActiveTab(tab)}
+                            />
+                        ))}
+                    </View>
                 </ScrollView>
-            </View>
+
+                {renderTabContent()}
+            </ScrollView>
 
             <FormModal
                 title="Change Stage"

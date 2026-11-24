@@ -36,6 +36,7 @@ import {
 } from "lucide-react-native";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { showError, showSuccess } from "@/components/ui/toast";
 import { useAppDispatch } from "@/store/hooks";
 import {
@@ -447,8 +448,8 @@ export default function ImportStatementScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white"
-      edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
+      className="flex-1 bg-[#F5F7FB]"
+      edges={isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]}
     >
       <PlatformAdaptiveHeader
         title={
@@ -460,6 +461,7 @@ export default function ImportStatementScreen() {
                 ? "Review Transactions"
                 : "Import Summary"
         }
+        backgroundColor="#F5F7FB"
         onBackPress={() => {
           if (step === "review") {
             Alert.alert(
@@ -480,18 +482,18 @@ export default function ImportStatementScreen() {
         }}
         headerRight={
           step === "upload" || step === "review"
-            ? ({ tintColor }) => (
+            ? () => (
                 <Pressable
                   onPress={() => setShowScopeMenu(true)}
                   hitSlop={8}
-                  className="flex-row items-center gap-1.5 px-2.5 py-1.5"
+                  className="h-9 w-9 rounded-full bg-white border border-gray-200 items-center justify-center"
                 >
                   {importScope === "both" ? (
-                    <ArrowUpDown size={20} color="#4C5FAB" />
+                    <ArrowUpDown size={17} color="#4C5FAB" />
                   ) : importScope === "expenses" ? (
-                    <ArrowUpRight size={20} color="#E11D48" />
+                    <ArrowUpRight size={17} color="#E11D48" />
                   ) : (
-                    <ArrowDownLeft size={20} color="#059669" />
+                    <ArrowDownLeft size={17} color="#059669" />
                   )}
                 </Pressable>
               )
@@ -502,17 +504,17 @@ export default function ImportStatementScreen() {
       {/* ───────── STEP 1: UPLOAD VIEW ───────── */}
       {step === "upload" && (
         <ScrollView
-          className="flex-1 px-5 pt-4 pb-10"
+          className="flex-1 px-4 pt-3 pb-10"
           showsVerticalScrollIndicator={false}
         >
           {/* Header info */}
-          <View className="mb-6">
-            <Text className="text-2xl font-kumbhBold text-[#111827] mb-2">
+          <View className="mb-4 rounded-[24px] bg-white border border-gray-100 p-4">
+            <Text className="text-[18px] font-kumbhBold text-[#111827] mb-1">
               Upload Bank Statement
             </Text>
-            <Text className="text-sm font-kumbh text-gray-500 leading-5">
-              Upload your official bank statement PDF. Income credits will be
-              classified as Receivables, and debits as Expenses.
+            <Text className="text-[13px] font-kumbh text-[#6B7280] leading-5">
+              Upload your official bank statement PDF. Credits are classified as
+              Receivables, and debits as Expenses.
             </Text>
           </View>
 
@@ -520,22 +522,22 @@ export default function ImportStatementScreen() {
           <Pressable
             onPress={handlePickDocument}
             className={clsx(
-              "rounded-3xl border-2 border-dashed p-8 items-center justify-center mb-6",
+              "rounded-[28px] border-2 border-dashed p-8 items-center justify-center mb-5",
               selectedFile
-                ? "border-[#4C5FAB] bg-[#4C5FAB]/5"
-                : "border-gray-300 bg-white",
+                ? "border-[#4C5FAB] bg-[#EEF2FF]/60"
+                : "border-gray-200 bg-white",
             )}
           >
             <View
               className={clsx(
-                "w-16 h-16 rounded-full items-center justify-center mb-4",
-                selectedFile ? "bg-[#4C5FAB]/15" : "bg-gray-100",
+                "w-16 h-16 rounded-2xl items-center justify-center mb-4",
+                selectedFile ? "bg-[#EEF2FF]" : "bg-[#F5F7FB]",
               )}
             >
               {selectedFile ? (
-                <FileText size={32} color="#4C5FAB" />
+                <FileText size={30} color="#4C5FAB" />
               ) : (
-                <FileUp size={32} color="#6B7280" />
+                <FileUp size={30} color="#6B7280" />
               )}
             </View>
 
@@ -547,12 +549,12 @@ export default function ImportStatementScreen() {
                 >
                   {selectedFile.name}
                 </Text>
-                <Text className="text-xs font-kumbh text-gray-500 mb-3">
+                <Text className="text-xs font-kumbh text-[#6B7280] mb-3">
                   {selectedFile.size
                     ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready`
                     : "Ready for processing"}
                 </Text>
-                <View className="flex-row items-center gap-2 bg-[#4C5FAB]/10 px-3 py-1.5 rounded-full">
+                <View className="flex-row items-center gap-1.5 bg-[#EEF2FF] px-3.5 py-1.5 rounded-full">
                   <Check size={14} color="#4C5FAB" />
                   <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
                     Tap to change file
@@ -564,12 +566,12 @@ export default function ImportStatementScreen() {
                 <Text className="text-base font-kumbhBold text-[#111827] mb-1">
                   Select Statement PDF
                 </Text>
-                <Text className="text-xs font-kumbh text-gray-400 text-center mb-4">
+                <Text className="text-xs font-kumbh text-[#6B7280] text-center mb-4">
                   Supports multi-page bank statements (up to 50MB)
                 </Text>
-                <View className="bg-[#4C5FAB] px-5 py-2.5 rounded-2xl flex-row items-center gap-2 shadow-sm">
-                  <Upload size={16} color="#FFFFFF" />
-                  <Text className="text-white font-kumbhBold text-sm">
+                <View className="bg-[#4C5FAB] px-5 py-2.5 rounded-full flex-row items-center gap-2">
+                  <Upload size={15} color="#FFFFFF" />
+                  <Text className="text-white font-kumbhBold text-[13px]">
                     Browse Files
                   </Text>
                 </View>
@@ -582,12 +584,20 @@ export default function ImportStatementScreen() {
             onPress={handleStartProcessing}
             disabled={!selectedFile}
             className={clsx(
-              "h-14 rounded-2xl items-center justify-center flex-row gap-2 shadow-sm mb-6",
-              selectedFile ? "bg-[#4C5FAB] active:opacity-90" : "bg-gray-300",
+              "h-14 rounded-2xl items-center justify-center flex-row gap-2 mb-6",
+              selectedFile ? "bg-[#4C5FAB] active:opacity-90" : "bg-gray-200",
             )}
           >
-            <FileSpreadsheet size={20} color="#FFFFFF" />
-            <Text className="text-white font-kumbhBold text-base">
+            <FileSpreadsheet
+              size={19}
+              color={selectedFile ? "#FFFFFF" : "#9CA3AF"}
+            />
+            <Text
+              className={clsx(
+                "font-kumbhBold text-[15px]",
+                selectedFile ? "text-white" : "text-gray-400",
+              )}
+            >
               Process Bank Statement
             </Text>
           </Pressable>
@@ -596,34 +606,34 @@ export default function ImportStatementScreen() {
 
       {/* ───────── STEP 2: PROCESSING VIEW ───────── */}
       {step === "processing" && (
-        <View className="flex-1 items-center justify-center px-8">
-          <View className="w-20 h-20 rounded-full bg-[#4C5FAB]/10 items-center justify-center mb-6">
+        <View className="flex-1 items-center justify-center px-6">
+          <View className="w-20 h-20 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-6">
             <ActivityIndicator size="large" color="#4C5FAB" />
           </View>
           <Text className="text-xl font-kumbhBold text-[#111827] text-center mb-2">
             Extracting Transactions…
           </Text>
-          <Text className="text-sm font-kumbh text-gray-500 text-center mb-8">
+          <Text className="text-sm font-kumbh text-[#6B7280] text-center mb-8">
             Reading PDF pages, categorizing credits into receivables, debits
             into expenses, and checking for duplicates.
           </Text>
 
-          <View className="w-full bg-white rounded-2xl p-4 border border-gray-100 shadow-xs">
-            <View className="flex-row items-center gap-3 py-2 border-b border-gray-100">
+          <View className="w-full bg-white rounded-[28px] p-5 border border-gray-100">
+            <View className="flex-row items-center gap-3 py-2.5 border-b border-gray-100">
               <CheckCircle2 size={18} color="#059669" />
-              <Text className="text-xs font-kumbh text-gray-700">
+              <Text className="text-[13px] font-kumbh text-[#374151]">
                 Validating document structure
               </Text>
             </View>
-            <View className="flex-row items-center gap-3 py-2 border-b border-gray-100">
+            <View className="flex-row items-center gap-3 py-2.5 border-b border-gray-100">
               <ActivityIndicator size="small" color="#4C5FAB" />
-              <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
+              <Text className="text-[13px] font-kumbhBold text-[#4C5FAB]">
                 Parsing transaction table & narrations
               </Text>
             </View>
-            <View className="flex-row items-center gap-3 py-2">
+            <View className="flex-row items-center gap-3 py-2.5">
               <View className="w-4 h-4 rounded-full border-2 border-gray-300" />
-              <Text className="text-xs font-kumbh text-gray-400">
+              <Text className="text-[13px] font-kumbh text-[#9CA3AF]">
                 Checking against existing database records
               </Text>
             </View>
@@ -635,20 +645,23 @@ export default function ImportStatementScreen() {
       {step === "review" && (
         <View className="flex-1">
           {/* Statement Overview Header Card */}
-          <View className="px-5 pt-2 pb-3 bg-white border-b border-gray-100 shadow-xs">
+          <View className="px-4 pt-3 pb-3 bg-white border-b border-gray-100">
             {statementInfo && (
-              <View className="flex-row items-center justify-between mb-2">
-                <View>
-                  <Text className="text-xs font-kumbhBold text-[#4C5FAB] uppercase tracking-wider">
+              <View className="flex-row items-center justify-between mb-2.5">
+                <View className="flex-1 pr-2">
+                  <Text className="text-[11px] font-kumbhBold text-[#4C5FAB] uppercase tracking-wider">
                     {statementInfo.bankName || "Moniepoint MFB"}
                   </Text>
-                  <Text className="text-sm font-kumbhBold text-[#111827]">
+                  <Text
+                    className="text-[15px] font-kumbhBold text-[#111827]"
+                    numberOfLines={1}
+                  >
                     {statementInfo.accountName || "Hexavia Consulting Limited"}
                   </Text>
                 </View>
                 {statementInfo.accountNumber ? (
-                  <View className="bg-gray-100 px-2.5 py-1 rounded-lg">
-                    <Text className="text-xs font-kumbhBold text-gray-600">
+                  <View className="bg-[#EEF2FF] px-3 py-1 rounded-full">
+                    <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
                       #{statementInfo.accountNumber}
                     </Text>
                   </View>
@@ -663,7 +676,7 @@ export default function ImportStatementScreen() {
               className="flex-row mt-1"
               contentContainerClassName="gap-2"
             >
-              <View className="bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-xl">
+              <View className="bg-emerald-50 border border-emerald-100 px-3.5 py-2 rounded-2xl">
                 <Text className="text-[10px] font-kumbhBold text-emerald-700 uppercase">
                   Receivables ({metrics.receivablesCount})
                 </Text>
@@ -672,7 +685,7 @@ export default function ImportStatementScreen() {
                 </Text>
               </View>
 
-              <View className="bg-rose-50 border border-rose-100 px-3 py-2 rounded-xl">
+              <View className="bg-rose-50 border border-rose-100 px-3.5 py-2 rounded-2xl">
                 <Text className="text-[10px] font-kumbhBold text-rose-700 uppercase">
                   Expenses ({metrics.expensesCount})
                 </Text>
@@ -682,7 +695,7 @@ export default function ImportStatementScreen() {
               </View>
 
               {metrics.duplicatesCount > 0 && (
-                <View className="bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl">
+                <View className="bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-2xl">
                   <Text className="text-[10px] font-kumbhBold text-amber-700 uppercase">
                     Duplicates ({metrics.duplicatesCount})
                   </Text>
@@ -692,11 +705,11 @@ export default function ImportStatementScreen() {
                 </View>
               )}
 
-              <View className="bg-gray-100 px-3 py-2 rounded-xl">
-                <Text className="text-[10px] font-kumbhBold text-gray-600 uppercase">
+              <View className="bg-[#F5F7FB] border border-gray-200 px-3.5 py-2 rounded-2xl">
+                <Text className="text-[10px] font-kumbhBold text-[#6B7280] uppercase">
                   Excluded ({metrics.excludedCount})
                 </Text>
-                <Text className="text-xs font-kumbh text-gray-500">
+                <Text className="text-xs font-kumbh text-[#6B7280]">
                   Will not import
                 </Text>
               </View>
@@ -704,14 +717,13 @@ export default function ImportStatementScreen() {
 
             {/* Search and Filter Row */}
             <View className="mt-3 flex-row items-center gap-2">
-              <View className="flex-1 bg-gray-50 rounded-xl px-3 ios:py-2 flex-row items-center border border-gray-200">
-                <Search size={16} color="#9CA3AF" />
-                <TextInput
+              <View className="flex-1 h-11 bg-[#F5F7FB] rounded-2xl px-3.5 flex-row items-center border border-gray-200">
+                <Search size={15} color="#9CA3AF" />
+                <CustomTextInput
                   placeholder="Search extracted transactions…"
-                  placeholderTextColor="#9CA3AF"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  className="ml-2 font-kumbh text-xs text-[#111827] flex-1"
+                  className="ml-2 flex-1 h-full text-[13px]"
                 />
                 {searchQuery ? (
                   <Pressable onPress={() => setSearchQuery("")}>
@@ -723,7 +735,7 @@ export default function ImportStatementScreen() {
               {metrics.duplicatesCount > 0 && (
                 <Pressable
                   onPress={handleExcludeAllDuplicates}
-                  className="bg-amber-100 px-2.5 py-2 rounded-xl border border-amber-200"
+                  className="bg-amber-100 px-3 py-2.5 rounded-2xl border border-amber-200"
                 >
                   <Text className="text-xs font-kumbhBold text-amber-800">
                     Skip Dupes
@@ -734,9 +746,9 @@ export default function ImportStatementScreen() {
               {metrics.excludedCount > 0 && (
                 <Pressable
                   onPress={handleIncludeAll}
-                  className="bg-gray-100 px-2.5 py-2 rounded-xl border border-gray-300"
+                  className="bg-[#F5F7FB] px-3 py-2.5 rounded-2xl border border-gray-200"
                 >
-                  <Text className="text-xs font-kumbhBold text-gray-700">
+                  <Text className="text-xs font-kumbhBold text-[#374151]">
                     Include All
                   </Text>
                 </Pressable>
@@ -747,7 +759,8 @@ export default function ImportStatementScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              className="flex-row gap-1.5 mt-2.5"
+              className="flex-row mt-2.5"
+              contentContainerClassName="gap-2"
             >
               {(
                 [
@@ -771,16 +784,16 @@ export default function ImportStatementScreen() {
                     key={tabKey}
                     onPress={() => setFilterTab(tabKey)}
                     className={clsx(
-                      "px-3 py-1.5 rounded-full border",
+                      "px-3.5 py-1.5 rounded-full border",
                       active
                         ? "bg-[#4C5FAB] border-[#4C5FAB]"
-                        : "bg-gray-100 border-transparent",
+                        : "bg-[#F5F7FB] border-gray-200",
                     )}
                   >
                     <Text
                       className={clsx(
                         "text-xs font-kumbhBold",
-                        active ? "text-white" : "text-gray-600",
+                        active ? "text-white" : "text-[#4B5563]",
                       )}
                     >
                       {label}
@@ -795,11 +808,12 @@ export default function ImportStatementScreen() {
           <FlatList
             data={filteredTransactions}
             keyExtractor={(item) => item.tempId}
-            contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+            showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <View className="py-12 items-center">
-                <FileText size={36} color="#9CA3AF" />
-                <Text className="mt-3 text-sm font-kumbhBold text-gray-500">
+              <View className="mt-4 rounded-[28px] bg-white border border-gray-100 px-6 py-12 items-center">
+                <FileText size={32} color="#9CA3AF" />
+                <Text className="mt-3 text-sm font-kumbhBold text-[#6B7280]">
                   No transactions match your filter
                 </Text>
               </View>
@@ -812,14 +826,12 @@ export default function ImportStatementScreen() {
               return (
                 <View
                   className={clsx(
-                    "bg-white rounded-2xl p-4 mb-3 border",
+                    "bg-white rounded-[22px] p-4 mb-3 border",
                     item.excluded || isOutOfScope
                       ? "border-gray-200 opacity-60 bg-gray-50"
                       : item.isDuplicate
                         ? "border-amber-300 bg-amber-50/20"
-                        : isRec
-                          ? "border-emerald-200"
-                          : "border-gray-200",
+                        : "border-gray-100",
                   )}
                 >
                   {/* Top Row: Type Badge + Switcher + Exclude Checkbox */}
@@ -984,9 +996,9 @@ export default function ImportStatementScreen() {
           />
 
           {/* Bottom Sticky Action Bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-5 py-4 shadow-lg flex-row items-center justify-between">
+          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-5 py-4 flex-row items-center justify-between">
             <View>
-              <Text className="text-xs font-kumbh text-gray-500">
+              <Text className="text-xs font-kumbh text-[#6B7280]">
                 Ready to import (
                 {importScope === "both"
                   ? "All"
@@ -1005,14 +1017,22 @@ export default function ImportStatementScreen() {
               onPress={() => setShowConfirmModal(true)}
               disabled={metrics.effectiveCount === 0}
               className={clsx(
-                "px-6 h-12 rounded-2xl items-center justify-center flex-row gap-2 shadow-sm",
+                "px-5 h-12 rounded-2xl items-center justify-center flex-row gap-2",
                 metrics.effectiveCount > 0
                   ? "bg-[#4C5FAB] active:opacity-90"
-                  : "bg-gray-300",
+                  : "bg-gray-200",
               )}
             >
-              <Check size={18} color="#FFFFFF" />
-              <Text className="text-white font-kumbhBold text-sm">
+              <Check
+                size={18}
+                color={metrics.effectiveCount > 0 ? "#FFFFFF" : "#9CA3AF"}
+              />
+              <Text
+                className={clsx(
+                  "font-kumbhBold text-sm",
+                  metrics.effectiveCount > 0 ? "text-white" : "text-gray-400",
+                )}
+              >
                 Import {metrics.effectiveCount}{" "}
                 {importScope === "expenses"
                   ? "Expenses"
@@ -1036,23 +1056,26 @@ export default function ImportStatementScreen() {
           behavior={isIOS ? "padding" : undefined}
           className="flex-1 bg-black/40 justify-end"
         >
-          <View className="bg-white rounded-t-3xl px-5 pt-5 pb-8 max-h-[85vh]">
-            <View className="items-center mb-3">
-              <View className="w-16 h-1.5 rounded-full bg-gray-300" />
+          <View className="bg-white rounded-t-[28px] px-5 pt-3 pb-8 max-h-[85vh]">
+            <View className="items-center mb-4">
+              <View className="w-10 h-1 rounded-full bg-gray-200" />
             </View>
 
             <View className="flex-row items-center justify-between mb-4">
               <Text className="text-xl font-kumbhBold text-[#111827]">
                 Edit Transaction
               </Text>
-              <Pressable onPress={() => setEditingTxn(null)}>
-                <X size={20} color="#6B7280" />
+              <Pressable
+                onPress={() => setEditingTxn(null)}
+                className="h-9 w-9 rounded-full bg-gray-100 items-center justify-center"
+              >
+                <X size={18} color="#6B7280" />
               </Pressable>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               {/* Type selector */}
-              <Text className="text-xs font-kumbhBold text-gray-500 uppercase mb-2">
+              <Text className="text-xs font-kumbhBold text-[#6B7280] uppercase mb-2">
                 Classification Type
               </Text>
               <View className="flex-row gap-3 mb-4">
@@ -1062,7 +1085,7 @@ export default function ImportStatementScreen() {
                     "flex-1 py-3 rounded-2xl items-center border",
                     editType === "receivable"
                       ? "bg-emerald-50 border-emerald-400"
-                      : "bg-gray-50 border-gray-200",
+                      : "bg-[#F9FAFB] border-gray-200",
                   )}
                 >
                   <Text
@@ -1070,7 +1093,7 @@ export default function ImportStatementScreen() {
                       "text-sm font-kumbhBold",
                       editType === "receivable"
                         ? "text-emerald-700"
-                        : "text-gray-500",
+                        : "text-[#6B7280]",
                     )}
                   >
                     Receivable (Income)
@@ -1083,7 +1106,7 @@ export default function ImportStatementScreen() {
                     "flex-1 py-3 rounded-2xl items-center border",
                     editType === "expense"
                       ? "bg-rose-50 border-rose-400"
-                      : "bg-gray-50 border-gray-200",
+                      : "bg-[#F9FAFB] border-gray-200",
                   )}
                 >
                   <Text
@@ -1091,7 +1114,7 @@ export default function ImportStatementScreen() {
                       "text-sm font-kumbhBold",
                       editType === "expense"
                         ? "text-rose-700"
-                        : "text-gray-500",
+                        : "text-[#6B7280]",
                     )}
                   >
                     Expense (Debit)
@@ -1100,60 +1123,58 @@ export default function ImportStatementScreen() {
               </View>
 
               {/* Amount */}
-              <Text className="text-xs font-kumbhBold text-gray-500 uppercase mb-1">
+              <Text className="text-xs font-kumbhBold text-[#6B7280] uppercase mb-1.5">
                 Amount (₦)
               </Text>
-              <View className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 mb-4">
-                <TextInput
+              <View className="h-14 justify-center bg-[#F9FAFB] border border-gray-200 rounded-2xl px-4 mb-4">
+                <CustomTextInput
                   keyboardType="numeric"
                   value={editAmount}
                   onChangeText={setEditAmount}
-                  className="font-kumbhBold text-[#111827] text-base"
                 />
               </View>
 
               {/* Narration */}
-              <Text className="text-xs font-kumbhBold text-gray-500 uppercase mb-1">
+              <Text className="text-xs font-kumbhBold text-[#6B7280] uppercase mb-1.5">
                 Narration / Description
               </Text>
-              <View className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 mb-4">
-                <TextInput
+              <View className="bg-[#F9FAFB] border border-gray-200 rounded-2xl px-4 py-3 mb-4">
+                <CustomTextInput
                   multiline
                   numberOfLines={3}
                   value={editNarration}
                   onChangeText={setEditNarration}
-                  className="font-kumbh text-[#111827] text-sm"
+                  textAlignVertical="top"
+                  style={{ minHeight: 76 }}
                 />
               </View>
 
               {/* Fields for Receivable only */}
               {editType === "receivable" && (
                 <>
-                  <Text className="text-xs font-kumbhBold text-gray-500 uppercase mb-1">
+                  <Text className="text-xs font-kumbhBold text-[#6B7280] uppercase mb-1.5">
                     Client Name
                   </Text>
-                  <View className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 mb-4">
-                    <TextInput
+                  <View className="h-14 justify-center bg-[#F9FAFB] border border-gray-200 rounded-2xl px-4 mb-4">
+                    <CustomTextInput
                       value={editClientName}
                       onChangeText={setEditClientName}
                       placeholder="Client or payer name"
-                      className="font-kumbh text-[#111827] text-sm"
                     />
                   </View>
 
-                  <Text className="text-xs font-kumbhBold text-gray-500 uppercase mb-1">
+                  <Text className="text-xs font-kumbhBold text-[#6B7280] uppercase mb-1.5">
                     Company Name (Optional)
                   </Text>
-                  <View className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 mb-4">
-                    <TextInput
+                  <View className="h-14 justify-center bg-[#F9FAFB] border border-gray-200 rounded-2xl px-4 mb-4">
+                    <CustomTextInput
                       value={editCompanyName}
                       onChangeText={setEditCompanyName}
                       placeholder="Company / business entity"
-                      className="font-kumbh text-[#111827] text-sm"
                     />
                   </View>
 
-                  <Text className="text-xs font-kumbhBold text-gray-500 uppercase mb-2">
+                  <Text className="text-xs font-kumbhBold text-[#6B7280] uppercase mb-2">
                     Finance Source
                   </Text>
                   <View className="flex-row flex-wrap gap-2 mb-6">
@@ -1164,16 +1185,16 @@ export default function ImportStatementScreen() {
                           key={src}
                           onPress={() => setEditSource(src)}
                           className={clsx(
-                            "px-3 py-1.5 rounded-full border",
+                            "px-3.5 py-2 rounded-full border",
                             active
                               ? "bg-[#4C5FAB] border-[#4C5FAB]"
-                              : "bg-gray-100 border-gray-200",
+                              : "bg-[#F9FAFB] border-gray-200",
                           )}
                         >
                           <Text
                             className={clsx(
                               "text-xs font-kumbhBold",
-                              active ? "text-white" : "text-gray-700",
+                              active ? "text-white" : "text-[#374151]",
                             )}
                           >
                             {src}
@@ -1188,7 +1209,7 @@ export default function ImportStatementScreen() {
               {/* Save Button */}
               <Pressable
                 onPress={handleSaveEdit}
-                className="h-14 rounded-2xl bg-[#4C5FAB] items-center justify-center shadow-sm mb-4"
+                className="h-14 rounded-2xl bg-[#4C5FAB] items-center justify-center mb-4 active:opacity-90"
               >
                 <Text className="text-white font-kumbhBold text-base">
                   Save Changes
@@ -1207,9 +1228,9 @@ export default function ImportStatementScreen() {
         onRequestClose={() => setShowConfirmModal(false)}
       >
         <View className="flex-1 bg-black/50 items-center justify-center px-5">
-          <View className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl">
-            <View className="w-14 h-14 rounded-full bg-[#4C5FAB]/10 items-center justify-center mb-4 self-center">
-              <FileSpreadsheet size={28} color="#4C5FAB" />
+          <View className="bg-white rounded-[28px] p-6 w-full max-w-sm border border-gray-100">
+            <View className="w-14 h-14 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-4 self-center">
+              <FileSpreadsheet size={26} color="#4C5FAB" />
             </View>
 
             <Text className="text-xl font-kumbhBold text-[#111827] text-center mb-2">
@@ -1322,20 +1343,20 @@ export default function ImportStatementScreen() {
       {/* ───────── STEP 4: SUCCESS SUMMARY VIEW ───────── */}
       {step === "success" && confirmedSummary && (
         <View className="flex-1 items-center justify-center px-6">
-          <View className="w-20 h-20 rounded-full bg-emerald-100 items-center justify-center mb-6">
-            <CheckCircle2 size={44} color="#059669" />
+          <View className="w-20 h-20 rounded-2xl bg-emerald-100 items-center justify-center mb-6">
+            <CheckCircle2 size={42} color="#059669" />
           </View>
 
           <Text className="text-2xl font-kumbhBold text-[#111827] text-center mb-2">
             Import Successful!
           </Text>
-          <Text className="text-sm font-kumbh text-gray-500 text-center mb-8">
+          <Text className="text-sm font-kumbh text-[#6B7280] text-center mb-8">
             The bank statement transactions have been saved directly to your
             Finance section.
           </Text>
 
           {/* Summary Cards */}
-          <View className="w-full bg-white rounded-3xl p-5 border border-gray-100 shadow-xs mb-8">
+          <View className="w-full bg-white rounded-[28px] p-5 border border-gray-100 mb-8">
             {confirmedSummary.importScope && (
               <View className="flex-row items-center justify-between py-2 border-b border-gray-100">
                 <Text className="text-sm font-kumbh text-gray-600">

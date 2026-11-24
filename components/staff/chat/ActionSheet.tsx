@@ -20,7 +20,8 @@ export default function ActionSheet({
   return (
     <Modal visible={visible} transparent animationType="fade">
       <Pressable onPress={onClose} className="flex-1 bg-black/40">
-        <View className="absolute left-0 right-0 bottom-0 rounded-t-3xl bg-white p-4">
+        <View className="absolute left-0 right-0 bottom-0 rounded-t-[28px] bg-white px-5 pt-3 pb-7">
+          <View className="w-10 h-1 bg-gray-200 rounded-full self-center mb-4" />
           {items.map((it, idx) => (
             <Pressable
               key={it.key}
@@ -28,10 +29,10 @@ export default function ActionSheet({
                 onClose();
                 setTimeout(it.onPress, 0);
               }}
-              className={`h-12 rounded-2xl px-4 justify-center ${idx > 0 ? "mt-2" : ""} ${it.danger ? "bg-red-50" : "bg-gray-100"}`}
+              className={`h-12 rounded-2xl px-4 justify-center ${idx > 0 ? "mt-2" : ""} ${it.danger ? "bg-red-50" : "bg-[#F9FAFB] border border-gray-100"}`}
             >
               <Text
-                className={`text-[15px] ${it.danger ? "text-red-600" : "text-gray-900"} font-kumbhBold`}
+                className={`text-[15px] ${it.danger ? "text-red-600" : "text-[#111827]"} font-kumbhBold`}
               >
                 {it.label}
               </Text>
@@ -39,9 +40,9 @@ export default function ActionSheet({
           ))}
           <Pressable
             onPress={onClose}
-            className="h-12 rounded-2xl px-4 justify-center mt-3 bg-gray-200"
+            className="h-12 rounded-2xl px-4 justify-center mt-3 bg-gray-100"
           >
-            <Text className="text-center text-[15px] text-gray-700 font-kumbhBold">
+            <Text className="text-center text-[15px] text-[#374151] font-kumbhBold">
               Cancel
             </Text>
           </Pressable>

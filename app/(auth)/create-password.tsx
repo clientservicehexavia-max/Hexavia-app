@@ -1,9 +1,9 @@
+import CustomTextInput from "@/components/ui/CustomInput";
 import HexButton from "@/components/ui/HexButton";
 import { showSuccess } from "@/components/ui/toast";
 import { joinChannel } from "@/redux/auth/auth.thunks";
 import { useAppDispatch } from "@/store/hooks";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { BlurView } from "expo-blur";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Eye, EyeOff, Hash, Lock } from "lucide-react-native";
@@ -13,11 +13,11 @@ import {
   Keyboard,
   Pressable,
   Text,
-  TextInput,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useToast } from "react-native-toast-notifications";
 import * as yup from "yup";
 
@@ -50,6 +50,9 @@ export default function SignupFinalScreen() {
   const toast = useToast();
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [focusedField, setFocusedField] = useState<
+    "channelCode" | "password" | "confirmPassword" | null
+  >(null);
   const dispatch = useAppDispatch();
   const { phoneNumber } = useLocalSearchParams<{
     phoneNumber?: string;
@@ -84,71 +87,86 @@ export default function SignupFinalScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View className="flex-1 bg-white">
+      <SafeAreaView
+        edges={["top", "left", "right", "bottom"]}
+        className="flex-1 bg-[#F5F7FB]"
+      >
         <StatusBar style="dark" />
-        <BlurView
-          intensity={100}
-          tint="systemChromeMaterial"
-          className="absolute top-0 left-0 right-0 h-12"
-        />
 
         <KeyboardAwareScrollView
           enableOnAndroid
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: 32,
+          }}
         >
           {/* Progress (step 3 active) */}
-          <View className="mt-[70px] flex flex-row justify-between gap-2">
-            <View className="flex-1 h-1 rounded-xl bg-gray-200" />
-            <View className="flex-1 h-1 rounded-xl bg-gray-200" />
-            <View className="flex-1 h-1 rounded-xl bg-primary" />
+          <View className="flex-row justify-between gap-2">
+            <View className="h-1.5 flex-1 rounded-full bg-gray-200" />
+            <View className="h-1.5 flex-1 rounded-full bg-gray-200" />
+            <View className="h-1.5 flex-1 rounded-full bg-primary" />
           </View>
 
           {/* Header */}
-          <View className="mt-8">
-            <Text className="text-3xl text-black font-kumbhBold">
+          <View className="mt-6 mb-7">
+            <Text className="font-kumbhBold text-3xl text-[#111827]">
               Create an Account
             </Text>
-            <Text className="text-base text-gray-500 mt-2 font-kumbhLight">
+            <Text className="mt-2 font-kumbh text-[15px] leading-6 text-gray-500">
               Manage projects, oversee finances, and stay connected with your
               team all within Hexavian ERP.
             </Text>
           </View>
 
           {/* Project Code */}
-          <View className="mt-6">
-            <Text className="text-sm text-gray-700 mb-2 font-kumbh">
+          <View>
+            <Text className="mb-2 font-kumbhBold text-sm text-[#374151]">
               Project Code
             </Text>
             <Controller
               control={control}
               name="channelCode"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View className="w-full h-14 px-4 rounded-xl bg-gray-100 flex-row items-center">
-                  <Hash size={18} color="#6B7280" />
-                  <TextInput
-                    placeholder="Enter Project Code"
-                    placeholderTextColor="#9CA3AF"
-                    onBlur={onBlur}
-                    onChangeText={(t) => onChange(t.toUpperCase())}
-                    value={value}
-                    autoCapitalize="characters"
-                    textAlignVertical="center"
-                    className="flex-1 h-full ml-2 text-black font-kumbh py-0 text-[16px] leading-[20px]"
-                    style={{ paddingVertical: 0, height: 56 }}
-                  />
-                </View>
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const isFocused = focusedField === "channelCode";
+                return (
+                  <View
+                    className={`h-14 w-full flex-row items-center rounded-2xl border bg-white px-4 ${
+                      isFocused ? "border-primary" : "border-gray-200"
+                    }`}
+                  >
+                    <Hash
+                      size={18}
+                      color={isFocused ? "#4C5FAB" : "#6B7280"}
+                    />
+                    <CustomTextInput
+                      placeholder="Enter Project Code"
+                      onFocus={() => setFocusedField("channelCode")}
+                      onBlur={() => {
+                        setFocusedField((cur) =>
+                          cur === "channelCode" ? null : cur,
+                        );
+                        onBlur();
+                      }}
+                      onChangeText={(t) => onChange(t.toUpperCase())}
+                      value={value}
+                      autoCapitalize="characters"
+                      className="ml-3 h-full flex-1 text-[16px]"
+                    />
+                  </View>
+                );
+              }}
             />
 
             {/* 👇 Note about default code */}
-            <Text className="text-xs text-gray-400 mt-1 font-kumbh">
+            <Text className="mt-1.5 font-kumbh text-xs text-gray-400">
               Default channel code is{" "}
               <Text className="font-kumbhBold">1234</Text>.
             </Text>
 
             {errors.channelCode && (
-              <Text className="text-red-500 text-xs mt-1 font-kumbh">
+              <Text className="mt-1 font-kumbh text-xs text-red-500">
                 {errors.channelCode.message}
               </Text>
             )}
@@ -156,38 +174,51 @@ export default function SignupFinalScreen() {
 
           {/* Password */}
           <View className="mt-4">
-            <Text className="text-sm text-gray-700 mb-2 font-kumbh">
+            <Text className="mb-2 font-kumbhBold text-sm text-[#374151]">
               Password
             </Text>
             <Controller
               control={control}
               name="password"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View className="w-full h-14 px-4 rounded-xl bg-gray-100 flex-row items-center">
-                  <Lock size={18} color="#6B7280" />
-                  <TextInput
-                    placeholder="Enter Password"
-                    placeholderTextColor="#9CA3AF"
-                    secureTextEntry={!showPass}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    textAlignVertical="center"
-                    className="flex-1 h-full ml-2 text-black font-kumbh py-0 text-[16px] leading-[20px]"
-                    style={{ paddingVertical: 0, height: 56 }}
-                  />
-                  <Pressable onPress={() => setShowPass((s) => !s)}>
-                    {showPass ? (
-                      <EyeOff size={20} color="#111827" />
-                    ) : (
-                      <Eye size={20} color="#111827" />
-                    )}
-                  </Pressable>
-                </View>
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const isFocused = focusedField === "password";
+                return (
+                  <View
+                    className={`h-14 w-full flex-row items-center rounded-2xl border bg-white px-4 ${
+                      isFocused ? "border-primary" : "border-gray-200"
+                    }`}
+                  >
+                    <Lock
+                      size={18}
+                      color={isFocused ? "#4C5FAB" : "#6B7280"}
+                    />
+                    <CustomTextInput
+                      placeholder="Enter Password"
+                      secureTextEntry={!showPass}
+                      onFocus={() => setFocusedField("password")}
+                      onBlur={() => {
+                        setFocusedField((cur) =>
+                          cur === "password" ? null : cur,
+                        );
+                        onBlur();
+                      }}
+                      onChangeText={onChange}
+                      value={value}
+                      className="ml-3 h-full flex-1 text-[16px]"
+                    />
+                    <Pressable onPress={() => setShowPass((s) => !s)} hitSlop={8}>
+                      {showPass ? (
+                        <EyeOff size={20} color="#6B7280" />
+                      ) : (
+                        <Eye size={20} color="#6B7280" />
+                      )}
+                    </Pressable>
+                  </View>
+                );
+              }}
             />
             {errors.password && (
-              <Text className="text-red-500 text-xs mt-1 font-kumbh">
+              <Text className="mt-1.5 font-kumbh text-xs text-red-500">
                 {errors.password.message}
               </Text>
             )}
@@ -195,45 +226,61 @@ export default function SignupFinalScreen() {
 
           {/* Confirm Password */}
           <View className="mt-4">
-            <Text className="text-sm text-gray-700 mb-2 font-kumbh">
+            <Text className="mb-2 font-kumbhBold text-sm text-[#374151]">
               Password Confirm
             </Text>
             <Controller
               control={control}
               name="confirmPassword"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View className="w-full h-14 px-4 rounded-xl bg-gray-100 flex-row items-center">
-                  <Lock size={18} color="#6B7280" />
-                  <TextInput
-                    placeholder="Re-enter Password"
-                    placeholderTextColor="#9CA3AF"
-                    secureTextEntry={!showConfirm}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    textAlignVertical="center"
-                    className="flex-1 h-full ml-2 text-black font-kumbh py-0 text-[16px] leading-[20px]"
-                    style={{ paddingVertical: 0, height: 56 }}
-                  />
-                  <Pressable onPress={() => setShowConfirm((s) => !s)}>
-                    {showConfirm ? (
-                      <EyeOff size={20} color="#111827" />
-                    ) : (
-                      <Eye size={20} color="#111827" />
-                    )}
-                  </Pressable>
-                </View>
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const isFocused = focusedField === "confirmPassword";
+                return (
+                  <View
+                    className={`h-14 w-full flex-row items-center rounded-2xl border bg-white px-4 ${
+                      isFocused ? "border-primary" : "border-gray-200"
+                    }`}
+                  >
+                    <Lock
+                      size={18}
+                      color={isFocused ? "#4C5FAB" : "#6B7280"}
+                    />
+                    <CustomTextInput
+                      placeholder="Re-enter Password"
+                      secureTextEntry={!showConfirm}
+                      onFocus={() => setFocusedField("confirmPassword")}
+                      onBlur={() => {
+                        setFocusedField((cur) =>
+                          cur === "confirmPassword" ? null : cur,
+                        );
+                        onBlur();
+                      }}
+                      onChangeText={onChange}
+                      value={value}
+                      className="ml-3 h-full flex-1 text-[16px]"
+                    />
+                    <Pressable
+                      onPress={() => setShowConfirm((s) => !s)}
+                      hitSlop={8}
+                    >
+                      {showConfirm ? (
+                        <EyeOff size={20} color="#6B7280" />
+                      ) : (
+                        <Eye size={20} color="#6B7280" />
+                      )}
+                    </Pressable>
+                  </View>
+                );
+              }}
             />
             {errors.confirmPassword && (
-              <Text className="text-red-500 text-xs mt-1 font-kumbh">
+              <Text className="mt-1.5 font-kumbh text-xs text-red-500">
                 {errors.confirmPassword.message}
               </Text>
             )}
           </View>
 
           {/* Continue */}
-          <View className="mt-72">
+          <View className="mt-8">
             <HexButton
               title={isSubmitting ? "Please wait..." : "Continue"}
               onPress={handleSubmit(onSubmit)}
@@ -241,7 +288,7 @@ export default function SignupFinalScreen() {
             />
           </View>
         </KeyboardAwareScrollView>
-      </View>
+      </SafeAreaView>
     </TouchableWithoutFeedback>
   );
 }

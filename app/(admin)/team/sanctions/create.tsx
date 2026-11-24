@@ -8,13 +8,13 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Field from "@/components/admin/Field";
 import OptionSheet from "@/components/common/OptionSheet";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
 import { fetchAdminUsers } from "@/redux/admin/admin.thunks";
@@ -133,9 +133,12 @@ export default function CreateSanction() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-[#F5F7FB]"
         >
-            <PlatformAdaptiveHeader title="Add Sanction" />
+            <PlatformAdaptiveHeader
+                title="Add Sanction"
+                backgroundColor="#F5F7FB"
+            />
 
             <KeyboardAvoidingView
                 className="flex-1"
@@ -143,32 +146,42 @@ export default function CreateSanction() {
                     ios: "padding",
                     android: "height",
                 })}
+                keyboardVerticalOffset={
+                    Platform.select({ ios: 70, android: 0 }) as number
+                }
             >
                 <ScrollView
-                    className="flex-1"
-                    contentContainerClassName="pb-10"
+                    className="flex-1 px-5"
+                    contentContainerClassName="pt-3 pb-10"
                     keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
                 >
                     <Field label="Recipient">
                         <View>
                             <Pressable
                                 onPress={() => setShowRecipientSheet(true)}
-                                className="flex-row items-center justify-between rounded-2xl px-4 py-4 bg-gray-200"
+                                className="h-14 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-white px-4"
                             >
-                                <Text className="text-gray-700 font-kumbh">
+                                <Text
+                                    className={`font-kumbh text-[15px] ${
+                                        recipientIds.length === 0
+                                            ? "text-[#9CA3AF]"
+                                            : "text-[#111827]"
+                                    }`}
+                                >
                                     {recipientLabel}
                                 </Text>
-                                <ChevronDown size={18} color="#111827" />
+                                <ChevronDown size={18} color="#4C5FAB" />
                             </Pressable>
 
                             {selectedRecipientOptions.length > 0 && (
-                                <View className="flex-row flex-wrap gap-2 mt-2">
+                                <View className="flex-row flex-wrap gap-2 mt-2.5">
                                     {selectedRecipientOptions.map((option) => (
                                         <View
                                             key={String(option.value)}
-                                            className="bg-primary-50 rounded-full px-3 py-1"
+                                            className="bg-[#EEF2FF] rounded-full px-3 py-1"
                                         >
-                                            <Text className="text-primary-700 text-xs font-kumbh">
+                                            <Text className="text-primary text-xs font-kumbhBold">
                                                 {option.label}
                                             </Text>
                                         </View>
@@ -179,24 +192,36 @@ export default function CreateSanction() {
                     </Field>
 
                     <Field label="Reason">
-                        <TextInput
-                            placeholder="Enter reason"
-                            placeholderTextColor="#9CA3AF"
-                            value={reason}
-                            onChangeText={setReason}
-                            multiline
-                            className="bg-gray-200 rounded-2xl px-4 py-4 min-h-[88px] font-kumbh text-text"
-                        />
+                        <View className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                            <CustomTextInput
+                                placeholder="Enter reason"
+                                value={reason}
+                                onChangeText={setReason}
+                                multiline
+                                textAlignVertical="top"
+                                style={{ minHeight: 112 }}
+                            />
+                        </View>
                     </Field>
 
-                    <Pressable
-                        onPress={handleSave}
-                        className="mt-6 rounded-2xl bg-primary-500 py-4 items-center active:opacity-90"
-                    >
-                        <Text className="text-white font-kumbhBold">
-                            Save Sanction
-                        </Text>
-                    </Pressable>
+                    <View className="mt-4 flex-row gap-3">
+                        <Pressable
+                            onPress={() => router.back()}
+                            className="h-14 flex-1 rounded-2xl border border-gray-200 bg-white items-center justify-center"
+                        >
+                            <Text className="text-[#374151] font-kumbhBold text-[15px]">
+                                Cancel
+                            </Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={handleSave}
+                            className="h-14 flex-1 rounded-2xl bg-primary items-center justify-center active:opacity-90"
+                        >
+                            <Text className="text-white font-kumbhBold text-[15px]">
+                                Save Sanction
+                            </Text>
+                        </Pressable>
+                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
 

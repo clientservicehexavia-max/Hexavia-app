@@ -1,7 +1,6 @@
 // app/(admin)/finance/[id].tsx
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { Edit2, Trash2 } from "lucide-react-native";
+import { ArrowUpRight, Edit2, Trash2 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -116,15 +115,16 @@ export default function FinanceDetail() {
 
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
-            edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
+            className="flex-1 bg-[#F5F7FB]"
+            edges={
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
+            }
         >
-            <StatusBar style="dark" />
-
             {/* Header */}
             <PlatformAdaptiveHeader
-                title="Details"
-                headerRight={({ tintColor }) => (
+                title="Expense Details"
+                backgroundColor="#F5F7FB"
+                headerRight={() => (
                     <View className="flex-row items-center gap-2">
                         <Pressable
                             onPress={() =>
@@ -134,17 +134,19 @@ export default function FinanceDetail() {
                                 })
                             }
                             hitSlop={8}
-                            className="w-10 h-10 rounded-full items-center justify-center"
+                            className="w-9 h-9 rounded-full bg-white border border-gray-200 items-center justify-center"
+                            accessibilityLabel="Edit expense"
                         >
-                            <Edit2 size={20} color={tintColor} />
+                            <Edit2 size={16} color="#4C5FAB" />
                         </Pressable>
                         <Pressable
                             onPress={handleDelete}
                             disabled={isDeleting || deletingId === id}
                             hitSlop={8}
-                            className="w-10 h-10 rounded-full items-center justify-center bg-red-500"
+                            className="w-9 h-9 rounded-full items-center justify-center bg-red-50 border border-red-100"
+                            accessibilityLabel="Delete expense"
                         >
-                            <Trash2 size={20} color="white" />
+                            <Trash2 size={16} color="#DC2626" />
                         </Pressable>
                     </View>
                 )}
@@ -152,48 +154,59 @@ export default function FinanceDetail() {
 
             {loading && !row ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator />
-                    <Text className="mt-2 text-gray-500 font-kumbh">
+                    <ActivityIndicator color="#4C5FAB" />
+                    <Text className="mt-2.5 text-[#6B7280] font-kumbh">
                         Loading expense…
                     </Text>
                 </View>
             ) : !row ? (
                 <View className="flex-1 items-center justify-center px-6">
-                    <Text className="text-center text-gray-500 font-kumbh">
-                        Record not found.
-                    </Text>
+                    <View className="w-full rounded-[28px] bg-white border border-gray-100 px-6 py-12 items-center">
+                        <Text className="text-center text-[#111827] font-kumbhBold text-base">
+                            Record not found
+                        </Text>
+                        <Text className="mt-1 text-center text-[#6B7280] font-kumbh text-sm">
+                            This expense record may have been removed.
+                        </Text>
+                    </View>
                 </View>
             ) : (
                 <ScrollView
                     className="flex-1"
-                    contentContainerClassName="px-5 pb-10"
+                    contentContainerClassName="px-4 pt-3 pb-10"
+                    showsVerticalScrollIndicator={false}
                 >
                     {/* Top card */}
-                    <View className="rounded-2xl bg-gray-100 border border-[#4C5FAB]/30 px-4 py-10 items-center my-4">
-                        <Text className="text-[26px] font-kumbhBold text-[#111827]">
+                    <View className="rounded-[28px] bg-white border border-gray-100 px-5 py-7 items-center mb-4">
+                        <View className="h-12 w-12 rounded-2xl bg-rose-50 items-center justify-center mb-3">
+                            <ArrowUpRight size={22} color="#E11D48" />
+                        </View>
+                        <View className="rounded-full bg-rose-50 border border-rose-100 px-3 py-1 mb-2.5">
+                            <Text className="text-[11px] tracking-wider text-rose-700 font-kumbhBold">
+                                EXPENSE
+                            </Text>
+                        </View>
+                        <Text className="text-[28px] font-kumbhBold text-[#111827]">
                             {amountStr}
-                        </Text>
-                        <Text className="mt-1 text-[12px] tracking-widest text-gray-600 font-kumbhBold">
-                            EXPENSE
                         </Text>
                     </View>
 
                     {/* Details panel */}
-                    <View className="rounded-2xl bg-gray-100 px-5 py-6">
+                    <View className="rounded-[28px] bg-white border border-gray-100 px-5 py-2">
                         <KV label="Amount" value={amountStr} />
                         <KV label="Date" value={dateStr} />
-                        <KV label="Descriptions" value={descStr} />
+                        <KV label="Description" value={descStr || "—"} isLast />
                     </View>
                 </ScrollView>
             )}
 
             {/* Bottom buttons */}
-            <View className="px-5 pb-6 flex-row flex-wrap items-center justify-between gap-3">
+            <View className="px-4 pb-5 pt-2 flex-row items-center gap-3">
                 <Pressable
                     onPress={() => router.replace("/(admin)")}
-                    className="flex-1 h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center"
+                    className="flex-1 h-14 rounded-2xl bg-[#4C5FAB] items-center justify-center active:opacity-90"
                 >
-                    <Text className="text-white font-kumbhBold">
+                    <Text className="text-white text-[15px] font-kumbhBold">
                         Back to Home
                     </Text>
                 </Pressable>
@@ -202,13 +215,25 @@ export default function FinanceDetail() {
     );
 }
 
-function KV({ label, value }: { label: string; value: string }) {
+function KV({
+    label,
+    value,
+    isLast = false,
+}: {
+    label: string;
+    value: string;
+    isLast?: boolean;
+}) {
     return (
-        <View className="flex-row items-start justify-between py-2 gap-10">
-            <Text className="text-[15px] text-gray-500 font-kumbh shrink-0">
+        <View
+            className={`flex-row items-start justify-between py-3.5 gap-8 ${
+                isLast ? "" : "border-b border-gray-100"
+            }`}
+        >
+            <Text className="text-[13px] text-[#6B7280] font-kumbh shrink-0">
                 {label}
             </Text>
-            <Text className="flex-1 text-right text-[15px] font-kumbhBold text-[#111827]">
+            <Text className="flex-1 text-right text-[14px] font-kumbhBold text-[#111827]">
                 {value}
             </Text>
         </View>

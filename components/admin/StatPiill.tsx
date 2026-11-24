@@ -10,14 +10,14 @@ export default function StatPill({
   value: string;
 }) {
   return (
-    <View className="flex-1 rounded-2xl bg-white p-4">
+    <View className="flex-1 rounded-[20px] border border-gray-100 bg-white p-4">
       <View className="flex-row items-center gap-2">
-        <View className="w-8 h-8 rounded-xl bg-primary-100 items-center justify-center">
+        <View className="h-9 w-9 items-center justify-center rounded-xl bg-[#EEF2FF]">
           <Users size={16} color="#4c5fab" />
         </View>
-        <Text className="text-xs text-gray-600 font-kumbh">{label}</Text>
+        <Text className="font-kumbh text-xs text-gray-500">{label}</Text>
       </View>
-      <Text className="mt-2 text-sm font-kumbhBold text-text">{value}</Text>
+      <Text className="mt-2 font-kumbhBold text-sm text-[#111827]">{value}</Text>
     </View>
   );
 }

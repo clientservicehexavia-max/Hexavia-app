@@ -27,26 +27,28 @@ export default function ConfirmModal({
       animationType="fade"
       onRequestClose={onCancel}
     >
-      <View className="flex-1 justify-center items-center bg-black/40">
-        <View className="mx-5 w-full max-w-sm rounded-3xl bg-white p-5">
-          <Text className="font-kumbhBold text-lg text-gray-900">{title}</Text>
+      <View className="flex-1 justify-center items-center bg-black/40 px-5">
+        <View className="w-full max-w-sm rounded-[28px] border border-gray-100 bg-white p-6">
+          <Text className="font-kumbhBold text-lg text-[#111827]">{title}</Text>
           {message ? (
-            <Text className="mt-2 text-sm text-gray-500">{message}</Text>
+            <Text className="mt-2 font-kumbh text-sm leading-5 text-gray-500">
+              {message}
+            </Text>
           ) : null}
-          <View className="mt-4 flex-row justify-end gap-3">
+          <View className="mt-5 flex-row justify-end gap-2.5">
             <Pressable
               onPress={onCancel}
-              className="rounded-xl border border-gray-200 px-4 py-2"
+              className="rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4 py-2.5"
             >
-              <Text className="font-kumbh text-sm text-gray-600">
+              <Text className="font-kumbhBold text-sm text-gray-700">
                 {cancelLabel}
               </Text>
             </Pressable>
             <Pressable
               onPress={onConfirm}
-              className="rounded-xl bg-[#DC2626] px-4 py-2"
+              className="rounded-2xl bg-[#DC2626] px-4 py-2.5"
             >
-              <Text className="font-kumbh text-sm text-white">
+              <Text className="font-kumbhBold text-sm text-white">
                 {confirmLabel}
               </Text>
             </Pressable>

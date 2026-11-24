@@ -17,19 +17,19 @@ export default function StatusCard({ status }: Props) {
         })
       }
       android_ripple={{ color: "#ffffff30" }}
-      className="rounded-2xl p-5"
+      className="rounded-[24px] p-5"
       style={{ backgroundColor: meta.bgColor }}
     >
       <View className="flex-row items-start justify-between">
         <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text className="font-kumbh text-white text-[22px] leading-8">
+          <Text className="font-kumbhBold text-white text-[21px] leading-7">
             {meta.title}
           </Text>
           <View
             className="flex-row items-center"
-            style={{ gap: 16, marginTop: 16 }}
+            style={{ gap: 12, marginTop: 16 }}
           >
-            <Text className="font-kumbh text-white/90 text-[14px]">
+            <Text className="font-kumbhBold text-white/95 text-[13px]">
               View Tasks
             </Text>
             <View

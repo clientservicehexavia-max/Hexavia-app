@@ -1,4 +1,6 @@
 import DatePickerModal from "@/components/admin/DatePickerModal";
+import Field from "@/components/admin/Field";
+import Input from "@/components/admin/Input";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { selectSelectedRecruitment } from "@/redux/recruitment/recruitment.selectors";
 import {
@@ -19,7 +21,7 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
+    TouchableOpacity,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -130,21 +132,22 @@ export default function RecruitmentEditScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <PlatformAdaptiveHeader
                 title="Edit Recruitment"
-                headerRight={({ tintColor }) => (
+                backgroundColor="#F5F7FB"
+                headerRight={() => (
                     <Pressable
                         onPress={handleSave}
                         disabled={isSaving}
-                        className="w-10 h-10 rounded-full items-center justify-center"
+                        className="h-10 w-10 items-center justify-center rounded-full bg-[#4C5FAB]"
                         hitSlop={8}
                     >
                         {isSaving ? (
-                            <ActivityIndicator size="small" color={tintColor} />
+                            <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                            <Check size={28} color={tintColor} />
+                            <Check size={20} color="#FFFFFF" />
                         )}
                     </Pressable>
                 )}
@@ -155,123 +158,151 @@ export default function RecruitmentEditScreen() {
                 keyboardVerticalOffset={isIOS ? 120 : 0}
             >
                 <ScrollView
-                    className="flex-1 px-4 pb-8 mt-3"
+                    className="flex-1"
+                    contentContainerStyle={{
+                        paddingHorizontal: 16,
+                        paddingTop: 12,
+                        paddingBottom: 36,
+                    }}
                     keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
                 >
                     <View className="gap-4">
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Company
-                            </Text>
-                            <TextInput
-                                className="rounded-xl bg-gray-100 px-4 py-3"
+                        <Field label="Company">
+                            <Input
                                 value={companyName}
                                 onChangeText={setCompanyName}
                                 placeholder="Company name"
                             />
-                        </View>
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Position / Role
-                            </Text>
-                            <TextInput
-                                className="rounded-xl bg-gray-100 px-4 py-3"
+                        </Field>
+
+                        <Field label="Position / Role">
+                            <Input
                                 value={position}
                                 onChangeText={setPosition}
                                 placeholder="e.g. Frontend Developer"
                             />
-                        </View>
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Recruiter
-                            </Text>
-                            <TextInput
-                                className="rounded-xl bg-gray-100 px-4 py-3"
+                        </Field>
+
+                        <Field label="Recruiter">
+                            <Input
                                 value={recruiterName}
                                 onChangeText={setRecruiterName}
                                 placeholder="Recruiter name"
                             />
-                        </View>
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Employment Type
-                            </Text>
+                        </Field>
+
+                        <Field label="Employment Type">
                             <View className="flex-row flex-wrap gap-2">
-                                {employmentTypes.map((type) => (
-                                    <Pressable
-                                        key={type}
-                                        onPress={() => setEmploymentType(type)}
-                                        className={`rounded-full px-3 py-2 ${employmentType === type ? "bg-[#4C5FAB]" : "bg-gray-100"}`}
-                                    >
-                                        <Text
-                                            className={`${employmentType === type ? "text-white" : "text-gray-700"}`}
+                                {employmentTypes.map((type) => {
+                                    const active = employmentType === type;
+                                    return (
+                                        <Pressable
+                                            key={type}
+                                            onPress={() =>
+                                                setEmploymentType(type)
+                                            }
+                                            className={`rounded-full border px-3.5 py-2 ${
+                                                active
+                                                    ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                    : "border-gray-200 bg-white"
+                                            }`}
                                         >
-                                            {type}
-                                        </Text>
-                                    </Pressable>
-                                ))}
+                                            <Text
+                                                className={`text-xs font-kumbhBold ${
+                                                    active
+                                                        ? "text-white"
+                                                        : "text-[#374151]"
+                                                }`}
+                                            >
+                                                {type}
+                                            </Text>
+                                        </Pressable>
+                                    );
+                                })}
                             </View>
-                        </View>
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Number of Openings
-                            </Text>
-                            <TextInput
-                                className="rounded-xl bg-gray-100 px-4 py-3"
+                        </Field>
+
+                        <Field label="Number of Openings">
+                            <Input
                                 value={numberOfOpenings}
                                 onChangeText={setNumberOfOpenings}
+                                placeholder="1"
                                 keyboardType="numeric"
                             />
-                        </View>
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Closing Date
-                            </Text>
+                        </Field>
+
+                        <Field label="Closing Date">
                             <Pressable
                                 onPress={openDatePicker}
-                                className="rounded-xl bg-gray-100 px-4 py-3 flex-row items-center justify-between"
+                                className="h-14 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-white px-4"
                             >
                                 <Text
-                                    className={`text-base ${closingDate ? "text-gray-900" : "text-gray-400"}`}
+                                    className={`font-kumbh text-base ${closingDate ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                 >
                                     {closingDate || "YYYY-MM-DD"}
                                 </Text>
-                                <Calendar size={18} color="#111827" />
+                                <Calendar size={18} color="#4C5FAB" />
                             </Pressable>
-                        </View>
+                        </Field>
 
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Status
-                            </Text>
+                        <Field label="Status">
                             <View className="flex-row flex-wrap gap-2">
-                                {statuses.map((item) => (
-                                    <Pressable
-                                        key={item}
-                                        onPress={() => setStatus(item)}
-                                        className={`rounded-full px-3 py-2 ${status === item ? "bg-[#4C5FAB]" : "bg-gray-100"}`}
-                                    >
-                                        <Text
-                                            className={`${status === item ? "text-white" : "text-gray-700"}`}
+                                {statuses.map((item) => {
+                                    const active = status === item;
+                                    return (
+                                        <Pressable
+                                            key={item}
+                                            onPress={() => setStatus(item)}
+                                            className={`rounded-full border px-3.5 py-2 ${
+                                                active
+                                                    ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                    : "border-gray-200 bg-white"
+                                            }`}
                                         >
-                                            {item}
-                                        </Text>
-                                    </Pressable>
-                                ))}
+                                            <Text
+                                                className={`text-xs font-kumbhBold ${
+                                                    active
+                                                        ? "text-white"
+                                                        : "text-[#374151]"
+                                                }`}
+                                            >
+                                                {item}
+                                            </Text>
+                                        </Pressable>
+                                    );
+                                })}
                             </View>
-                        </View>
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Description
-                            </Text>
-                            <TextInput
-                                className="min-h-[120px] rounded-xl bg-gray-100 px-4 py-3"
+                        </Field>
+
+                        <Field label="Description">
+                            <Input
                                 multiline
                                 value={description}
                                 onChangeText={setDescription}
                                 placeholder="Job description"
                             />
-                        </View>
+                        </Field>
+
+                        <TouchableOpacity
+                            onPress={handleSave}
+                            disabled={isSaving}
+                            activeOpacity={0.85}
+                            className={`mt-2 h-14 flex-row items-center justify-center rounded-2xl ${
+                                isSaving ? "bg-[#4C5FAB]/60" : "bg-[#4C5FAB]"
+                            }`}
+                        >
+                            {isSaving ? (
+                                <ActivityIndicator
+                                    size="small"
+                                    color="#FFFFFF"
+                                />
+                            ) : (
+                                <Text className="font-kumbhBold text-base text-white">
+                                    Save Changes
+                                </Text>
+                            )}
+                        </TouchableOpacity>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>

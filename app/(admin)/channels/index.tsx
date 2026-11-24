@@ -2,6 +2,7 @@ import { api } from "@/api/axios";
 import ChannelCard from "@/components/admin/ChannelCard";
 import EditChannelModal from "@/components/admin/EditChannelModal";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { showSuccess } from "@/components/ui/toast";
 import { PRIMARY } from "@/constants/Colors";
 import { deleteChannelById } from "@/redux/channels/channels.thunks";
@@ -10,11 +11,10 @@ import { useAppDispatch } from "@/store/hooks";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import {
-    Archive,
-    ChevronRight,
     Plus,
     Search,
     Trash2,
+    X,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -26,7 +26,6 @@ import {
     Pressable,
     RefreshControl,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -72,6 +71,7 @@ export default function ChannelsIndex() {
     const [error, setError] = useState<string | null>(null);
 
     const [query, setQuery] = useState("");
+    const [searchFocused, setSearchFocused] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
@@ -136,7 +136,15 @@ export default function ChannelsIndex() {
     }, [loadChannels]);
 
     const loadMoreChannels = useCallback(async () => {
-        if (loadingMore || !hasMore) return;
+        if (
+            loadingMore ||
+            !hasMore ||
+            status === "loading" ||
+            refreshing ||
+            visibleChannels.length === 0
+        ) {
+            return;
+        }
 
         setLoadingMore(true);
         try {
@@ -145,7 +153,14 @@ export default function ChannelsIndex() {
         } finally {
             setLoadingMore(false);
         }
-    }, [hasMore, loadingMore, loadChannels, visibleChannels.length]);
+    }, [
+        hasMore,
+        loadingMore,
+        loadChannels,
+        refreshing,
+        status,
+        visibleChannels.length,
+    ]);
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -221,7 +236,7 @@ export default function ChannelsIndex() {
     return (
         <SafeAreaView
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <PlatformAdaptiveHeader
                 title="Projects"
@@ -230,10 +245,10 @@ export default function ChannelsIndex() {
                     <View className="flex-row items-center gap-2 ios:mr-3">
                         <Pressable
                             onPress={openDeleted}
-                            className="h-10 w-10 items-center justify-center rounded-full bg-white"
+                            className="h-10 w-10 items-center justify-center rounded-full bg-white border border-gray-200"
                             hitSlop={8}
                         >
-                            <Trash2 size={20} color="#111827" />
+                            <Trash2 size={18} color="#111827" />
                         </Pressable>
                         <Pressable
                             onPress={openCreate}
@@ -245,7 +260,7 @@ export default function ChannelsIndex() {
                         </Pressable>
                     </View>
                 )}
-                backgroundColor="#FFFFFF"
+                backgroundColor="#F5F7FB"
             />
 
             <FlatList
@@ -261,63 +276,57 @@ export default function ChannelsIndex() {
                 onEndReached={loadMoreChannels}
                 onEndReachedThreshold={0.2}
                 ListFooterComponent={
-                    loadingMore ? (
+                    loadingMore && filtered.length > 0 ? (
                         <View className="items-center py-4">
                             <ActivityIndicator size="small" color={PRIMARY} />
                         </View>
                     ) : null
                 }
                 ListHeaderComponent={
-                    <View className="px-4 pb-4">
-                        <View className="mt-1 rounded-[26px] bg-[#F3F4F6] px-4 py-4">
-                            <View className="flex-row items-center gap-3 rounded-full bg-white px-4 py-3">
-                                <Search size={20} color="#6B7280" />
-                                <TextInput
-                                    value={query}
-                                    onChangeText={setQuery}
-                                    placeholder="Search projects"
-                                    placeholderTextColor="#9CA3AF"
-                                    className="flex-1 font-kumbh text-[16px] text-[#111827]"
-                                    returnKeyType="search"
-                                    style={{ paddingVertical: 0 }}
+                    <View className="px-4 pt-2 pb-3">
+                        <View
+                            className={`h-14 w-full flex-row items-center rounded-2xl border bg-white px-4 ${
+                                searchFocused
+                                    ? "border-primary"
+                                    : "border-gray-200"
+                            }`}
+                        >
+                            <View className="mr-3">
+                                <Search
+                                    size={18}
+                                    color={searchFocused ? "#4C5FAB" : "#6B7280"}
                                 />
                             </View>
-
+                            <CustomTextInput
+                                value={query}
+                                onChangeText={setQuery}
+                                onFocus={() => setSearchFocused(true)}
+                                onBlur={() => setSearchFocused(false)}
+                                placeholder="Search projects by name or code"
+                                className="h-full flex-1"
+                                returnKeyType="search"
+                            />
+                            {query.length > 0 ? (
+                                <Pressable
+                                    onPress={() => setQuery("")}
+                                    hitSlop={8}
+                                    className="ml-2 h-7 w-7 rounded-full bg-[#F3F4F6] items-center justify-center"
+                                >
+                                    <X size={14} color="#6B7280" />
+                                </Pressable>
+                            ) : null}
                         </View>
-
-                        <Pressable
-                            onPress={openDeleted}
-                            className="mt-4 flex-row items-center rounded-[18px] bg-white px-4 py-4"
-                            style={{
-                                borderWidth: 1,
-                                borderColor: "#F3F4F6",
-                            }}
-                        >
-                            <View className="h-11 w-11 items-center justify-center rounded-full bg-[#F4F4F5]">
-                                <Archive size={20} color="#6B7280" />
-                            </View>
-                            <View className="flex-1 px-3">
-                                <Text className="font-kumbhBold text-[17px] text-[#111827]">
-                                    Archived
-                                </Text>
-                                <Text className="mt-1 font-kumbh text-[13px] text-gray-500">
-                                    Review deleted projects and restore when
-                                    needed.
-                                </Text>
-                            </View>
-                            <ChevronRight size={18} color="#9CA3AF" />
-                        </Pressable>
                     </View>
                 }
                 ListEmptyComponent={
-                    initialLoading ? (
+                    initialLoading && !refreshing ? (
                         <View className="items-center justify-center py-16">
-                            <ActivityIndicator />
+                            <ActivityIndicator color={PRIMARY} />
                             <Text className="mt-2 font-kumbh text-gray-500">
-                                Loading Chats...
+                                Loading Projects...
                             </Text>
                         </View>
-                    ) : (
+                    ) : !initialLoading ? (
                         <View className="px-5 py-16">
                             <Text className="text-center font-kumbh text-gray-500">
                                 {status === "failed" && error
@@ -325,7 +334,7 @@ export default function ChannelsIndex() {
                                     : "No Projects found."}
                             </Text>
                         </View>
-                    )
+                    ) : null
                 }
                 renderItem={({ item, index }) => (
                     <ChannelCard

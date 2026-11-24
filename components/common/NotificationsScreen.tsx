@@ -128,40 +128,45 @@ function MassNotificationModal({
     return (
         <Modal visible={visible} animationType="slide" transparent>
             <View className="flex-1 justify-end bg-black/50">
-                <View className="bg-white rounded-t-3xl p-6">
-                    <Text className="text-xl font-bold mb-4">
+                <View className="rounded-t-[28px] border-t border-gray-100 bg-white p-6">
+                    <View className="mb-4 items-center">
+                        <View className="h-1.5 w-11 rounded-full bg-gray-200" />
+                    </View>
+                    <Text className="mb-4 font-kumbhBold text-xl text-[#111827]">
                         Send Mass Notification
                     </Text>
 
                     <TextInput
                         placeholder="Notification Title"
+                        placeholderTextColor="#9CA3AF"
                         value={title}
                         onChangeText={setTitle}
-                        className="border border-gray-300 rounded-lg p-3 mb-3"
+                        className="mb-3 rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4 py-3.5 font-kumbh text-[#111827]"
                     />
 
                     <TextInput
                         placeholder="Notification Message"
+                        placeholderTextColor="#9CA3AF"
                         value={message}
                         onChangeText={setMessage}
                         multiline
                         numberOfLines={4}
-                        className="border border-gray-300 rounded-lg p-3 mb-4 h-24"
+                        className="mb-4 h-28 rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4 py-3.5 font-kumbh text-[#111827]"
                     />
 
-                    <View className="flex-row justify-end space-x-3">
+                    <View className="flex-row justify-end gap-2.5">
                         <TouchableOpacity
                             onPress={onClose}
-                            className="px-4 py-2"
+                            className="rounded-2xl border border-gray-200 bg-[#F5F7FB] px-5 py-3"
                         >
-                            <Text className="text-gray-600">Cancel</Text>
+                            <Text className="font-kumbhBold text-gray-700">Cancel</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             onPress={handleSend}
-                            className="px-4 py-2 bg-blue-500 rounded-lg"
+                            className="rounded-2xl bg-primary px-5 py-3"
                         >
-                            <Text className="text-white font-semibold">
+                            <Text className="font-kumbhBold text-white">
                                 Send
                             </Text>
                         </TouchableOpacity>
@@ -201,33 +206,33 @@ function NotificationsSkeleton() {
     }, [pulse]);
 
     const Row = () => (
-        <View className="flex-row items-start px-4 py-3 border-b border-gray-100">
+        <View className="mb-2.5 flex-row items-start rounded-[20px] border border-gray-100 bg-white p-4">
             <Animated.View
                 style={{ opacity: pulse }}
-                className="w-10 h-10 rounded-full bg-gray-200 mr-3"
+                className="mr-3 h-11 w-11 rounded-2xl bg-gray-200"
             />
             <View className="flex-1">
                 <Animated.View
                     style={{ opacity: pulse }}
-                    className="h-4 bg-gray-200 rounded mb-2 w-3/5"
+                    className="mb-2 h-4 w-3/5 rounded bg-gray-200"
                 />
                 <Animated.View
                     style={{ opacity: pulse }}
-                    className="h-3 bg-gray-200 rounded mb-2 w-full"
+                    className="mb-2 h-3 w-full rounded bg-gray-200"
                 />
                 <Animated.View
                     style={{ opacity: pulse }}
-                    className="h-3 bg-gray-200 rounded w-2/5"
+                    className="h-3 w-2/5 rounded bg-gray-200"
                 />
             </View>
         </View>
     );
 
     const SectionHeader = () => (
-        <View className="bg-gray-50 px-4 py-2">
+        <View className="px-1 py-2">
             <Animated.View
                 style={{ opacity: pulse }}
-                className="h-3 bg-gray-200 rounded w-28"
+                className="h-3 w-28 rounded bg-gray-200"
             />
         </View>
     );
@@ -367,23 +372,26 @@ export default function NotificationsScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-[#F5F7FB] px-4"
         >
             <StatusBar style="dark" />
 
             {/* Header */}
-            <PlatformAdaptiveHeader title="Notifications" />
+            <PlatformAdaptiveHeader
+                title="Notifications"
+                backgroundColor="#F5F7FB"
+            />
 
             {/* Search */}
-            <View className="py-3 border-b border-gray-200">
-                <View className="flex-row items-center bg-gray-100 rounded-lg px-3 h-12">
-                    <Search size={20} color="#6B7280" />
+            <View className="py-3">
+                <View className="h-12 flex-row items-center rounded-2xl border border-gray-200 bg-white px-3.5">
+                    <Search size={18} color="#6B7280" />
                     <TextInput
                         placeholder="Search notifications..."
                         placeholderTextColor="#9CA3AF"
                         value={query}
                         onChangeText={setQuery}
-                        className="flex-1 ml-2 text-base h-full"
+                        className="ml-2 h-full flex-1 font-kumbh text-base text-[#111827]"
                     />
                 </View>
             </View>
@@ -396,6 +404,7 @@ export default function NotificationsScreen() {
                     <SectionList
                         className="flex-1"
                         sections={filtered}
+                        contentContainerStyle={{ paddingBottom: 84 }}
                         keyExtractor={(item, index) =>
                             String(
                                 item.id ??
@@ -405,39 +414,39 @@ export default function NotificationsScreen() {
                         refreshing={refreshing}
                         onRefresh={onRefresh}
                         renderSectionHeader={({ section: { title } }) => (
-                            <View className="bg-gray-50 py-2">
-                                <Text className="text-sm font-medium text-gray-600">
+                            <View className="bg-[#F5F7FB] px-1 py-2">
+                                <Text className="font-kumbhBold text-xs uppercase tracking-[1.5px] text-gray-500">
                                     {title}
                                 </Text>
                             </View>
                         )}
                         renderItem={({ item }) => (
-                            <View className="flex-row items-start py-2 border-b border-gray-100">
-                                <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center mr-3">
+                            <View className="mb-2.5 flex-row items-start rounded-[20px] border border-gray-100 bg-white p-4">
+                                <View className="mr-3 h-11 w-11 items-center justify-center rounded-2xl bg-primary">
                                     {iconFor(item.kind)}
                                 </View>
                                 <View className="flex-1">
-                                    <Text className="font-semibold text-base mb-0.5">
+                                    <Text className="mb-0.5 font-kumbhBold text-base text-[#111827]">
                                         {item.title}
                                     </Text>
-                                    <Text className="text-gray-600 mb-0.5">
+                                    <Text className="mb-1 font-kumbh text-sm leading-5 text-gray-600">
                                         {item.message}
                                     </Text>
-                                    <Text className="text-xs text-gray-500">
+                                    <Text className="font-kumbh text-xs text-gray-400">
                                         {timeAgo(item.createdAt)}
                                     </Text>
                                 </View>
                             </View>
                         )}
                         ListEmptyComponent={
-                            <View className="flex-1 items-center justify-center py-14 px-6">
-                                <View className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center mb-3">
-                                    <MessageSquare size={22} color="#6B7280" />
+                            <View className="mt-6 items-center justify-center rounded-[24px] border border-gray-100 bg-white px-6 py-12">
+                                <View className="mb-3 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                                    <MessageSquare size={22} color="#4C5FAB" />
                                 </View>
-                                <Text className="text-base font-semibold text-gray-800 mb-1">
+                                <Text className="mb-1 font-kumbhBold text-base text-[#111827]">
                                     No notifications
                                 </Text>
-                                <Text className="text-gray-500 text-center">
+                                <Text className="text-center font-kumbh text-sm text-gray-500">
                                     {query.trim()
                                         ? "No results match your search."
                                         : "When something important happens, you will see it here."}
@@ -452,7 +461,7 @@ export default function NotificationsScreen() {
             {isAdmin && (
                 <TouchableOpacity
                     onPress={() => setModalVisible(true)}
-                    className="absolute bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg"
+                    className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
                 >
                     <Plus size={24} color="white" />
                 </TouchableOpacity>

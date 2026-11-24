@@ -797,7 +797,7 @@ export default function StatusScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <StatusBar style="dark" />
 
@@ -1275,7 +1275,7 @@ export default function StatusScreen() {
                                 </View>
                             ))}
                             {!importedTasks.length && (
-                                <View className="rounded-xl bg-[#F7F8FB] px-4 py-6">
+                                <View className="rounded-2xl bg-[#F5F7FB] border border-gray-100 px-4 py-6">
                                     <Text className="text-center font-kumbhBold text-[#6B7280]">
                                         No tasks left to import.
                                     </Text>
@@ -1285,13 +1285,14 @@ export default function StatusScreen() {
 
                         <View
                             className="mt-5 flex-row items-center justify-end"
-                            style={{ gap: 12 }}
+                            style={{ gap: 10 }}
                         >
                             <Pressable
                                 disabled={importingTasks}
                                 onPress={closeImport}
+                                className="px-4 py-3 rounded-2xl border border-gray-200 bg-white"
                             >
-                                <Text className="font-kumbh text-[#6B7280]">
+                                <Text className="font-kumbhBold text-[#374151]">
                                     Cancel
                                 </Text>
                             </Pressable>
@@ -1300,7 +1301,7 @@ export default function StatusScreen() {
                                     importingTasks || !importedTasks.length
                                 }
                                 onPress={submitTaskImport}
-                                className="min-w-[126px] items-center rounded-xl px-5 py-3"
+                                className="min-w-[126px] items-center rounded-2xl px-5 py-3"
                                 style={{
                                     backgroundColor: importingTasks
                                         ? "#4C5FAB99"

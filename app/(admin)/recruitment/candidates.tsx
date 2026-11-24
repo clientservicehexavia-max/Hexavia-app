@@ -1,6 +1,7 @@
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import CandidateCard from "@/components/recruitment/CandidateCard";
 import BottomSheetModal from "@/components/ui/BottomSheetModal";
+import CustomTextInput from "@/components/ui/CustomInput";
 import {
     selectRecruitmentError,
     selectRecruitmentLoading,
@@ -13,7 +14,14 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { canAddCandidate } from "@/utils/recruitmentPermissions";
 import { normalizeRole } from "@/utils/roles";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Filter as FilterIcon, Plus, Search, X } from "lucide-react-native";
+import {
+    ChevronRight,
+    Filter as FilterIcon,
+    Plus,
+    Search,
+    Users,
+    X,
+} from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -21,7 +29,6 @@ import {
     Platform,
     Pressable,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -207,25 +214,28 @@ export default function RecruitmentCandidatesAggregateScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <PlatformAdaptiveHeader
                 title="Candidates"
-                headerRight={({ tintColor }) => (
+                backgroundColor="#F5F7FB"
+                headerRight={() => (
                     <View className="flex-row items-center gap-2">
                         <Pressable
                             onPress={openFilters}
-                            className={`h-10 w-10 items-center justify-center rounded-full ${activeFilterCount ? "bg-blue-50" : "bg-transparent"}`}
+                            className={`h-10 w-10 items-center justify-center rounded-full border ${
+                                activeFilterCount
+                                    ? "border-[#4C5FAB]/30 bg-[#EEF2FF]"
+                                    : "border-gray-200 bg-white"
+                            }`}
                             hitSlop={8}
                         >
                             <FilterIcon
-                                size={22}
-                                color={
-                                    activeFilterCount ? "#2563EB" : tintColor
-                                }
+                                size={18}
+                                color={activeFilterCount ? "#4C5FAB" : "#374151"}
                             />
                             {activeFilterCount ? (
-                                <View className="absolute right-1.5 top-1.5 h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1">
+                                <View className="absolute right-1 top-1 h-4 min-w-4 items-center justify-center rounded-full bg-[#4C5FAB] px-1">
                                     <Text className="text-[9px] font-kumbhBold leading-3 text-white">
                                         {activeFilterCount}
                                     </Text>
@@ -235,40 +245,53 @@ export default function RecruitmentCandidatesAggregateScreen() {
                         {canAddCandidate(role) ? (
                             <Pressable
                                 onPress={() => setShowCampaignPicker(true)}
-                                className="h-10 w-10 items-center justify-center rounded-full"
+                                className="h-10 w-10 items-center justify-center rounded-full bg-[#4C5FAB]"
                                 hitSlop={8}
                             >
-                                <Plus size={28} color={tintColor} />
+                                <Plus size={20} color="#FFFFFF" />
                             </Pressable>
                         ) : null}
                     </View>
                 )}
             />
 
-            <View className="mt-3 flex-1 px-4 pb-8">
-                <View className="mb-4 flex-row items-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-1">
-                    <Search size={18} color="#6B7280" />
-                    <TextInput
-                        className="ml-2 flex-1 h-9 font-kumbh text-gray-700"
+            <View className="mt-3 flex-1 px-4">
+                <View className="mb-4 h-14 flex-row items-center rounded-2xl border border-gray-200 bg-white px-4">
+                    <Search size={18} color="#9CA3AF" />
+                    <CustomTextInput
+                        className="ml-2.5 flex-1 font-kumbh text-base text-[#111827]"
                         placeholder="Search candidate, company, campaign"
                         value={query}
                         onChangeText={setQuery}
                     />
+                    {query.length > 0 ? (
+                        <Pressable
+                            onPress={() => setQuery("")}
+                            className="h-6 w-6 items-center justify-center rounded-full bg-gray-100"
+                            hitSlop={8}
+                        >
+                            <X size={13} color="#6B7280" />
+                        </Pressable>
+                    ) : null}
                 </View>
 
                 {loading && !filteredCandidates.length ? (
-                    <View className="py-8">
+                    <View className="py-10 items-center">
                         <ActivityIndicator color="#4C5FAB" />
                     </View>
                 ) : null}
 
                 {error ? (
-                    <Text className="mb-3 text-sm text-red-500">{error}</Text>
+                    <View className="mb-3 rounded-2xl border border-red-100 bg-red-50 p-3.5">
+                        <Text className="text-sm font-kumbh text-red-700">
+                            {error}
+                        </Text>
+                    </View>
                 ) : null}
 
                 {activeFilterCount ? (
-                    <View className="mb-4 flex-row items-center justify-between rounded-xl border border-blue-100 bg-blue-50 px-3 py-2">
-                        <Text className="text-xs font-kumbh text-blue-700">
+                    <View className="mb-4 flex-row items-center justify-between rounded-2xl border border-[#4C5FAB]/20 bg-[#EEF2FF] px-3.5 py-2.5">
+                        <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
                             {activeFilterCount} filter
                             {activeFilterCount > 1 ? "s" : ""} active
                         </Text>
@@ -276,8 +299,8 @@ export default function RecruitmentCandidatesAggregateScreen() {
                             onPress={clearFilters}
                             className="flex-row items-center gap-1 rounded-full bg-white px-3 py-1.5"
                         >
-                            <X size={13} color="#2563EB" />
-                            <Text className="text-xs font-kumbhBold text-blue-700">
+                            <X size={13} color="#4C5FAB" />
+                            <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
                                 Clear
                             </Text>
                         </Pressable>
@@ -289,6 +312,7 @@ export default function RecruitmentCandidatesAggregateScreen() {
                     keyExtractor={(item, index) =>
                         item._id || `${item.fullName}-${index}`
                     }
+                    showsVerticalScrollIndicator={false}
                     renderItem={({ item }) => (
                         <CandidateCard
                             fullName={item.fullName}
@@ -313,11 +337,21 @@ export default function RecruitmentCandidatesAggregateScreen() {
                             }}
                         />
                     )}
-                    contentContainerStyle={{ paddingBottom: 20 }}
+                    contentContainerStyle={{ paddingBottom: 32 }}
                     ListEmptyComponent={
-                        <Text className="py-8 text-center text-sm text-gray-500">
-                            No candidates found
-                        </Text>
+                        !loading ? (
+                            <View className="items-center rounded-[24px] border border-gray-100 bg-white px-6 py-10">
+                                <View className="mb-3 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                                    <Users size={22} color="#4C5FAB" />
+                                </View>
+                                <Text className="text-base font-kumbhBold text-[#111827]">
+                                    No candidates found
+                                </Text>
+                                <Text className="mt-1 text-center text-sm font-kumbh text-[#6B7280]">
+                                    Try adjusting your search or filter criteria.
+                                </Text>
+                            </View>
+                        ) : null
                     }
                 />
             </View>
@@ -378,16 +412,16 @@ function CampaignPickerModal({
         >
             <View className="mb-4 flex-row items-center justify-between">
                 <View>
-                    <Text className="text-xl font-kumbhBold text-gray-900">
+                    <Text className="text-xl font-kumbhBold text-[#111827]">
                         Select Campaign
                     </Text>
-                    <Text className="mt-1 text-xs font-kumbh text-gray-500">
+                    <Text className="mt-1 text-xs font-kumbh text-[#6B7280]">
                         Choose a campaign to add a candidate
                     </Text>
                 </View>
                 <Pressable
                     onPress={onClose}
-                    className="h-9 w-9 items-center justify-center rounded-full bg-gray-100"
+                    className="h-9 w-9 items-center justify-center rounded-full bg-[#F5F7FB]"
                 >
                     <X size={17} color="#374151" />
                 </Pressable>
@@ -401,34 +435,37 @@ function CampaignPickerModal({
                     renderItem={({ item }) => (
                         <Pressable
                             onPress={() => onSelect(item.id)}
-                            className="mb-2 rounded-xl border border-gray-200 bg-white px-3 py-3"
+                            className="mb-2.5 rounded-2xl border border-gray-100 bg-[#F5F7FB] px-4 py-3.5 active:opacity-90"
                         >
                             <View className="flex-row items-center justify-between">
                                 <View className="flex-1 pr-3">
                                     <Text
-                                        className="text-sm font-kumbhBold text-gray-900"
+                                        className="text-sm font-kumbhBold text-[#111827]"
                                         numberOfLines={1}
                                     >
                                         {item.title}
                                     </Text>
                                     <Text
-                                        className="mt-1 text-xs font-kumbh text-gray-600"
+                                        className="mt-0.5 text-xs font-kumbh text-[#6B7280]"
                                         numberOfLines={1}
                                     >
                                         {item.company}
                                     </Text>
                                 </View>
-                                <View className="rounded-full bg-slate-100 px-2.5 py-1">
-                                    <Text className="text-[11px] font-kumbh text-slate-700">
-                                        {item.status}
-                                    </Text>
+                                <View className="flex-row items-center gap-2">
+                                    <View className="rounded-full bg-[#EEF2FF] px-2.5 py-1">
+                                        <Text className="text-[11px] font-kumbhBold text-[#4C5FAB]">
+                                            {item.status}
+                                        </Text>
+                                    </View>
+                                    <ChevronRight size={15} color="#9CA3AF" />
                                 </View>
                             </View>
                         </Pressable>
                     )}
                 />
             ) : (
-                <Text className="py-4 text-sm font-kumbh text-gray-500">
+                <Text className="py-4 text-sm font-kumbh text-[#6B7280]">
                     No campaigns available.
                 </Text>
             )}
@@ -475,10 +512,10 @@ function CandidatesFilterModal({
         >
             <View className="mb-4 flex-row items-center justify-between">
                 <View>
-                    <Text className="text-xl font-kumbhBold text-gray-900">
+                    <Text className="text-xl font-kumbhBold text-[#111827]">
                         Filter Candidates
                     </Text>
-                    <Text className="mt-1 text-xs font-kumbh text-gray-500">
+                    <Text className="mt-1 text-xs font-kumbh text-[#6B7280]">
                         {activeCount
                             ? `${activeCount} active filter${activeCount > 1 ? "s" : ""}`
                             : "No filters applied"}
@@ -486,7 +523,7 @@ function CandidatesFilterModal({
                 </View>
                 <Pressable
                     onPress={onClose}
-                    className="h-9 w-9 items-center justify-center rounded-full bg-gray-100"
+                    className="h-9 w-9 items-center justify-center rounded-full bg-[#F5F7FB]"
                 >
                     <X size={17} color="#374151" />
                 </Pressable>
@@ -504,51 +541,63 @@ function CandidatesFilterModal({
             </Field>
 
             <Field label="Campaign">
-                <TextInput
-                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
-                    placeholder="Filter by campaign"
-                    value={draftCampaignFilter}
-                    onChangeText={onCampaignChange}
-                />
+                <View className="h-12 justify-center rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4">
+                    <CustomTextInput
+                        className="font-kumbh text-sm text-[#111827]"
+                        placeholder="Filter by campaign"
+                        value={draftCampaignFilter}
+                        onChangeText={onCampaignChange}
+                    />
+                </View>
             </Field>
 
             <Field label="Company">
-                <TextInput
-                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
-                    placeholder="Filter by company"
-                    value={draftCompanyFilter}
-                    onChangeText={onCompanyChange}
-                />
+                <View className="h-12 justify-center rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4">
+                    <CustomTextInput
+                        className="font-kumbh text-sm text-[#111827]"
+                        placeholder="Filter by company"
+                        value={draftCompanyFilter}
+                        onChangeText={onCompanyChange}
+                    />
+                </View>
             </Field>
 
             <Field label="Recruiter">
-                <TextInput
-                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
-                    placeholder="Filter by recruiter"
-                    value={draftRecruiterFilter}
-                    onChangeText={onRecruiterChange}
-                />
+                <View className="h-12 justify-center rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4">
+                    <CustomTextInput
+                        className="font-kumbh text-sm text-[#111827]"
+                        placeholder="Filter by recruiter"
+                        value={draftRecruiterFilter}
+                        onChangeText={onRecruiterChange}
+                    />
+                </View>
             </Field>
 
             <View className="mt-2 flex-row items-center justify-between border-t border-gray-100 pt-4">
                 <Pressable
                     onPress={onClear}
-                    className="h-11 items-center justify-center rounded-xl border border-gray-200 px-4"
+                    className="h-12 items-center justify-center rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                 >
-                    <Text className="font-kumbh text-gray-700">Clear</Text>
+                    <Text className="font-kumbhBold text-sm text-[#374151]">
+                        Clear
+                    </Text>
                 </Pressable>
                 <View className="flex-row gap-3">
                     <Pressable
                         onPress={onClose}
-                        className="h-11 items-center justify-center rounded-xl border border-gray-200 px-4"
+                        className="h-12 items-center justify-center rounded-2xl border border-gray-200 bg-white px-4"
                     >
-                        <Text className="font-kumbh text-gray-700">Cancel</Text>
+                        <Text className="font-kumbh text-sm text-[#374151]">
+                            Cancel
+                        </Text>
                     </Pressable>
                     <Pressable
                         onPress={onApply}
-                        className="h-11 items-center justify-center rounded-xl bg-[#4C5FAB] px-5"
+                        className="h-12 items-center justify-center rounded-2xl bg-[#4C5FAB] px-5"
                     >
-                        <Text className="font-kumbhBold text-white">Apply</Text>
+                        <Text className="font-kumbhBold text-sm text-white">
+                            Apply
+                        </Text>
                     </Pressable>
                 </View>
             </View>
@@ -566,8 +615,8 @@ function Field({
     children: React.ReactNode;
 }) {
     return (
-        <View className="mb-3">
-            <Text className="mb-1.5 text-[13px] font-kumbhBold text-gray-700">
+        <View className="mb-3.5">
+            <Text className="mb-2 text-xs font-kumbhBold text-[#374151]">
                 {label}
             </Text>
             {children}
@@ -594,10 +643,10 @@ function PillGroup({
                     <Pressable
                         key={option}
                         onPress={() => onChange(option)}
-                        className={`rounded-full border px-3.5 py-2 ${active ? "border-[#4C5FAB] bg-[#4C5FAB]/10" : "border-gray-200 bg-white"}`}
+                        className={`rounded-full border px-3.5 py-2 ${active ? "border-[#4C5FAB] bg-[#4C5FAB]" : "border-gray-200 bg-[#F5F7FB]"}`}
                     >
                         <Text
-                            className={`text-xs font-kumbh ${active ? "font-kumbhBold text-[#4C5FAB]" : "text-gray-700"}`}
+                            className={`text-xs font-kumbhBold ${active ? "text-white" : "text-[#374151]"}`}
                         >
                             {option}
                         </Text>
@@ -621,10 +670,10 @@ function PillGroup({
                 return (
                     <Pressable
                         onPress={() => onChange(item)}
-                        className={`rounded-full border px-3.5 py-2 ${active ? "border-[#4C5FAB] bg-[#4C5FAB]/10" : "border-gray-200 bg-white"}`}
+                        className={`rounded-full border px-3.5 py-2 ${active ? "border-[#4C5FAB] bg-[#4C5FAB]" : "border-gray-200 bg-[#F5F7FB]"}`}
                     >
                         <Text
-                            className={`text-xs font-kumbh ${active ? "font-kumbhBold text-[#4C5FAB]" : "text-gray-700"}`}
+                            className={`text-xs font-kumbhBold ${active ? "text-white" : "text-[#374151]"}`}
                         >
                             {item}
                         </Text>

@@ -4,9 +4,12 @@ import {
     BarChart3,
     Bell,
     BriefcaseBusiness,
+    Cake,
     ChevronRight,
     FolderKanban,
     Handshake,
+    Sparkles,
+    Trash2,
     UserPlus,
     Users,
     UsersRound,
@@ -22,7 +25,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import SectionCard from "@/components/admin/SectionCard";
 import BotpressFab from "@/components/common/BotpressFab";
 import { AdminHeader } from "@/components/common/UserHeader";
 import { selectUser } from "@/redux/user/user.slice";
@@ -87,14 +89,14 @@ export default function AdminDashboard() {
         {
             title: "Projects",
             subtitle: "Track spaces",
-            icon: <UserPlus size={20} color="#0F766E" />,
+            icon: <FolderKanban size={20} color="#0F766E" />,
             bg: "#ECFDF5",
             onPress: () => router.push("/(admin)/(tabs)/project"),
         },
         {
             title: "Prospects",
             subtitle: "Review pipeline",
-            icon: <FolderKanban size={20} color="#B45309" />,
+            icon: <Sparkles size={20} color="#B45309" />,
             bg: "#FFFBEB",
             onPress: () => router.push("/(admin)/prospects"),
         },
@@ -111,7 +113,7 @@ export default function AdminDashboard() {
         quickActions.splice(2, 0, {
             title: "Team",
             subtitle: "Manage members",
-            icon: <FolderKanban size={20} color="#BE123C" />,
+            icon: <UserPlus size={20} color="#BE123C" />,
             bg: "#FFF1F2",
             onPress: () => router.push("/(admin)/(tabs)/team"),
         });
@@ -145,6 +147,12 @@ export default function AdminDashboard() {
         });
     }
 
+    const todayLabel = new Date().toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+    });
+
     return (
         <SafeAreaView
             edges={isIOS ? ["top", "left", "right"] : ["top", "left", "right"]}
@@ -152,167 +160,223 @@ export default function AdminDashboard() {
         >
             <ScrollView
                 className="flex-1"
-                contentContainerClassName="pb-8 px-4"
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingBottom: 36,
+                }}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
+                        tintColor="#4C5FAB"
                     />
                 }
             >
                 <AdminHeader
-                    rightIcon={<Bell size={20} color="#111827" />}
+                    rightIcon={<Bell size={18} color="#4C5FAB" />}
                     subtitleBadge={subtitleBadge}
                 />
 
+                <View className="mb-4 mt-1 flex-row items-center justify-between px-0.5">
+                    <View className="rounded-full bg-[#EEF2FF] px-3 py-1">
+                        <Text className="font-kumbhBold text-xs text-[#4C5FAB]">
+                            {subtitleBadge} Workspace
+                        </Text>
+                    </View>
+                    <Text className="font-kumbh text-xs text-[#6B7280]">
+                        {todayLabel}
+                    </Text>
+                </View>
+
+                <View className="flex-row flex-wrap justify-between gap-y-3">
+                    {quickActions.map((item, index) => {
+                        const isOddTrailing =
+                            index === quickActions.length - 1 &&
+                            quickActions.length % 2 === 1;
+
+                        if (isOddTrailing) {
+                            return (
+                                <Pressable
+                                    key={item.title}
+                                    onPress={item.onPress}
+                                    className="w-full flex-row items-center justify-between rounded-[24px] border border-gray-100 bg-white p-4 active:opacity-90"
+                                >
+                                    <View className="flex-1 flex-row items-center pr-3">
+                                        <View
+                                            className="mr-3.5 h-11 w-11 items-center justify-center rounded-2xl"
+                                            style={{ backgroundColor: item.bg }}
+                                        >
+                                            {item.icon}
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="font-kumbhBold text-base text-[#111827]">
+                                                {item.title}
+                                            </Text>
+                                            <Text className="mt-0.5 font-kumbh text-xs text-[#6B7280]">
+                                                {item.subtitle}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <View className="h-8 w-8 items-center justify-center rounded-full bg-[#F5F7FB]">
+                                        <ChevronRight
+                                            size={15}
+                                            color="#6B7280"
+                                        />
+                                    </View>
+                                </Pressable>
+                            );
+                        }
+
+                        return (
+                            <Pressable
+                                key={item.title}
+                                onPress={item.onPress}
+                                className="rounded-[24px] border border-gray-100 bg-white p-4 active:opacity-90"
+                                style={{ width: "48.5%" as any }}
+                            >
+                                <View className="flex-row items-center justify-between">
+                                    <View
+                                        className="h-11 w-11 items-center justify-center rounded-2xl"
+                                        style={{ backgroundColor: item.bg }}
+                                    >
+                                        {item.icon}
+                                    </View>
+                                    <View className="h-7 w-7 items-center justify-center rounded-full bg-[#F5F7FB]">
+                                        <ChevronRight
+                                            size={14}
+                                            color="#9CA3AF"
+                                        />
+                                    </View>
+                                </View>
+                                <Text className="mt-4 font-kumbhBold text-base text-[#111827]">
+                                    {item.title}
+                                </Text>
+                                <Text className="mt-0.5 font-kumbh text-xs text-[#6B7280]">
+                                    {item.subtitle}
+                                </Text>
+                            </Pressable>
+                        );
+                    })}
+                </View>
+
+                {birthdaySummary &&
+                (birthdaySummary.counts.today > 0 ||
+                    birthdaySummary.counts.week > 0 ||
+                    birthdaySummary.counts.month > 0) ? (
+                    <Pressable
+                        onPress={() => router.push("/(admin)/birthdays")}
+                        className="mt-4 flex-row items-center justify-between rounded-[24px] border border-amber-200/80 bg-amber-50 p-4 active:opacity-90"
+                    >
+                        <View className="mr-3 flex-1 flex-row items-center">
+                            <View className="mr-3.5 h-11 w-11 items-center justify-center rounded-2xl bg-amber-100">
+                                <Cake size={20} color="#B45309" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="font-kumbhBold text-sm text-amber-900">
+                                    Birthday reminders
+                                </Text>
+                                <Text className="mt-0.5 font-kumbh text-xs text-amber-800">
+                                    {birthdaySummary.counts.today > 0
+                                        ? birthdayTodayMessage(
+                                              birthdaySummary.today.map(
+                                                  (person) => person.name,
+                                              ),
+                                          )
+                                        : birthdaySummary.counts.week > 0
+                                          ? `${birthdaySummary.counts.week} birthday${birthdaySummary.counts.week === 1 ? "" : "s"} this week`
+                                          : `${birthdaySummary.counts.month} birthday${birthdaySummary.counts.month === 1 ? "" : "s"} this month`}
+                                </Text>
+                            </View>
+                        </View>
+                        <View className="h-8 w-8 items-center justify-center rounded-full bg-white/80">
+                            <ChevronRight size={16} color="#92400E" />
+                        </View>
+                    </Pressable>
+                ) : null}
+
                 <Pressable
                     onPress={() => router.push("/(admin)/report")}
-                    className="mt-1 overflow-hidden rounded-[28px] bg-primary px-5 py-5"
+                    className="mt-4 flex-row items-center justify-between rounded-[24px] border border-[#4C5FAB]/20 bg-white p-4 active:opacity-90"
                 >
-                    <View className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/10" />
-                    <View className="absolute -bottom-12 -left-10 h-36 w-36 rounded-full bg-white/10" />
-
-                    <View className="flex-row items-start justify-between">
-                        <View className="flex-1 pr-4">
-                            <Text className="font-kumbhBold text-xs uppercase tracking-[2px] text-white/70">
-                                Analytics
+                    <View className="flex-1 flex-row items-center pr-3">
+                        <View className="mr-3.5 h-12 w-12 items-center justify-center rounded-2xl bg-[#4C5FAB]">
+                            <BarChart3 size={20} color="#FFFFFF" />
+                        </View>
+                        <View className="flex-1">
+                            <Text className="font-kumbhBold text-[10px] uppercase tracking-[1.2px] text-[#4C5FAB]">
+                                Analytics & Reports
                             </Text>
-                            <Text className="mt-2 font-kumbhBold text-[28px] leading-8 text-white">
+                            <Text className="mt-0.5 font-kumbhBold text-base text-[#111827]">
                                 Create report
                             </Text>
-                            <Text className="mt-2 max-w-[240px] font-kumbh text-sm leading-5 text-white/85">
-                                Generate detailed reports to track performance
-                                and support faster decisions.
+                            <Text className="mt-0.5 font-kumbh text-xs text-[#6B7280]">
+                                Generate AI project summaries
                             </Text>
                         </View>
-
-                        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
-                            <BarChart3 size={22} color="#FFFFFF" />
-                        </View>
                     </View>
-
-                    <View className="mt-5 flex-row items-center self-start rounded-full bg-white/15 px-3 py-2">
-                        <Text className="font-kumbhBold text-xs text-white">
-                            Open reports
-                        </Text>
-                        <ChevronRight size={14} color="#FFFFFF" />
+                    <View className="h-10 w-10 items-center justify-center rounded-full bg-[#EEF2FF]">
+                        <ChevronRight size={18} color="#4C5FAB" />
                     </View>
                 </Pressable>
 
                 <View className="mt-6">
                     <View className="mb-3 flex-row items-center justify-between px-1">
-                        <Text className="font-kumbhBold text-lg text-[#111827]">
-                            Quick Actions
-                        </Text>
-                    </View>
-
-                    <View className="flex-row flex-wrap justify-between">
-                        {quickActions.map((item) => (
-                            <Pressable
-                                key={item.title}
-                                onPress={item.onPress}
-                                className="mb-3 rounded-[24px] border border-gray-100 bg-white p-4"
-                                style={{ width: "48.5%" as any }}
-                            >
-                                <View
-                                    className="h-11 w-11 items-center justify-center rounded-2xl"
-                                    style={{ backgroundColor: item.bg }}
-                                >
-                                    {item.icon}
-                                </View>
-                                <Text className="mt-5 font-kumbhBold text-[17px] text-[#111827]">
-                                    {item.title}
-                                </Text>
-                                <Text className="mt-1 font-kumbh text-xs text-gray-500">
-                                    {item.subtitle}
-                                </Text>
-                                <View className="mt-4 flex-row items-center justify-between">
-                                    <Text className="font-kumbhBold text-xs text-primary">
-                                        Open
-                                    </Text>
-                                    <ChevronRight size={16} color="#4C5FAB" />
-                                </View>
-                            </Pressable>
-                        ))}
-                    </View>
-                </View>
-
-                {birthdaySummary && birthdaySummary.counts.month > 0 ? (
-                    <Pressable
-                        onPress={() => router.push("/(admin)/birthdays")}
-                        className="mt-2 mb-1 flex-row items-center justify-between rounded-[24px] border border-amber-100 bg-amber-50 p-4"
-                    >
-                        <View className="mr-3 flex-1">
-                            <Text className="font-kumbhBold text-amber-900">
-                                Birthday reminders
-                            </Text>
-                            <Text className="mt-1 font-kumbh text-sm text-amber-800">
-                                {birthdaySummary.counts.today > 0
-                                    ? birthdayTodayMessage(
-                                          birthdaySummary.today.map(
-                                              (person) => person.name,
-                                          ),
-                                      )
-                                    : birthdaySummary.counts.week > 0
-                                      ? `${birthdaySummary.counts.week} birthday${birthdaySummary.counts.week === 1 ? "" : "s"} this week`
-                                      : `${birthdaySummary.counts.month} birthday${birthdaySummary.counts.month === 1 ? "" : "s"} this month`}
-                            </Text>
-                        </View>
-                        <ChevronRight size={22} color="#92400E" />
-                    </Pressable>
-                ) : null}
-
-                <View className="mt-3">
-                    <View className="mb-3 flex-row items-center justify-between px-1">
-                        <Text className="font-kumbhBold text-lg text-[#111827]">
+                        <Text className="font-kumbhBold text-base text-[#111827]">
                             Records
                         </Text>
-                        <Text className="font-kumbh text-xs text-gray-500">
-                            Archive and recovery
+                        <Text className="font-kumbh text-xs text-[#6B7280]">
+                            Archive & recovery
                         </Text>
                     </View>
 
-                    <SectionCard
-                        onPress={() => router.push("/(admin)/clients/deleted")}
-                        className="my-0 mb-3 rounded-[24px] border border-gray-100 bg-white p-4"
-                        noTitle
-                    >
-                        <View className="flex-row items-center justify-between">
-                            <View className="flex-1 pr-4">
-                                <Text className="font-kumbhBold text-base text-text">
-                                    Deleted Clients
-                                </Text>
-                                <Text className="mt-1 font-kumbh text-sm text-gray-500">
-                                    Review removed client records and restore
-                                    context when needed.
-                                </Text>
+                    <View className="overflow-hidden rounded-[24px] border border-gray-100 bg-white">
+                        <Pressable
+                            onPress={() =>
+                                router.push("/(admin)/clients/deleted")
+                            }
+                            className="flex-row items-center justify-between p-4 active:bg-gray-50"
+                        >
+                            <View className="flex-1 flex-row items-center pr-3">
+                                <View className="mr-3.5 h-10 w-10 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                                    <Trash2 size={18} color="#4C5FAB" />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="font-kumbhBold text-sm text-[#111827]">
+                                        Deleted Clients
+                                    </Text>
+                                    <Text className="mt-0.5 font-kumbh text-xs text-[#6B7280]">
+                                        Review removed client records
+                                    </Text>
+                                </View>
                             </View>
-                            <View className="h-11 w-11 items-center justify-center rounded-2xl bg-[#EEF2FF]">
-                                <ChevronRight size={18} color="#4C5FAB" />
-                            </View>
-                        </View>
-                    </SectionCard>
+                            <ChevronRight size={18} color="#9CA3AF" />
+                        </Pressable>
 
-                    <SectionCard
-                        onPress={() => router.push("/(admin)/channels/deleted")}
-                        className="my-0 rounded-[24px] border border-gray-100 bg-white p-4"
-                        noTitle
-                    >
-                        <View className="flex-row items-center justify-between">
-                            <View className="flex-1 pr-4">
-                                <Text className="font-kumbhBold text-base text-text">
-                                    Deleted Projects
-                                </Text>
-                                <Text className="mt-1 font-kumbh text-sm text-gray-500">
-                                    Inspect removed workspaces and keep
-                                    historical activity visible.
-                                </Text>
+                        <View className="mx-4 h-px bg-gray-100" />
+
+                        <Pressable
+                            onPress={() =>
+                                router.push("/(admin)/channels/deleted")
+                            }
+                            className="flex-row items-center justify-between p-4 active:bg-gray-50"
+                        >
+                            <View className="flex-1 flex-row items-center pr-3">
+                                <View className="mr-3.5 h-10 w-10 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                                    <FolderKanban size={18} color="#4C5FAB" />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="font-kumbhBold text-sm text-[#111827]">
+                                        Deleted Projects
+                                    </Text>
+                                    <Text className="mt-0.5 font-kumbh text-xs text-[#6B7280]">
+                                        Inspect removed project workspaces
+                                    </Text>
+                                </View>
                             </View>
-                            <View className="h-11 w-11 items-center justify-center rounded-2xl bg-[#EEF2FF]">
-                                <ChevronRight size={18} color="#4C5FAB" />
-                            </View>
-                        </View>
-                    </SectionCard>
+                            <ChevronRight size={18} color="#9CA3AF" />
+                        </Pressable>
+                    </View>
                 </View>
             </ScrollView>
             <BotpressFab title="Hexavia Assistant" />

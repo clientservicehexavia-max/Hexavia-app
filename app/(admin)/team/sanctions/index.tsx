@@ -1,10 +1,11 @@
 // app/(admin)/team/sanctions/index.tsx
 import { clsx } from "clsx";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
+    Image,
     Platform,
     Pressable,
     RefreshControl,
@@ -14,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { PRIMARY } from "@/constants/Colors";
 import {
     selectSanctions,
     selectSanctionsError,
@@ -22,13 +24,14 @@ import {
 import { fetchSanctions } from "@/redux/sanctions/sanctions.thunks";
 import type { ApiSanction } from "@/redux/sanctions/sanctions.type";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { Plus } from "lucide-react-native";
+import { ChevronRight, Plus, ShieldAlert } from "lucide-react-native";
 
 type RangeKey = "24H" | "7D" | "30D" | "1Y";
 
 type StaffRow = {
     id: string;
     name: string;
+    avatarUri?: string;
     sanctions: SanctionRow[];
     activeCount: number;
     totalCount: number;
@@ -40,6 +43,9 @@ type SanctionUser = {
     username?: string;
     email?: string;
     name?: string;
+    profilePicture?: string;
+    avatar?: string;
+    photoUrl?: string;
 };
 
 type SanctionRow = ApiSanction & {
@@ -137,6 +143,12 @@ export default function SanctionsView() {
             const id = user._id;
 
             if (!map.has(id)) {
+                const rawAvatar =
+                    user.profilePicture ?? user.avatar ?? user.photoUrl;
+                const avatarUri =
+                    typeof rawAvatar === "string" && rawAvatar.trim().length > 0
+                        ? rawAvatar.trim()
+                        : undefined;
                 map.set(id, {
                     id,
                     name:
@@ -145,6 +157,7 @@ export default function SanctionsView() {
                         user.name ||
                         user.email ||
                         "Unknown",
+                    avatarUri,
                     sanctions: [],
                 });
             }
@@ -159,73 +172,167 @@ export default function SanctionsView() {
         }));
     }, [rows, range]);
 
+    const totalInRange = useMemo(
+        () => staffs.reduce((sum, s) => sum + s.totalCount, 0),
+        [staffs],
+    );
+    const activeInRange = useMemo(
+        () => staffs.reduce((sum, s) => sum + s.activeCount, 0),
+        [staffs],
+    );
+
+    const initialLoading = loading && rows.length === 0 && !refreshing;
+
     return (
         <SafeAreaView
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             {/* Header */}
             <PlatformAdaptiveHeader
                 title="Sanctions"
-                headerRight={({ tintColor }) => (
+                backgroundColor="#F5F7FB"
+                headerRight={() => (
                     <Pressable
                         onPress={() =>
                             router.push("/(admin)/team/sanctions/create")
                         }
-                        className="w-10 h-10 rounded-full items-center justify-center"
+                        className="w-10 h-10 rounded-full items-center justify-center ios:mr-3"
                         hitSlop={8}
+                        style={{ backgroundColor: PRIMARY }}
                     >
-                        <Plus size={28} color={tintColor} />
+                        <Plus size={20} color="#FFFFFF" />
                     </Pressable>
                 )}
             />
 
-            <View className="pt-2 pb-1 px-4">
-                <RangeTabs value={range} onChange={setRange} />
-            </View>
+            <FlatList
+                data={staffs}
+                keyExtractor={(i) => i.id}
+                contentContainerClassName="pt-2 pb-10 px-4"
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                    />
+                }
+                ListHeaderComponent={
+                    <View className="mb-4">
+                        <RangeTabs value={range} onChange={setRange} />
 
-            {/* List */}
-            {loading && rows.length === 0 ? (
-                <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator color="#7C3AED" />
-                    <Text className="mt-2 text-gray-500 font-kumbh">
-                        Loading sanctions…
-                    </Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={staffs}
-                    keyExtractor={(i) => i.id}
-                    contentContainerClassName="pt-4 pb-10 px-4"
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                        />
-                    }
-                    ItemSeparatorComponent={() => <View className="h-3" />}
-                    renderItem={({ item }) => <StaffCard item={item} />}
-                    ListEmptyComponent={
-                        <View className="px-5 py-12">
-                            <Text className="text-center text-gray-500 font-kumbh">
-                                {error
-                                    ? `Error: ${error}`
-                                    : "No staffs with sanctions found."}
+                        <View className="mt-3 flex-row gap-3">
+                            <View className="flex-1 rounded-[24px] bg-white border border-gray-100 p-4">
+                                <Text className="font-kumbh text-xs text-[#6B7280]">
+                                    Total ({range})
+                                </Text>
+                                <Text className="mt-1 font-kumbhBold text-2xl text-[#111827]">
+                                    {totalInRange}
+                                </Text>
+                            </View>
+                            <View className="flex-1 rounded-[24px] bg-white border border-gray-100 p-4">
+                                <Text className="font-kumbh text-xs text-[#6B7280]">
+                                    Active
+                                </Text>
+                                <Text
+                                    className={`mt-1 font-kumbhBold text-2xl ${
+                                        activeInRange > 0
+                                            ? "text-red-600"
+                                            : "text-emerald-600"
+                                    }`}
+                                >
+                                    {activeInRange}
+                                </Text>
+                            </View>
+                            <View className="flex-1 rounded-[24px] bg-white border border-gray-100 p-4">
+                                <Text className="font-kumbh text-xs text-[#6B7280]">
+                                    Members
+                                </Text>
+                                <Text className="mt-1 font-kumbhBold text-2xl text-primary">
+                                    {staffs.length}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <Text className="mt-5 mb-1 px-1 text-xs font-kumbhBold uppercase tracking-wider text-[#6B7280]">
+                            Sanctioned Staff ({staffs.length})
+                        </Text>
+                    </View>
+                }
+                ItemSeparatorComponent={() => <View className="h-3" />}
+                renderItem={({ item }) => <StaffCard item={item} />}
+                ListEmptyComponent={
+                    initialLoading ? (
+                        <View className="items-center justify-center py-16">
+                            <ActivityIndicator color={PRIMARY} />
+                            <Text className="mt-2 text-[#6B7280] font-kumbh">
+                                Loading sanctions…
                             </Text>
                         </View>
-                    }
-                />
-            )}
+                    ) : !loading ? (
+                        <View className="rounded-[24px] bg-white border border-gray-100 px-5 py-12 items-center">
+                            <View className="h-12 w-12 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-3">
+                                <ShieldAlert size={22} color="#4C5FAB" />
+                            </View>
+                            <Text className="text-center text-[#111827] font-kumbhBold text-base">
+                                {error
+                                    ? "Unable to load sanctions"
+                                    : "No sanctions recorded"}
+                            </Text>
+                            <Text className="mt-1 text-center text-[#6B7280] font-kumbh text-sm">
+                                {error
+                                    ? error
+                                    : `No staff sanctions found in the ${range} window.`}
+                            </Text>
+                        </View>
+                    ) : null
+                }
+            />
         </SafeAreaView>
     );
 }
 
 /* ───────── light-themed building blocks ───────── */
 
+function getInitials(name: string) {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "?";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function StaffAvatar({ uri, name }: { uri?: string; name: string }) {
+    const [failed, setFailed] = useState(false);
+
+    useEffect(() => {
+        setFailed(false);
+    }, [uri]);
+
+    if (uri && !failed) {
+        return (
+            <Image
+                source={{ uri }}
+                onError={() => setFailed(true)}
+                className="h-11 w-11 rounded-full mr-3 bg-[#EEF2FF]"
+                resizeMode="cover"
+            />
+        );
+    }
+
+    return (
+        <View className="h-11 w-11 rounded-full bg-[#EEF2FF] items-center justify-center mr-3">
+            <Text className="font-kumbhBold text-[14px] text-primary">
+                {getInitials(name)}
+            </Text>
+        </View>
+    );
+}
+
 function StaffCard({ item }: { item: StaffRow }) {
     const router = useRouter();
+    const hasActive = item.activeCount > 0;
+
     return (
         <Pressable
             onPress={() =>
@@ -234,31 +341,46 @@ function StaffCard({ item }: { item: StaffRow }) {
                     params: { staffId: item.id, name: item.name },
                 } as any)
             }
+            className="rounded-[24px] bg-white border border-gray-100 p-4"
         >
-            <Card>
-                <View className="flex-row items-center justify-between">
-                    <View>
-                        <Text className="text-gray-900 font-kumbhBold text-base">
-                            {item.name}
-                        </Text>
-                        <Text className="text-gray-600 font-kumbh text-sm">
-                            {item.totalCount} sanctions ({item.activeCount}{" "}
-                            active)
+            <View className="flex-row items-center">
+                <StaffAvatar uri={item.avatarUri} name={item.name} />
+                <View className="flex-1 mr-2">
+                    <Text
+                        className="text-[#111827] font-kumbhBold text-[16px]"
+                        numberOfLines={1}
+                    >
+                        {item.name}
+                    </Text>
+                    <Text className="text-[#6B7280] font-kumbh text-[13px] mt-0.5">
+                        {item.totalCount}{" "}
+                        {item.totalCount === 1 ? "sanction" : "sanctions"}
+                    </Text>
+                </View>
+
+                <View className="flex-row items-center gap-2">
+                    <View
+                        className={`px-2.5 py-1 rounded-full border ${
+                            hasActive
+                                ? "bg-red-50 border-red-100"
+                                : "bg-emerald-50 border-emerald-100"
+                        }`}
+                    >
+                        <Text
+                            className={`font-kumbhBold text-[11px] ${
+                                hasActive ? "text-red-700" : "text-emerald-700"
+                            }`}
+                        >
+                            {item.activeCount} active
                         </Text>
                     </View>
+                    <ChevronRight size={16} color="#9CA3AF" />
                 </View>
-            </Card>
+            </View>
         </Pressable>
     );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
-    return (
-        <View className="rounded-2xl bg-white border border-gray-200 p-4 shadow-sm">
-            {children}
-        </View>
-    );
-}
 function RangeTabs({
     value,
     onChange,
@@ -277,14 +399,14 @@ function RangeTabs({
                         key={opt}
                         onPress={() => onChange(opt)}
                         className={clsx(
-                            "flex-1 py-2 rounded-xl items-center justify-center",
-                            active ? "bg-gray-900" : "bg-transparent",
+                            "flex-1 py-2.5 rounded-xl items-center justify-center",
+                            active ? "bg-primary" : "bg-transparent",
                         )}
                     >
                         <Text
                             className={clsx(
-                                "font-kumbh text-sm",
-                                active ? "text-white" : "text-gray-700",
+                                "font-kumbhBold text-xs",
+                                active ? "text-white" : "text-[#6B7280]",
                             )}
                         >
                             {opt}

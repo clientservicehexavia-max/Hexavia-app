@@ -1,4 +1,3 @@
-import Tile from "@/components/admin/Tile";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import {
     selectAllDeals,
@@ -23,6 +22,7 @@ import {
 import { useRouter } from "expo-router";
 import {
     BarChart3,
+    ChevronRight,
     FileText,
     FolderKanban,
     Plus,
@@ -112,8 +112,8 @@ function Section({
 }) {
     return (
         <View className="mb-6">
-            <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-lg font-kumbhBold text-gray-900">
+            <View className="flex-row items-center justify-between mb-3 px-0.5">
+                <Text className="text-[12px] font-kumbhBold uppercase tracking-wider text-[#6B7280]">
                     {title}
                 </Text>
                 {action}
@@ -136,27 +136,38 @@ function SummaryCard({
     tone?: "blue" | "emerald" | "amber" | "violet" | "rose" | "slate";
     onPress?: () => void;
 }) {
-    const toneClass = {
-        blue: "border-blue-100 bg-blue-50",
-        emerald: "border-emerald-100 bg-emerald-50",
-        amber: "border-amber-100 bg-amber-50",
-        violet: "border-violet-100 bg-violet-50",
-        rose: "border-rose-100 bg-rose-50",
-        slate: "border-slate-200 bg-slate-50",
+    const dotClass = {
+        blue: "bg-[#4C5FAB]",
+        emerald: "bg-emerald-500",
+        amber: "bg-amber-500",
+        violet: "bg-violet-500",
+        rose: "bg-rose-500",
+        slate: "bg-slate-400",
     }[tone];
 
     return (
         <Pressable
             onPress={onPress}
             disabled={!onPress}
-            className={`w-[48%] rounded-xl border p-3 active:opacity-80 ${toneClass}`}
+            className="w-[48%] rounded-[22px] bg-white border border-gray-100 p-4 active:opacity-85"
         >
-            <Text className="text-xs font-kumbh text-gray-500">{label}</Text>
-            <Text className="mt-2 text-xl font-kumbhBold text-gray-900">
+            <View className="flex-row items-center justify-between">
+                <Text
+                    className="text-[12px] font-kumbh text-[#6B7280] flex-1 pr-2"
+                    numberOfLines={1}
+                >
+                    {label}
+                </Text>
+                <View className={`h-2.5 w-2.5 rounded-full ${dotClass}`} />
+            </View>
+            <Text
+                className="mt-2.5 text-[20px] font-kumbhBold text-[#111827]"
+                numberOfLines={1}
+            >
                 {value}
             </Text>
             {sub ? (
-                <Text className="mt-1 text-xs font-kumbh text-gray-500">
+                <Text className="mt-1 text-xs font-kumbh text-[#6B7280]">
                     {sub}
                 </Text>
             ) : null}
@@ -166,8 +177,8 @@ function SummaryCard({
 
 function EmptyState({ label }: { label: string }) {
     return (
-        <View className="rounded-xl border border-dashed border-gray-200 p-4">
-            <Text className="text-center text-sm font-kumbh text-gray-500">
+        <View className="rounded-[24px] bg-white border border-gray-100 px-5 py-7">
+            <Text className="text-center text-[13px] font-kumbh text-[#6B7280]">
                 {label}
             </Text>
         </View>
@@ -186,10 +197,15 @@ function ActionButton({
     return (
         <Pressable
             onPress={onPress}
-            className="w-[48%] h-12 rounded-xl bg-[#4C5FAB] items-center justify-center flex-row"
+            className="w-[48%] h-12 rounded-2xl bg-white border border-gray-200 px-3 items-center justify-center flex-row active:opacity-85"
         >
-            {icon}
-            <Text className="ml-2 text-sm font-kumbhBold text-white">
+            <View className="h-7 w-7 rounded-xl bg-[#EEF2FF] items-center justify-center">
+                {icon}
+            </View>
+            <Text
+                className="ml-2 text-[13px] font-kumbhBold text-[#111827]"
+                numberOfLines={1}
+            >
                 {label}
             </Text>
         </Pressable>
@@ -392,12 +408,15 @@ export default function PartnershipDashboard() {
 
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
         >
-            <PlatformAdaptiveHeader title="Partnership Dashboard" />
+            <PlatformAdaptiveHeader
+                title="Partnership Dashboard"
+                backgroundColor="#F5F7FB"
+            />
 
             {loading ? (
                 <View className="flex-1 items-center justify-center">
@@ -406,7 +425,7 @@ export default function PartnershipDashboard() {
             ) : (
                 <ScrollView
                     className="flex-1"
-                    contentContainerClassName="px-4 pb-8"
+                    contentContainerClassName="px-4 pt-3 pb-10"
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -416,33 +435,57 @@ export default function PartnershipDashboard() {
                     showsVerticalScrollIndicator={false}
                 >
                     {dealError || partnerError ? (
-                        <View className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3">
+                        <View className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3">
                             <Text className="text-sm font-kumbh text-red-700">
                                 {dealError || partnerError}
                             </Text>
                         </View>
                     ) : null}
 
-                    <View className="flex-row gap-2 mb-6">
-                        <Tile
-                            title="Partners"
-                            icon={<Users size={20} color="white" />}
+                    <View className="flex-row gap-3 mb-6">
+                        <Pressable
                             onPress={() =>
                                 router.push("/(admin)/partnerships/partners")
                             }
-                        />
+                            className="flex-1 rounded-[24px] bg-white border border-gray-100 p-4 active:opacity-85"
+                        >
+                            <View className="flex-row items-center justify-between">
+                                <View className="h-10 w-10 rounded-2xl bg-[#EEF2FF] items-center justify-center">
+                                    <Users size={19} color="#4C5FAB" />
+                                </View>
+                                <ChevronRight size={17} color="#9CA3AF" />
+                            </View>
+                            <Text className="mt-4 text-[18px] font-kumbhBold text-[#111827]">
+                                Partners
+                            </Text>
+                            <Text className="mt-0.5 text-[12px] font-kumbh text-[#6B7280]">
+                                {partnerCount} registered
+                            </Text>
+                        </Pressable>
 
-                        <Tile
-                            title="Deals"
-                            icon={<FolderKanban size={20} color="white" />}
+                        <Pressable
                             onPress={() =>
                                 router.push("/(admin)/partnerships/deals")
                             }
-                        />
+                            className="flex-1 rounded-[24px] bg-white border border-gray-100 p-4 active:opacity-85"
+                        >
+                            <View className="flex-row items-center justify-between">
+                                <View className="h-10 w-10 rounded-2xl bg-[#EEF2FF] items-center justify-center">
+                                    <FolderKanban size={19} color="#4C5FAB" />
+                                </View>
+                                <ChevronRight size={17} color="#9CA3AF" />
+                            </View>
+                            <Text className="mt-4 text-[18px] font-kumbhBold text-[#111827]">
+                                Deals
+                            </Text>
+                            <Text className="mt-0.5 text-[12px] font-kumbh text-[#6B7280]">
+                                {deals.length} tracked
+                            </Text>
+                        </Pressable>
                     </View>
 
                     <Section title="Summary">
-                        <View className="flex-row flex-wrap gap-3">
+                        <View className="flex-row flex-wrap justify-between gap-y-3">
                             <SummaryCard
                                 label="Total Partners"
                                 value={String(partnerCount)}
@@ -462,7 +505,7 @@ export default function PartnershipDashboard() {
                                 }
                             />
                             <SummaryCard
-                                label="Closed Won Deals"
+                                label="Closed Won"
                                 value={String(dashboard.closedWon.length)}
                                 tone="emerald"
                                 onPress={() =>
@@ -473,7 +516,7 @@ export default function PartnershipDashboard() {
                                 }
                             />
                             <SummaryCard
-                                label="Open Opportunities"
+                                label="Open Pipeline"
                                 value={String(dashboard.openDeals.length)}
                                 tone="amber"
                                 onPress={() =>
@@ -525,7 +568,7 @@ export default function PartnershipDashboard() {
                                 }
                             />
                             <SummaryCard
-                                label="Outstanding Balance"
+                                label="Outstanding"
                                 value={formatAmount(
                                     dashboard.outstandingBalance,
                                 )}
@@ -547,19 +590,19 @@ export default function PartnershipDashboard() {
                             horizontal
                             showsHorizontalScrollIndicator={false}
                         >
-                            <View className="flex-row gap-3">
+                            <View className="flex-row gap-2.5">
                                 {dashboard.pipeline.map((item) => (
                                     <View
                                         key={item.stage}
-                                        className={`w-32 rounded-xl border p-3 ${stageTone[item.stage]}`}
+                                        className={`w-32 rounded-[22px] border p-3.5 ${stageTone[item.stage]}`}
                                     >
                                         <Text
-                                            className="text-xs font-kumbh text-gray-500"
+                                            className="text-xs font-kumbh text-[#4B5563]"
                                             numberOfLines={2}
                                         >
                                             {item.stage}
                                         </Text>
-                                        <Text className="mt-2 text-2xl font-kumbhBold text-gray-900">
+                                        <Text className="mt-2.5 text-2xl font-kumbhBold text-[#111827]">
                                             {item.count}
                                         </Text>
                                     </View>
@@ -576,7 +619,7 @@ export default function PartnershipDashboard() {
                                     router.push("/(admin)/partnerships/deals")
                                 }
                             >
-                                <Text className="text-sm font-kumbhBold text-[#4C5FAB]">
+                                <Text className="text-[13px] font-kumbhBold text-[#4C5FAB]">
                                     View all
                                 </Text>
                             </Pressable>
@@ -595,31 +638,33 @@ export default function PartnershipDashboard() {
                                                 `/(admin)/partnerships/deals/${deal._id}`,
                                             )
                                         }
-                                        className="mb-2 rounded-xl border border-gray-200 p-3"
+                                        className="mb-2.5 rounded-[22px] bg-white border border-gray-100 p-4 active:opacity-85"
                                     >
-                                        <View className="flex-row items-start justify-between">
-                                            <View className="flex-1 pr-3">
+                                        <View className="flex-row items-start justify-between gap-2">
+                                            <View className="flex-1">
                                                 <Text
-                                                    className="font-kumbhBold text-gray-900"
+                                                    className="text-[15px] font-kumbhBold text-[#111827]"
                                                     numberOfLines={1}
                                                 >
                                                     {deal.title}
                                                 </Text>
                                                 <Text
-                                                    className="mt-1 text-sm font-kumbh text-gray-500"
+                                                    className="mt-0.5 text-[13px] font-kumbh text-[#6B7280]"
                                                     numberOfLines={1}
                                                 >
                                                     {partner?.name ||
                                                         "Unknown partner"}
                                                 </Text>
                                             </View>
-                                            <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
-                                                {deal.stage}
-                                            </Text>
+                                            <View className="rounded-full bg-[#EEF2FF] px-2.5 py-1">
+                                                <Text className="text-[11px] font-kumbhBold text-[#4C5FAB]">
+                                                    {deal.stage}
+                                                </Text>
+                                            </View>
                                         </View>
-                                        <Text className="mt-2 text-xs font-kumbh text-gray-500">
+                                        <Text className="mt-2.5 text-[12px] font-kumbh text-[#9CA3AF]">
                                             Owner: {deal.assignedOwner || "—"} •
-                                            Updated:{" "}
+                                            Updated{" "}
                                             {formatDate(deal.updatedAt)}
                                         </Text>
                                     </Pressable>
@@ -635,20 +680,22 @@ export default function PartnershipDashboard() {
                             dashboard.topPartners.map((item) => (
                                 <View
                                     key={item.partner._id}
-                                    className="mb-2 rounded-xl border border-gray-200 p-3"
+                                    className="mb-2.5 rounded-[22px] bg-white border border-gray-100 p-4"
                                 >
-                                    <Text
-                                        className="font-kumbhBold text-gray-900"
-                                        numberOfLines={1}
-                                    >
-                                        {item.partner.name}
-                                    </Text>
-                                    <Text className="mt-1 text-sm font-kumbh text-gray-500">
+                                    <View className="flex-row items-center justify-between">
+                                        <Text
+                                            className="flex-1 pr-2 text-[15px] font-kumbhBold text-[#111827]"
+                                            numberOfLines={1}
+                                        >
+                                            {item.partner.name}
+                                        </Text>
+                                        <Text className="text-[14px] font-kumbhBold text-[#4C5FAB]">
+                                            {formatAmount(item.revenue)}
+                                        </Text>
+                                    </View>
+                                    <Text className="mt-1 text-[12px] font-kumbh text-[#6B7280]">
                                         {item.totalDeals} deals •{" "}
                                         {item.closedWonDeals} closed won
-                                    </Text>
-                                    <Text className="mt-1 text-sm font-kumbhBold text-gray-900">
-                                        Revenue: {formatAmount(item.revenue)}
                                     </Text>
                                 </View>
                             ))
@@ -671,27 +718,31 @@ export default function PartnershipDashboard() {
                                                 `/(admin)/partnerships/deals/${deal._id}`,
                                             )
                                         }
-                                        className="mb-2 rounded-xl border border-amber-200 bg-amber-50 p-3"
+                                        className="mb-2.5 rounded-[22px] border border-amber-200 bg-amber-50/70 p-4 active:opacity-85"
                                     >
-                                        <Text
-                                            className="font-kumbhBold text-gray-900"
-                                            numberOfLines={1}
-                                        >
-                                            {deal.title}
-                                        </Text>
-                                        <Text
-                                            className="mt-1 text-sm font-kumbh text-gray-600"
-                                            numberOfLines={1}
-                                        >
-                                            {partner?.name || "Unknown partner"}
-                                        </Text>
-                                        <Text className="mt-2 text-sm font-kumbh text-gray-700">
-                                            Outstanding:{" "}
-                                            {formatAmount(
-                                                commission.outstanding,
-                                            )}
-                                        </Text>
-                                        <Text className="mt-1 text-xs font-kumbh text-gray-600">
+                                        <View className="flex-row items-start justify-between gap-2">
+                                            <View className="flex-1">
+                                                <Text
+                                                    className="text-[15px] font-kumbhBold text-[#111827]"
+                                                    numberOfLines={1}
+                                                >
+                                                    {deal.title}
+                                                </Text>
+                                                <Text
+                                                    className="mt-0.5 text-[13px] font-kumbh text-[#6B7280]"
+                                                    numberOfLines={1}
+                                                >
+                                                    {partner?.name ||
+                                                        "Unknown partner"}
+                                                </Text>
+                                            </View>
+                                            <Text className="text-[14px] font-kumbhBold text-amber-800">
+                                                {formatAmount(
+                                                    commission.outstanding,
+                                                )}
+                                            </Text>
+                                        </View>
+                                        <Text className="mt-2 text-[12px] font-kumbh text-[#4B5563]">
                                             Payment:{" "}
                                             {financial?.paymentStatus ||
                                                 "Not Due"}{" "}
@@ -706,10 +757,10 @@ export default function PartnershipDashboard() {
                     </Section>
 
                     <Section title="Quick Actions">
-                        <View className="flex-row flex-wrap gap-3">
+                        <View className="flex-row flex-wrap justify-between gap-y-3">
                             <ActionButton
                                 label="Add Partner"
-                                icon={<Users size={18} color="white" />}
+                                icon={<Users size={16} color="#4C5FAB" />}
                                 onPress={() =>
                                     router.push(
                                         "/(admin)/partnerships/partners/create",
@@ -718,7 +769,7 @@ export default function PartnershipDashboard() {
                             />
                             <ActionButton
                                 label="Add Deal"
-                                icon={<Plus size={18} color="white" />}
+                                icon={<Plus size={16} color="#4C5FAB" />}
                                 onPress={() =>
                                     router.push(
                                         "/(admin)/partnerships/deals/create",
@@ -727,12 +778,12 @@ export default function PartnershipDashboard() {
                             />
                             <ActionButton
                                 label="Deal Report"
-                                icon={<BarChart3 size={18} color="white" />}
+                                icon={<BarChart3 size={16} color="#4C5FAB" />}
                                 onPress={() => openReportPicker("deal")}
                             />
                             <ActionButton
                                 label="Partner Report"
-                                icon={<FileText size={18} color="white" />}
+                                icon={<FileText size={16} color="#4C5FAB" />}
                                 onPress={() => openReportPicker("partner")}
                             />
                         </View>
@@ -746,10 +797,11 @@ export default function PartnershipDashboard() {
                 animationType="slide"
                 onRequestClose={() => setReportPicker(null)}
             >
-                <View className="flex-1 justify-end bg-black/30">
-                    <View className="max-h-[78%] rounded-t-3xl bg-white">
-                        <View className="flex-row items-center justify-between border-b border-gray-100 px-5 py-4">
-                            <Text className="text-lg font-kumbhBold text-gray-900">
+                <View className="flex-1 justify-end bg-black/40">
+                    <View className="max-h-[78%] rounded-t-[28px] bg-white pt-3">
+                        <View className="w-10 h-1 rounded-full bg-gray-200 self-center mb-3" />
+                        <View className="flex-row items-center justify-between border-b border-gray-100 px-5 pb-3.5">
+                            <Text className="text-[18px] font-kumbhBold text-[#111827]">
                                 {reportPicker === "deal"
                                     ? "Generate Deal Report"
                                     : "Generate Partner Report"}
@@ -759,7 +811,7 @@ export default function PartnershipDashboard() {
                                 disabled={generatingReport}
                                 className="h-9 w-9 items-center justify-center rounded-full bg-gray-100"
                             >
-                                <X size={18} color="#111827" />
+                                <X size={17} color="#374151" />
                             </Pressable>
                         </View>
 
@@ -767,7 +819,7 @@ export default function PartnershipDashboard() {
                             contentContainerClassName="px-5 py-4 pb-8"
                             showsVerticalScrollIndicator={false}
                         >
-                            <Text className="mb-3 text-sm font-kumbh text-gray-500">
+                            <Text className="mb-3 text-[13px] font-kumbh text-[#6B7280]">
                                 {reportPicker === "deal"
                                     ? "Select one deal before generating the Deal Report."
                                     : "Select one partner before generating the Partner Report."}
@@ -787,29 +839,31 @@ export default function PartnershipDashboard() {
                                               onPress={() =>
                                                   handleGenerateDealReport(deal)
                                               }
-                                              className="mb-2 rounded-xl border border-gray-200 p-3"
+                                              className="mb-2.5 rounded-2xl border border-gray-100 bg-[#F9FAFB] p-3.5"
                                           >
-                                              <View className="flex-row items-start justify-between">
-                                                  <View className="flex-1 pr-3">
+                                              <View className="flex-row items-start justify-between gap-2">
+                                                  <View className="flex-1">
                                                       <Text
-                                                          className="font-kumbhBold text-gray-900"
+                                                          className="font-kumbhBold text-[#111827] text-[14px]"
                                                           numberOfLines={1}
                                                       >
                                                           {deal.title}
                                                       </Text>
                                                       <Text
-                                                          className="mt-1 text-sm font-kumbh text-gray-500"
+                                                          className="mt-0.5 text-[12px] font-kumbh text-[#6B7280]"
                                                           numberOfLines={1}
                                                       >
                                                           {partner?.name ||
                                                               "Unknown partner"}
                                                       </Text>
                                                   </View>
-                                                  <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
-                                                      {deal.stage}
-                                                  </Text>
+                                                  <View className="rounded-full bg-[#EEF2FF] px-2.5 py-0.5">
+                                                      <Text className="text-[11px] font-kumbhBold text-[#4C5FAB]">
+                                                          {deal.stage}
+                                                      </Text>
+                                                  </View>
                                               </View>
-                                              <Text className="mt-2 text-xs font-kumbh text-gray-500">
+                                              <Text className="mt-2 text-[11px] font-kumbh text-[#6B7280]">
                                                   Partner return:{" "}
                                                   {formatAmount(snapshot.due)} •
                                                   Outstanding:{" "}
@@ -834,22 +888,22 @@ export default function PartnershipDashboard() {
                                                       partner,
                                                   )
                                               }
-                                              className="mb-2 rounded-xl border border-gray-200 p-3"
+                                              className="mb-2.5 rounded-2xl border border-gray-100 bg-[#F9FAFB] p-3.5"
                                           >
                                               <Text
-                                                  className="font-kumbhBold text-gray-900"
+                                                  className="font-kumbhBold text-[#111827] text-[14px]"
                                                   numberOfLines={1}
                                               >
                                                   {partner.name}
                                               </Text>
                                               <Text
-                                                  className="mt-1 text-sm font-kumbh text-gray-500"
+                                                  className="mt-0.5 text-[12px] font-kumbh text-[#6B7280]"
                                                   numberOfLines={1}
                                               >
                                                   {partner.company ||
                                                       "No company added"}
                                               </Text>
-                                              <Text className="mt-2 text-xs font-kumbh text-gray-500">
+                                              <Text className="mt-2 text-[11px] font-kumbh text-[#4C5FAB]">
                                                   {partnerDeals.length} linked{" "}
                                                   {partnerDeals.length === 1
                                                       ? "deal"

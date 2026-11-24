@@ -53,15 +53,27 @@ function StatusTicks({ status }: { status?: Message["status"] }) {
     return null;
 }
 
-function ReplyPreview({ msg }: { msg: Message }) {
+function ReplyPreview({ msg, isMe }: { msg: Message; isMe?: boolean }) {
     if (!msg.replyTo) return null;
     return (
-        <View className="mb-2 rounded-2xl px-3 py-2 bg-white/50 border border-white/40">
-            <Text className="text-[11px] text-gray-500 mb-1 font-kumbhBold">
+        <View
+            className={`mb-2 rounded-xl px-3 py-2 border ${
+                isMe
+                    ? "bg-white/15 border-white/25"
+                    : "bg-[#F5F7FB] border-gray-200"
+            }`}
+        >
+            <Text
+                className={`text-[11px] mb-0.5 font-kumbhBold ${
+                    isMe ? "text-indigo-100" : "text-primary"
+                }`}
+            >
                 {msg.replyTo.senderName}
             </Text>
             <Text
-                className="text-[12px] text-gray-700 font-kumbh"
+                className={`text-[12px] font-kumbh ${
+                    isMe ? "text-white/90" : "text-gray-600"
+                }`}
                 numberOfLines={2}
             >
                 {msg.replyTo.preview}
@@ -252,10 +264,10 @@ function DocumentPill({
                     {displayName}
                 </Text>
             )}
-            <View className="flex-row items-center bg-white/60 p-2 rounded-lg">
-                <FileText size={20} color="#374151" />
+            <View className="flex-row items-center bg-white/90 border border-gray-100 p-2.5 rounded-xl">
+                <FileText size={20} color="#4C5FAB" />
                 <Text
-                    className="ml-2 text-[13px] text-gray-800"
+                    className="ml-2 text-[13px] font-kumbhBold text-[#111827]"
                     style={{ flex: 1, flexShrink: 1 }}
                     numberOfLines={2}
                     ellipsizeMode="tail"
@@ -278,8 +290,8 @@ function AudioLoadingPlayer({
     isMe: boolean;
     displayName?: string;
 }) {
-    const bubbleColor = isMe ? "#C9CEEA" : "#E5E7EB";
-    const railColor = isMe ? "#AEB6DF" : "#CBD5E1";
+    const bubbleColor = isMe ? "#EEF2FF" : "#FFFFFF";
+    const railColor = isMe ? "#C7D2FE" : "#E5E7EB";
     const audioLabel = audioLabelFromMessage(msg);
     const dur = msg.durationMs ? msg.durationMs / 1000 : 0;
     const fmtClock = (s = 0) => {
@@ -393,8 +405,8 @@ function AudioPlayer({
     const displaySeconds = status.playing ? pos : dur;
     const pct = dur > 0 ? Math.min(1, pos / dur) : 0;
     const progressWidth = barWidth * pct;
-    const bubbleColor = isMe ? "#C9CEEA" : "#E5E7EB";
-    const railColor = isMe ? "#AEB6DF" : "#CBD5E1";
+    const bubbleColor = isMe ? "#EEF2FF" : "#FFFFFF";
+    const railColor = isMe ? "#C7D2FE" : "#E5E7EB";
     const activeColor = "#4C5FAB";
     const audioLabel = audioLabelFromMessage(msg);
 
@@ -554,6 +566,7 @@ function renderTextWithMentionsAndLinks(
     raw: string,
     mentionMap?: Record<string, { id: string; name: string; handle: string }>,
     onMentionPress?: (handle: string) => void,
+    isMe?: boolean,
 ) {
     if (!raw) return null;
 
@@ -570,7 +583,12 @@ function renderTextWithMentionsAndLinks(
         // preceding text
         if (idx > last) {
             out.push(
-                <Text key={`t-${key++}`} className="text-[13px] text-gray-800">
+                <Text
+                    key={`t-${key++}`}
+                    className={`text-[14px] font-kumbh leading-5 ${
+                        isMe ? "text-white" : "text-[#111827]"
+                    }`}
+                >
                     {raw.slice(last, idx)}
                 </Text>,
             );
@@ -583,7 +601,9 @@ function renderTextWithMentionsAndLinks(
             out.push(
                 <Text
                     key={`m-${key++}`}
-                    className="text-[13px] text-[#4C5FAB] font-kumbhBold"
+                    className={`text-[14px] font-kumbhBold ${
+                        isMe ? "text-indigo-100" : "text-[#4C5FAB]"
+                    }`}
                     onPress={() => onMentionPress?.(handle)}
                 >
                     @{meta?.handle ?? handle}
@@ -595,7 +615,9 @@ function renderTextWithMentionsAndLinks(
             out.push(
                 <Text
                     key={`u-${key++}`}
-                    className="text-[13px] text-[#4C5FAB] underline"
+                    className={`text-[14px] underline ${
+                        isMe ? "text-indigo-100" : "text-[#4C5FAB]"
+                    }`}
                     onPress={() => Linking.openURL(url)}
                 >
                     {url}
@@ -609,13 +631,20 @@ function renderTextWithMentionsAndLinks(
     // trailing text
     if (last < raw.length) {
         out.push(
-            <Text key={`t-${key++}`} className="text-[13px] text-gray-800">
+            <Text
+                key={`t-${key++}`}
+                className={`text-[14px] font-kumbh leading-5 ${
+                    isMe ? "text-white" : "text-[#111827]"
+                }`}
+            >
                 {raw.slice(last)}
             </Text>,
         );
     }
 
-    return <Text className="text-gray-800">{out}</Text>;
+    return (
+        <Text className={isMe ? "text-white" : "text-[#111827]"}>{out}</Text>
+    );
 }
 
 /** -------------------------
@@ -774,7 +803,7 @@ export default function MessageBubble({
 
             {!isMe && !isAudio(msg) && (
                 <Text
-                    className="text-[11px] text-gray-500 mb-0.5"
+                    className="text-[11px] font-kumbhBold text-[#4C5FAB] mb-0.5"
                     numberOfLines={1}
                 >
                     {displayName}
@@ -795,26 +824,32 @@ export default function MessageBubble({
                         // Example: Link to a profile route if you have one
                         // router.push({ pathname: "/(staff)/profile/[id]", params: { id: meta?.id }});
                     },
+                    isMe && !isImage(msg) && !isDocument(msg),
                 )}
         </>
     );
 
     if (isMe) {
+        const usePrimaryBg = !isAudio(msg) && !isImage(msg) && !isDocument(msg);
         return (
             <Pressable
                 onLongPress={() => onLongPress?.(msg)}
-                className="px-3 mb-2 items-end"
+                className="px-4 mb-2.5 items-end"
             >
-                <View className="max-w-[75%]">
+                <View className="max-w-[78%]">
                     <View
                         className={
-                            isAudio(msg) ? "" : "bg-[#C9CEEA] rounded-xl"
+                            isAudio(msg)
+                                ? ""
+                                : usePrimaryBg
+                                  ? "bg-primary rounded-2xl rounded-br-sm"
+                                  : "bg-[#EEF2FF] border border-[#E0E7FF] rounded-2xl rounded-br-sm"
                         }
                         style={{
                             padding:
                                 isImage(msg) || isAudio(msg) || isDocument(msg)
                                     ? 5
-                                    : 10,
+                                    : 12,
                         }}
                     >
                         {BubbleCore}
@@ -858,16 +893,16 @@ export default function MessageBubble({
     return (
         <Pressable
             onLongPress={() => onLongPress?.(msg)}
-            className="px-2 mb-2 items-start"
+            className="px-3 mb-2.5 items-start"
         >
             <View className="flex-row items-end">
                 {avatar ? (
                     <Image
                         source={{ uri: avatar }}
-                        className="h-9 w-9 mb-[16px] rounded-full mr-1.5 flex-shrink-0"
+                        className="h-9 w-9 mb-[16px] rounded-full mr-2 flex-shrink-0"
                     />
                 ) : (
-                    <View className="h-9 w-9 mb-[16px] rounded-full bg-emerald-700 mr-1.5 flex-shrink-0 items-center justify-center">
+                    <View className="h-9 w-9 mb-[16px] rounded-full bg-[#4C5FAB] mr-2 flex-shrink-0 items-center justify-center">
                         {initials ? (
                             <Text className="text-white text-[12px] font-kumbhBold">
                                 {initials}
@@ -876,10 +911,12 @@ export default function MessageBubble({
                     </View>
                 )}
 
-                <View style={{ maxWidth: "75%", flexShrink: 1 }}>
+                <View style={{ maxWidth: "78%", flexShrink: 1 }}>
                     <View
                         className={
-                            isAudio(msg) ? "" : "bg-gray-200 rounded-xl p-3"
+                            isAudio(msg)
+                                ? ""
+                                : "bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-3.5 py-2.5"
                         }
                         style={{ flexShrink: 1 }}
                     >

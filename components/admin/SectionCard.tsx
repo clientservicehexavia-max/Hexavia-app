@@ -18,11 +18,14 @@ export default function SectionCard({
     const Wrapper = onPress ? Pressable : View;
     return (
         <Wrapper
-            className={clsx("rounded-xl bg-background p-4 my-2", className)}
+            className={clsx(
+                "my-2 rounded-[24px] border border-gray-100 bg-white p-4",
+                className,
+            )}
             onPress={onPress as any}
         >
             {!noTitle && title ? (
-                <Text className="text-lg font-kumbhBold text-text mb-2">
+                <Text className="mb-2 font-kumbhBold text-base text-[#111827]">
                     {title}
                 </Text>
             ) : null}

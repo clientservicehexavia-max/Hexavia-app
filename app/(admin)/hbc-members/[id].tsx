@@ -5,6 +5,7 @@ import { RootState } from "@/store";
 import { useAppSelector } from "@/store/hooks";
 import { canAccessHbcMembers } from "@/utils/roles";
 import { useLocalSearchParams } from "expo-router";
+import { UsersRound } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -57,11 +58,11 @@ function toDisplayValue(value: unknown) {
 function ProfileField({ label, value }: { label: string; value?: string }) {
     if (!value) return null;
     return (
-        <View className="rounded-2xl bg-gray-50 px-4 py-3">
-            <Text className="text-xs uppercase tracking-wide text-gray-500 font-kumbh">
+        <View className="rounded-2xl bg-[#F5F7FB] px-4 py-3.5">
+            <Text className="text-[11px] uppercase tracking-wide text-[#6B7280] font-kumbhBold">
                 {label}
             </Text>
-            <Text className="mt-1 text-base text-gray-900 font-kumbh">
+            <Text className="mt-1 text-sm text-[#111827] font-kumbhBold">
                 {value}
             </Text>
         </View>
@@ -182,104 +183,162 @@ export default function HbcMemberProfileScreen() {
             .slice(0, 14);
     }, [member?.raw]);
 
+    const hasPrimaryDetails = Boolean(
+        member?.email ||
+            member?.phone ||
+            member?.website ||
+            member?.location ||
+            member?.company ||
+            member?.role,
+    );
+
     return (
         <SafeAreaView
-            edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white"
+            edges={
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
+            }
+            className="flex-1 bg-[#F5F7FB]"
         >
-            <PlatformAdaptiveHeader title="Member Profile" />
+            <PlatformAdaptiveHeader
+                title="Member Profile"
+                backgroundColor="#F5F7FB"
+            />
 
             {!canAccess ? (
                 <View className="flex-1 items-center justify-center px-6">
-                    <Text className="text-base text-gray-600 text-center font-kumbh">
-                        You do not have access to this section.
-                    </Text>
+                    <View className="w-full items-center rounded-[24px] border border-gray-100 bg-white p-8">
+                        <View className="mb-3 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                            <UsersRound size={22} color="#4C5FAB" />
+                        </View>
+                        <Text className="text-center text-base font-kumbhBold text-[#111827]">
+                            Access Restricted
+                        </Text>
+                        <Text className="mt-1 text-center text-sm font-kumbh text-[#6B7280]">
+                            You do not have access to this section.
+                        </Text>
+                    </View>
                 </View>
             ) : loading ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator />
-                    <Text className="mt-3 text-gray-500 font-kumbh">
+                    <ActivityIndicator color="#4C5FAB" />
+                    <Text className="mt-3 text-sm font-kumbh text-[#6B7280]">
                         Loading profile...
                     </Text>
                 </View>
             ) : !member ? (
                 <View className="flex-1 items-center justify-center px-6">
-                    <Text className="text-base text-gray-600 text-center font-kumbh">
-                        Member profile not found.
-                    </Text>
-                    <Pressable
-                        onPress={() => void loadMember()}
-                        className="mt-4 px-4 py-2 rounded-xl bg-primary"
-                    >
-                        <Text className="text-white font-kumbhBold">Retry</Text>
-                    </Pressable>
+                    <View className="w-full items-center rounded-[24px] border border-gray-100 bg-white p-8">
+                        <View className="mb-3 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                            <UsersRound size={22} color="#4C5FAB" />
+                        </View>
+                        <Text className="text-center text-base font-kumbhBold text-[#111827]">
+                            Member profile not found.
+                        </Text>
+                        <Pressable
+                            onPress={() => void loadMember()}
+                            className="mt-4 h-12 items-center justify-center rounded-2xl bg-[#4C5FAB] px-6"
+                        >
+                            <Text className="font-kumbhBold text-white">
+                                Retry
+                            </Text>
+                        </Pressable>
+                    </View>
                 </View>
             ) : (
                 <ScrollView
                     className="flex-1"
-                    contentContainerClassName="px-4 pt-4 pb-12"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{
+                        paddingHorizontal: 16,
+                        paddingTop: 12,
+                        paddingBottom: 36,
+                    }}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={onRefresh}
+                            tintColor="#4C5FAB"
                         />
                     }
                 >
-                    <View className="items-center rounded-3xl bg-primary-50 px-4 py-6 border border-primary-100">
+                    <View className="mb-4 items-center rounded-[28px] border border-gray-100 bg-white px-5 py-6">
                         {member.avatarUrl ? (
                             <Image
                                 source={{ uri: member.avatarUrl }}
-                                className="w-28 h-28 rounded-full"
+                                className="h-24 w-24 rounded-full"
                             />
                         ) : (
-                            <View className="w-28 h-28 rounded-full bg-primary-200 items-center justify-center">
-                                <Text className="text-primary text-3xl font-kumbhBold">
+                            <View className="h-24 w-24 items-center justify-center rounded-full bg-[#EEF2FF]">
+                                <Text className="text-2xl font-kumbhBold text-[#4C5FAB]">
                                     {initialsFrom(member.displayName)}
                                 </Text>
                             </View>
                         )}
 
-                        <Text className="mt-4 text-2xl text-center text-gray-900 font-kumbhBold">
+                        <Text className="mt-4 text-center text-xl font-kumbhBold text-[#111827]">
                             {member.displayName}
                         </Text>
 
-                        <Text className="mt-2 text-center text-gray-600 font-kumbh">
-                            {[member.company, member.role, member.location]
-                                .map((part) => String(part ?? "").trim())
-                                .filter(Boolean)
-                                .join(" • ") || "HBC Community Member"}
-                        </Text>
+                        <View className="mt-2 rounded-full bg-[#EEF2FF] px-3.5 py-1.5">
+                            <Text className="text-center text-xs font-kumbhBold text-[#4C5FAB]">
+                                {[member.company, member.role, member.location]
+                                    .map((part) => String(part ?? "").trim())
+                                    .filter(Boolean)
+                                    .join(" • ") || "HBC Community Member"}
+                            </Text>
+                        </View>
                     </View>
 
-                    <View className="mt-4" style={{ gap: 10 }}>
-                        <ProfileField label="Email" value={member.email} />
-                        <ProfileField label="Phone" value={member.phone} />
-                        <ProfileField label="Website" value={member.website} />
-                        <ProfileField
-                            label="Location"
-                            value={member.location}
-                        />
-                        <ProfileField label="Company" value={member.company} />
-                        <ProfileField label="Role" value={member.role} />
-                    </View>
+                    {hasPrimaryDetails ? (
+                        <View className="mb-4 rounded-[24px] border border-gray-100 bg-white p-4">
+                            <Text className="mb-3 text-base font-kumbhBold text-[#111827]">
+                                Contact & Role Details
+                            </Text>
+                            <View className="gap-2.5">
+                                <ProfileField
+                                    label="Email"
+                                    value={member.email}
+                                />
+                                <ProfileField
+                                    label="Phone"
+                                    value={member.phone}
+                                />
+                                <ProfileField
+                                    label="Website"
+                                    value={member.website}
+                                />
+                                <ProfileField
+                                    label="Location"
+                                    value={member.location}
+                                />
+                                <ProfileField
+                                    label="Company"
+                                    value={member.company}
+                                />
+                                <ProfileField label="Role" value={member.role} />
+                            </View>
+                        </View>
+                    ) : null}
 
                     {member.bio ? (
-                        <View className="mt-5 rounded-2xl bg-gray-50 px-4 py-4">
-                            <Text className="text-xs uppercase tracking-wide text-gray-500 font-kumbh">
+                        <View className="mb-4 rounded-[24px] border border-gray-100 bg-white p-4">
+                            <Text className="mb-2 text-base font-kumbhBold text-[#111827]">
                                 About
                             </Text>
-                            <Text className="mt-2 text-base text-gray-800 font-kumbh leading-6">
-                                {member.bio}
-                            </Text>
+                            <View className="rounded-2xl bg-[#F5F7FB] p-4">
+                                <Text className="text-sm font-kumbh leading-6 text-[#374151]">
+                                    {member.bio}
+                                </Text>
+                            </View>
                         </View>
                     ) : null}
 
                     {extraFields.length > 0 ? (
-                        <View className="mt-5 rounded-2xl bg-white border border-gray-100 px-4 py-4">
-                            <Text className="text-xs uppercase tracking-wide text-gray-500 font-kumbh">
+                        <View className="mb-4 rounded-[24px] border border-gray-100 bg-white p-4">
+                            <Text className="mb-3 text-base font-kumbhBold text-[#111827]">
                                 Additional Details
                             </Text>
-                            <View className="mt-3" style={{ gap: 10 }}>
+                            <View className="gap-2.5">
                                 {extraFields.map((entry) => (
                                     <ProfileField
                                         key={entry.key}

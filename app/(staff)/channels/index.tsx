@@ -198,7 +198,7 @@ export default function AllChannelsScreen() {
     return (
         <SafeAreaView
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <StatusBar style="dark" />
             <View style={viewStyle}>

@@ -28,22 +28,23 @@ export default function PlatformLikeHeader({
 
     return (
         <View
+            className="border-b border-gray-100"
             style={{
-                height: 52,
-                backgroundColor: backgroundColor,
+                height: 56,
+                backgroundColor: backgroundColor ?? "#FFFFFF",
             }}
         >
             <View
-                className="flex-1 flex-row items-center justify-between"
+                className="flex-1 flex-row items-center justify-between px-1"
                 style={multilineTitle ? { alignItems: "center" } : undefined}
             >
                 {left ?? (
                     <Pressable
                         onPress={onBackPress ? onBackPress : () => router.back()}
                         hitSlop={8}
-                        className="w-12 h-12 items-center justify-center"
+                        className="h-11 w-11 items-center justify-center rounded-full"
                     >
-                        <ArrowLeft size={24} color="#111827" />
+                        <ArrowLeft size={22} color="#111827" />
                     </Pressable>
                 )}
 

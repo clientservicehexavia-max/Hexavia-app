@@ -1,4 +1,5 @@
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import CustomTextInput from "@/components/ui/CustomInput";
 import HexButton from "@/components/ui/HexButton";
 import { forgotPassword } from "@/redux/auth/auth.thunks";
 import { useAppDispatch } from "@/store/hooks";
@@ -6,9 +7,9 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Mail } from "lucide-react-native";
-import React from "react";
+import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Platform, Text, TextInput, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as yup from "yup";
@@ -38,6 +39,7 @@ export default function ForgotPasswordScreen() {
     const router = useRouter();
     const dispatch = useAppDispatch();
     const isIOS = Platform.OS === "ios";
+    const [emailFocused, setEmailFocused] = useState(false);
 
     const {
         control,
@@ -70,64 +72,78 @@ export default function ForgotPasswordScreen() {
         <SafeAreaView
             accessible={false}
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <StatusBar style="dark" />
-            <PlatformAdaptiveHeader title="Forgot Password" />
+            <PlatformAdaptiveHeader
+                title="Forgot Password"
+                backgroundColor="#F5F7FB"
+            />
             <KeyboardAwareScrollView
                 enableOnAndroid
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{
                     paddingHorizontal: 20,
+                    paddingTop: 12,
                     paddingBottom: 32,
                 }}
             >
-                <View>
-                    <Text className="text-base text-gray-500 mt-2 font-kumbhLight">
+                <View className="mb-7">
+                    <Text className="font-kumbh text-[15px] leading-6 text-gray-500">
                         Enter your email address below to receive your password
-                        reset.
+                        reset code.
                     </Text>
                 </View>
 
                 {/* Email */}
-                <View className="mt-6">
-                    <Text className="text-sm text-gray-700 mb-2 font-kumbh">
+                <View>
+                    <Text className="mb-2 font-kumbhBold text-sm text-[#374151]">
                         Email Address
                     </Text>
                     <Controller
                         control={control}
                         name="email"
                         render={({ field: { onChange, onBlur, value } }) => (
-                            <View className="w-full h-14 px-4 rounded-xl bg-gray-100 flex-row items-center">
-                                <View className="mr-2">
-                                    <Mail size={18} color="#6B7280" />
+                            <View
+                                className={`h-14 w-full flex-row items-center rounded-2xl border bg-white px-4 ${
+                                    emailFocused
+                                        ? "border-primary"
+                                        : "border-gray-200"
+                                }`}
+                            >
+                                <View className="mr-3">
+                                    <Mail
+                                        size={18}
+                                        color={
+                                            emailFocused ? "#4C5FAB" : "#6B7280"
+                                        }
+                                    />
                                 </View>
-                                <TextInput
+                                <CustomTextInput
                                     placeholder="Enter Email Address"
-                                    placeholderTextColor="#9CA3AF"
-                                    onBlur={onBlur}
+                                    onFocus={() => setEmailFocused(true)}
+                                    onBlur={() => {
+                                        setEmailFocused(false);
+                                        onBlur();
+                                    }}
                                     onChangeText={onChange}
                                     value={value}
                                     autoCapitalize="none"
                                     keyboardType="email-address"
-                                    className="flex-1 text-black font-kumbh"
-                                    style={{
-                                        paddingVertical: 0,
-                                        height: 56,
-                                    }}
+                                    className="h-full flex-1"
                                 />
                             </View>
                         )}
                     />
                     {errors.email && (
-                        <Text className="text-red-500 text-xs mt-1 font-kumbh">
+                        <Text className="mt-1.5 font-kumbh text-xs text-red-500">
                             {errors.email.message}
                         </Text>
                     )}
                 </View>
 
                 {/* Continue button */}
-                <View className="mt-10">
+                <View className="mt-8">
                     <HexButton
                         title={isSubmitting ? "Please wait..." : "Continue"}
                         onPress={handleSubmit(onSubmit)}

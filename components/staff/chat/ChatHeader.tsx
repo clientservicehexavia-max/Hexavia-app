@@ -35,16 +35,16 @@ export default function ChatHeader({
     return (
         <View
             style={{ marginTop: Platform.select({ android: 10, ios: 0 }) }}
-            className="px-5 pt-2 pb-3 bg-white"
+            className="px-5 pt-2 pb-3 bg-[#F5F7FB] border-b border-gray-100"
         >
             <View className="flex-row items-center justify-between">
                 {/* LEFT */}
                 <View className="flex-row items-center flex-1">
                     <Pressable
                         onPress={() => router.push({ pathname: backPath })}
-                        className="h-10 w-10 mr-2 rounded-2xl items-center justify-center"
+                        className="h-10 w-10 mr-3 rounded-full bg-white border border-gray-100 items-center justify-center"
                     >
-                        <ChevronLeft size={24} color="#111827" />
+                        <ChevronLeft size={20} color="#111827" />
                     </Pressable>
 
                     <Pressable
@@ -60,7 +60,7 @@ export default function ChatHeader({
                         <View style={{ flexShrink: 1 }}>
                             <Text
                                 style={{ flexShrink: 1 }}
-                                className="font-kumbh text-[20px] text-gray-900"
+                                className="font-kumbhBold text-[18px] text-[#111827]"
                                 numberOfLines={1}
                                 ellipsizeMode="tail"
                             >
@@ -69,7 +69,7 @@ export default function ChatHeader({
 
                             <Text
                                 style={{ flexShrink: 1 }}
-                                className="text-[12px] text-gray-500 font-kumbh"
+                                className="text-[12px] text-[#6B7280] font-kumbh"
                                 numberOfLines={1}
                                 ellipsizeMode="tail"
                             >
@@ -80,21 +80,25 @@ export default function ChatHeader({
                 </View>
 
                 {/* RIGHT */}
-                <View className="flex-row items-center gap-4">
+                <View className="flex-row items-center gap-2">
                     <Pressable
                         onPress={onTaskOpen}
-                        className="rounded-2xl flex-col items-center justify-center"
+                        className="h-10 px-3 rounded-full bg-[#EEF2FF] flex-row items-center gap-1.5"
                     >
-                        <Clipboard size={22} color="#111827" />
-                        <Text className="text-sm font-kumbh">Tasks</Text>
+                        <Clipboard size={16} color="#4C5FAB" />
+                        <Text className="text-[12px] font-kumbhBold text-primary">
+                            Tasks
+                        </Text>
                     </Pressable>
 
                     <Pressable
                         onPress={onPress}
-                        className="rounded-2xl flex-col items-center justify-center"
+                        className="h-10 px-3 rounded-full bg-white border border-gray-200 flex-row items-center gap-1.5"
                     >
-                        <Cloud size={22} color="#111827" />
-                        <Text className="text-sm font-kumbh">Resources</Text>
+                        <Cloud size={16} color="#111827" />
+                        <Text className="text-[12px] font-kumbhBold text-[#111827]">
+                            Files
+                        </Text>
                     </Pressable>
                 </View>
             </View>

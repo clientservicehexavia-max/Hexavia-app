@@ -6,8 +6,8 @@ type Props = { active: StatusKey; onChange: (k: StatusKey) => void };
 
 export default function StatusTabs({ active, onChange }: Props) {
     return (
-        <View className="mt-2">
-            <View className="flex-row items-center">
+        <View className="mt-2 bg-white border-b border-gray-100">
+            <View className="flex-row items-center px-2">
                 {TAB_ORDER.map((key) => {
                     const isActive = key === active;
                     return (
@@ -16,9 +16,9 @@ export default function StatusTabs({ active, onChange }: Props) {
                             onPress={() => onChange(key)}
                             className="flex-1 px-1"
                         >
-                            <View className="items-center py-3">
+                            <View className="items-center pt-3 pb-2.5">
                                 <Text
-                                    className="font-kumbh text-[14px]"
+                                    className={`${isActive ? "font-kumbhBold" : "font-kumbh"} text-[13px]`}
                                     style={{
                                         color: isActive ? "#4C5FAB" : "#6B7280",
                                     }}

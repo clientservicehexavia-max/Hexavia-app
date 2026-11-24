@@ -86,7 +86,7 @@ export default function ClientTasksScreen() {
 
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
             edges={["top", "left", "right"]}
         >
             <PlatformAdaptiveHeader
@@ -94,9 +94,9 @@ export default function ClientTasksScreen() {
                 headerRight={() => (
                     <Pressable
                         onPress={() => setShowCreate(true)}
-                        className="h-9 w-9 items-center justify-center"
+                        className="w-10 h-10 rounded-full items-center justify-center bg-primary"
                     >
-                        <Plus size={24} color="#4C5FAB" />
+                        <Plus size={20} color="#FFFFFF" />
                     </Pressable>
                 )}
                 headerLeft={() => null}

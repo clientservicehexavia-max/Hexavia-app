@@ -4,12 +4,12 @@ import {
   Pressable,
   View,
   Text,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   Switch,
 } from "react-native";
 import { X, RefreshCcw } from "lucide-react-native";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store";
 import {
@@ -98,15 +98,15 @@ export default function CreateChannelModal({ visible, onClose }: Props) {
           className="w-full"
         >
           <Pressable onPress={() => {}} className="">
-            <View className="bg-white rounded-3xl p-5">
+            <View className="bg-white rounded-[28px] p-5 border border-gray-100">
               {/* Header */}
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-[18px] font-kumbhBold text-gray-900">
+                <Text className="text-[19px] font-kumbhBold text-[#111827]">
                   Create Project
                 </Text>
                 <Pressable
                   onPress={onClose}
-                  className="h-9 w-9 rounded-xl bg-gray-100 items-center justify-center"
+                  className="h-9 w-9 rounded-full bg-[#F3F4F6] items-center justify-center"
                   accessibilityLabel="Close modal"
                 >
                   <X size={18} color="#111827" />
@@ -115,41 +115,43 @@ export default function CreateChannelModal({ visible, onClose }: Props) {
 
               {/* Fields */}
               <View className="mb-3">
-                <Text className="text-[12px] text-gray-500 mb-1">
+                <Text className="text-[12px] font-kumbhBold text-[#374151] mb-1.5">
                   Name of Project
                 </Text>
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Enter Name of Project"
-                  className="h-12 px-4 rounded-2xl bg-gray-100 text-gray-900"
-                  placeholderTextColor="#9CA3AF"
-                  autoCapitalize="words"
-                />
+                <View className="h-12 px-4 rounded-2xl border border-gray-200 bg-[#F9FAFB] justify-center">
+                  <CustomTextInput
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Enter Name of Project"
+                    autoCapitalize="words"
+                  />
+                </View>
               </View>
 
               <View className="mb-3">
-                <Text className="text-[12px] text-gray-500 mb-1">
+                <Text className="text-[12px] font-kumbhBold text-[#374151] mb-1.5">
                   Descriptions
                 </Text>
-                <TextInput
-                  value={desc}
-                  onChangeText={setDesc}
-                  placeholder="Add a short description"
-                  className="px-4 pt-3 pb-3 rounded-2xl bg-gray-100 text-gray-900"
-                  placeholderTextColor="#9CA3AF"
-                  multiline
-                  numberOfLines={3}
-                />
+                <View className="px-4 py-3 rounded-2xl border border-gray-200 bg-[#F9FAFB]">
+                  <CustomTextInput
+                    value={desc}
+                    onChangeText={setDesc}
+                    placeholder="Add a short description"
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    style={{ minHeight: 72 }}
+                  />
+                </View>
               </View>
 
               <View className="mb-5">
                 <View className="flex-row items-center justify-between">
                   <View>
-                    <Text className="text-[12px] text-gray-500 mb-1">
+                    <Text className="text-[13px] font-kumbhBold text-[#374151] mb-0.5">
                       Staff only channel
                     </Text>
-                    <Text className="text-[10px] text-gray-400">
+                    <Text className="text-[11px] font-kumbh text-[#6B7280]">
                       Toggle on if this project should be restricted to staff.
                     </Text>
                   </View>
@@ -163,28 +165,28 @@ export default function CreateChannelModal({ visible, onClose }: Props) {
               </View>
 
               <View className="mb-5">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-[12px] text-gray-500 mb-1">Code</Text>
+                <View className="flex-row items-center justify-between mb-1.5">
+                  <Text className="text-[12px] font-kumbhBold text-[#374151]">Code</Text>
                   <Pressable
                     onPress={doGenerateCode}
                     disabled={isGenerating}
                     className="flex-row items-center gap-1"
                     accessibilityLabel="Regenerate code"
                   >
-                    <RefreshCcw size={16} color="#4C5FAB" />
-                    <Text className="text-[#4C5FAB] text-[12px]">
+                    <RefreshCcw size={15} color="#4C5FAB" />
+                    <Text className="text-[#4C5FAB] font-kumbhBold text-[12px]">
                       {isGenerating ? "Generating…" : "Generate"}
                     </Text>
                   </Pressable>
                 </View>
-                <TextInput
-                  value={code}
-                  onChangeText={setCode}
-                  placeholder="#0101"
-                  className="h-12 px-4 rounded-2xl bg-gray-100 text-gray-900"
-                  placeholderTextColor="#9CA3AF"
-                  autoCapitalize="none"
-                />
+                <View className="h-12 px-4 rounded-2xl border border-gray-200 bg-[#F9FAFB] justify-center">
+                  <CustomTextInput
+                    value={code}
+                    onChangeText={setCode}
+                    placeholder="#0101"
+                    autoCapitalize="none"
+                  />
+                </View>
               </View>
 
               {/* Submit */}

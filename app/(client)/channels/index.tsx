@@ -242,7 +242,7 @@ export default function AllChannelsScreen() {
     );
 
     return (
-        <View className="flex-1 bg-white">
+        <View className="flex-1 bg-[#F5F7FB]">
             <StatusBar style="dark" />
             <View style={viewStyle}>
                 <BackHeader title="All Projects" />

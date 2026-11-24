@@ -1,4 +1,5 @@
 import { api } from "@/api/axios";
+import CustomTextInput from "@/components/ui/CustomInput";
 import { logout } from "@/redux/auth/auth.slice";
 import { selectPhase, selectUser } from "@/redux/user/user.slice";
 import { fetchProfile, updateProfile } from "@/redux/user/user.thunks";
@@ -19,35 +20,37 @@ import {
     RefreshControl,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
-
-function initialsOf(name?: string) {
-    if (!name) return "U";
-    const parts = name.trim().split(/\s+/).slice(0, 2);
-    return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "U";
-}
 
 function InfoRow({
     icon,
     label,
     value,
+    withBorder = true,
 }: {
     icon: React.ComponentProps<typeof Ionicons>["name"];
     label: string;
     value?: string | null;
+    withBorder?: boolean;
 }) {
     return (
-        <View className="flex-row items-center justify-between rounded-2xl bg-white/70 px-4 py-3 mb-3">
+        <View
+            className={`flex-row items-center justify-between px-4 py-4 ${
+                withBorder ? "border-b border-gray-100" : ""
+            }`}
+        >
             <View className="flex-row items-center">
-                <View className="mr-3 rounded-2xl bg-primary/10 p-2">
+                <View className="mr-3 h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
                     <Ionicons name={icon} size={18} color="#4C5FAB" />
                 </View>
-                <Text className="text-gray-500 font-kumbh">{label}</Text>
+                <Text className="font-kumbh text-base text-gray-800">
+                    {label}
+                </Text>
             </View>
-            <Text className="ml-4 max-w-[58%] text-right text-sm text-gray-900 font-kumbh">
+            <Text className="ml-4 max-w-[185px] text-right font-kumbh text-base text-gray-900">
                 {value || "—"}
             </Text>
         </View>
@@ -172,11 +175,11 @@ export default function Profile() {
     const topCard = useMemo(() => {
         return (
             <View
-                className="relative z-30 mx-4 mt-10 rounded-3xl bg-white p-4 shadow-lg"
-                style={{ elevation: 12 }}
+                className="mx-4 mt-4 rounded-3xl border border-gray-100 bg-white p-5"
+                style={{ elevation: 2 }}
             >
                 <View className="flex-row items-center">
-                    <View className="h-20 w-20 rounded-2xl bg-gray-100 overflow-hidden mr-4 items-center justify-center">
+                    <View className="mr-4 h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-gray-100">
                         {avatarUri ? (
                             <Image
                                 source={{ uri: avatarUri }}
@@ -193,45 +196,49 @@ export default function Profile() {
                     </View>
                     <View className="flex-1">
                         <Text
-                            className="text-xl font-kumbhBold text-gray-900"
-                            numberOfLines={1}
+                            className="font-kumbhBold text-xl text-gray-900"
+                            numberOfLines={2}
                         >
                             {user?.fullname || "Unnamed User"}
                         </Text>
                         <Text
-                            className="mt-1 font-kumbh text-gray-500"
+                            className="mt-1 font-kumbh text-sm text-gray-500"
                             numberOfLines={1}
                         >
-                            @{user?.username || "username"} • {role || "Role"}
+                            @{user?.username || "username"}
                         </Text>
-                        {!!channel && (
-                            <View className="mt-2 self-start rounded-xl bg-primary/10 px-2.5 py-1">
-                                <Text className="text-xs font-kumbhBold text-primary">
-                                    Channel: {channel}
+
+                        <View className="mt-3 flex-row flex-wrap items-center gap-2">
+                            <View className="flex-row items-center rounded-full bg-primary/10 px-3 py-1.5">
+                                <Ionicons
+                                    name="shield-checkmark"
+                                    size={14}
+                                    color="#4C5FAB"
+                                />
+                                <Text className="ml-1.5 font-kumbhBold text-xs text-primary">
+                                    {role || "Role"}
                                 </Text>
                             </View>
-                        )}
+                            {!!channel && (
+                                <View className="rounded-full bg-gray-100 px-3 py-1.5">
+                                    <Text className="font-kumbh text-xs text-gray-600">
+                                        {channel}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                     </View>
                 </View>
 
-                <View className="mt-4 flex-row">
-                    <Pressable
-                        className="flex-1 mr-2 items-center justify-center rounded-2xl bg-primary px-4 py-3"
-                        onPress={() => router.push("/(staff)/profile/edit")}
-                    >
-                        <Text className="font-kumbhBold text-white">
-                            Edit Profile
-                        </Text>
-                    </Pressable>
-                    <Pressable
-                        className="flex-1 ml-2 items-center justify-center rounded-2xl bg-red-500 px-4 py-3"
-                        onPress={onLogOut}
-                    >
-                        <Text className="font-kumbhBold text-white">
-                            Log Out
-                        </Text>
-                    </Pressable>
-                </View>
+                <Pressable
+                    className="mt-5 flex-row items-center justify-center rounded-2xl bg-primary py-3"
+                    onPress={() => router.push("/(staff)/profile/edit")}
+                >
+                    <Ionicons name="create-outline" size={18} color="white" />
+                    <Text className="ml-2 font-kumbhBold text-sm text-white">
+                        Edit Profile
+                    </Text>
+                </Pressable>
             </View>
         );
     }, [
@@ -247,22 +254,22 @@ export default function Profile() {
     ]);
 
     return (
-        <View className="flex-1 bg-gray-50">
-            <StatusBar style="light" />
+        <SafeAreaView className="flex-1 bg-[#F5F7FB]" edges={["top"]}>
+            <StatusBar style="dark" />
             {/* Header */}
-            <View className="relative z-0 h-40 w-full bg-primary rounded-b-[28px] px-5 pt-20">
-                <Text className="text-white font-kumbhBold text-2xl">
+            <View className="px-5 pt-4 pb-1">
+                <Text className="font-kumbhBold text-3xl text-[#0B1534]">
                     Profile
                 </Text>
-                <Text className="text-white/80 font-kumbh mt-1">
+                <Text className="font-kumbh text-base text-[#667085]">
                     Manage your account
                 </Text>
             </View>
 
             {/* Body */}
             <ScrollView
-                className="flex-1 "
-                contentContainerStyle={{ paddingTop: 0, paddingBottom: 28 }}
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 24 }}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -273,45 +280,82 @@ export default function Profile() {
                 {topCard}
 
                 {/* Details */}
-                <View className="mt-5 px-4">
-                    <Text className="mb-3 text-gray-800 font-kumbhBold">
+                <View className="mt-8 px-4">
+                    <Text className="mb-3 font-kumbhBold text-xs uppercase tracking-wider text-[#667085]">
                         Account Details
                     </Text>
 
-                    <InfoRow
-                        icon="person"
-                        label="Full name"
-                        value={user?.fullname || ""}
-                    />
-                    <InfoRow
-                        icon="at"
-                        label="Username"
-                        value={user?.username || ""}
-                    />
-                    <InfoRow
-                        icon="mail"
-                        label="Email"
-                        value={user?.email || ""}
-                    />
-                    <InfoRow
-                        icon="call"
-                        label="Phone"
-                        value={
-                            (user as any)?.phoneNumber ||
-                            (user as any)?.phone ||
-                            ""
-                        }
-                    />
-                    <InfoRow icon="people" label="Role" value={role} />
+                    <View
+                        className="overflow-hidden rounded-3xl border border-gray-100 bg-white"
+                        style={{ elevation: 2 }}
+                    >
+                        <InfoRow
+                            icon="person"
+                            label="Full name"
+                            value={user?.fullname || ""}
+                        />
+                        <InfoRow
+                            icon="at"
+                            label="Username"
+                            value={user?.username || ""}
+                        />
+                        <InfoRow
+                            icon="mail"
+                            label="Email"
+                            value={user?.email || ""}
+                        />
+                        <InfoRow
+                            icon="call"
+                            label="Phone"
+                            value={
+                                (user as any)?.phoneNumber ||
+                                (user as any)?.phone ||
+                                ""
+                            }
+                        />
+                        <InfoRow
+                            icon="people"
+                            label="Role"
+                            value={role}
+                            withBorder={false}
+                        />
+                    </View>
                 </View>
 
-                <View className="mt-3 items-center px-4">
+                <View
+                    className="mx-4 mt-4 rounded-3xl border border-red-100 bg-white"
+                    style={{ elevation: 1 }}
+                >
                     <Pressable
-                        className="bg-white shadow-sm w-full py-6 px-4 rounded-lg"
+                        className="flex-row items-center justify-center py-4"
+                        onPress={onLogOut}
+                    >
+                        <Ionicons
+                            name="log-out-outline"
+                            size={22}
+                            color="#E24C4B"
+                        />
+                        <Text className="ml-3 font-kumbhBold text-base text-[#E24C4B]">
+                            Log Out
+                        </Text>
+                    </Pressable>
+                </View>
+
+                <View
+                    className="mx-4 mt-3 rounded-3xl border border-red-100 bg-white"
+                    style={{ elevation: 1 }}
+                >
+                    <Pressable
+                        className="flex-row items-center justify-center py-4"
                         onPress={openDeleteModal}
                         disabled={deleting}
                     >
-                        <Text className="text-sm font-kumbhBold text-red-600">
+                        <Ionicons
+                            name="trash-outline"
+                            size={20}
+                            color="#DC2626"
+                        />
+                        <Text className="ml-2.5 font-kumbhBold text-base text-red-600">
                             Delete account
                         </Text>
                     </Pressable>
@@ -319,9 +363,9 @@ export default function Profile() {
 
                 {/* Loading state overlay if first load */}
                 {phase === "loading" && !user && (
-                    <View className="mt-8 items-center">
-                        <ActivityIndicator />
-                        <Text className="mt-2 text-gray-500 font-kumbh">
+                    <View className="mt-10 items-center">
+                        <ActivityIndicator size="large" color="#4C5FAB" />
+                        <Text className="mt-3 font-kumbh text-sm text-gray-500">
                             Loading profile…
                         </Text>
                     </View>
@@ -343,7 +387,7 @@ export default function Profile() {
                     }
                 >
                     <ScrollView
-                        className="flex-1 bg-black/40"
+                        className="flex-1 bg-black/45"
                         contentContainerStyle={{
                             flexGrow: 1,
                             justifyContent: "center",
@@ -351,46 +395,48 @@ export default function Profile() {
                         }}
                         keyboardShouldPersistTaps="handled"
                     >
-                        <View className="w-full rounded-3xl bg-white p-5">
-                            <Text className="text-lg font-kumbhBold text-gray-900 mb-1">
+                        <View className="w-full rounded-[28px] border border-gray-100 bg-white p-6">
+                            <Text className="mb-1 font-kumbhBold text-lg text-[#111827]">
                                 Delete account
                             </Text>
-                            <Text className="text-sm font-kumbh text-gray-600 mb-4">
+                            <Text className="mb-4 font-kumbh text-sm leading-5 text-gray-500">
                                 This action is permanent. Please enter your
                                 password to confirm.
                             </Text>
 
-                            <Text className="text-xs font-kumbh text-gray-500 mb-1">
+                            <Text className="mb-2 font-kumbhBold text-xs text-gray-700">
                                 Password
                             </Text>
-                            <TextInput
-                                value={deletePassword}
-                                onChangeText={setDeletePassword}
-                                secureTextEntry
-                                placeholder="Enter your password"
-                                className="w-full rounded-2xl border border-gray-200 px-3 py-2 font-kumbh text-sm text-gray-900"
-                            />
+                            <View className="h-12 justify-center rounded-2xl border border-gray-200 bg-[#F9FAFB] px-3.5">
+                                <CustomTextInput
+                                    value={deletePassword}
+                                    onChangeText={setDeletePassword}
+                                    secureTextEntry
+                                    placeholder="Enter your password"
+                                    className="h-full w-full text-sm"
+                                />
+                            </View>
 
                             {deleteError ? (
-                                <Text className="mt-2 text-xs font-kumbh text-red-500">
+                                <Text className="mt-2 font-kumbh text-xs text-red-500">
                                     {deleteError}
                                 </Text>
                             ) : null}
 
-                            <View className="mt-5 flex-row justify-end">
+                            <View className="mt-5 flex-row justify-end gap-2.5">
                                 <Pressable
                                     onPress={closeDeleteModal}
                                     disabled={deleting}
-                                    className="mr-3 px-4 py-2 rounded-2xl bg-gray-100"
+                                    className="rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4 py-2.5"
                                 >
-                                    <Text className="text-sm font-kumbh text-gray-700">
+                                    <Text className="font-kumbhBold text-sm text-gray-700">
                                         Cancel
                                     </Text>
                                 </Pressable>
                                 <Pressable
                                     onPress={handleConfirmDelete}
                                     disabled={deleting}
-                                    className="px-4 py-2 rounded-2xl bg-red-500 flex-row items-center justify-center"
+                                    className="flex-row items-center justify-center rounded-2xl bg-red-600 px-4 py-2.5"
                                 >
                                     {deleting && (
                                         <ActivityIndicator
@@ -398,7 +444,11 @@ export default function Profile() {
                                             color="#ffffff"
                                         />
                                     )}
-                                    <Text className="ml-2 text-sm font-kumbhBold text-white">
+                                    <Text
+                                        className={`font-kumbhBold text-sm text-white ${
+                                            deleting ? "ml-2" : ""
+                                        }`}
+                                    >
                                         {deleting
                                             ? "Deleting..."
                                             : "Confirm delete"}
@@ -409,6 +459,6 @@ export default function Profile() {
                     </ScrollView>
                 </KeyboardAvoidingView>
             </Modal>
-        </View>
+        </SafeAreaView>
     );
 }

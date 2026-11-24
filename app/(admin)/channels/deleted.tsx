@@ -1,17 +1,4 @@
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft } from "lucide-react-native";
-
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import { showSuccess } from "@/components/ui/toast";
 import {
   fetchDeletedChannels,
@@ -19,6 +6,19 @@ import {
 } from "@/redux/channels/channels.thunks";
 import type { Channel } from "@/redux/channels/channels.types";
 import { useAppDispatch } from "@/store/hooks";
+import { Calendar, RotateCcw, Trash2 } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Platform,
+  Pressable,
+  RefreshControl,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type DeletedChannel = Channel & {
   deletedAt?: string;
@@ -38,8 +38,8 @@ const formatDate = (value?: string) => {
 };
 
 export default function DeletedChannelsScreen() {
-  const router = useRouter();
   const dispatch = useAppDispatch();
+  const isIOS = Platform.OS === "ios";
 
   const [channels, setChannels] = useState<DeletedChannel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,36 +111,63 @@ export default function DeletedChannelsScreen() {
     ({ item }: { item: DeletedChannel }) => {
       const isRestoring = restoringId === item._id;
       return (
-        <View className="bg-white rounded-3xl px-5 py-4 mb-4 border border-gray-100 shadow-[0_10px_20px_rgba(15,23,42,0.08)]">
-          <Text className="text-lg font-semibold text-gray-900 font-kumbh">
-            {item.name ?? "Project"}
-          </Text>
-          {item.code ? (
-            <Text className="text-sm text-gray-500 mt-1 font-kumbh">
-              Code: {item.code}
-            </Text>
-          ) : null}
+        <View className="bg-white rounded-[24px] p-4 mb-3 border border-gray-100">
+          <View className="flex-row items-center">
+            <View className="h-11 w-11 rounded-2xl bg-[#EEF2FF] items-center justify-center mr-3">
+              <Trash2 size={18} color="#4C5FAB" />
+            </View>
+            <View className="flex-1 mr-2">
+              <Text
+                className="text-[16px] text-[#111827] font-kumbhBold"
+                numberOfLines={1}
+              >
+                {item.name ?? "Project"}
+              </Text>
+              <Text className="text-xs text-[#6B7280] font-kumbh mt-0.5">
+                Deleted {formatDate(item.deletedAt ?? item.updatedAt)}
+              </Text>
+            </View>
+            {item.code ? (
+              <View className="px-2.5 py-1 rounded-full bg-[#EEF2FF]">
+                <Text className="text-[11px] text-primary font-kumbhBold">
+                  {item.code}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
           {item.description ? (
-            <Text className="text-sm text-gray-500 mt-1 font-kumbh">
+            <Text
+              className="text-[13px] text-[#6B7280] mt-3 font-kumbh leading-5"
+              numberOfLines={3}
+            >
               {item.description}
             </Text>
           ) : null}
-          <Text className="text-xs text-gray-400 mt-2 font-kumbh">
-            Deleted {formatDate(item.deletedAt ?? item.updatedAt)}
-          </Text>
-          <View className="mt-4 flex-row items-center justify-end">
+
+          <View className="mt-3.5 pt-3 border-t border-gray-100 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1.5">
+              <Calendar size={13} color="#9CA3AF" />
+              <Text className="text-xs text-[#9CA3AF] font-kumbh">
+                {formatDate(item.deletedAt ?? item.updatedAt)}
+              </Text>
+            </View>
+
             <Pressable
               disabled={isRestoring}
               onPress={() => handleRestore(item)}
-              className="bg-[#4c5fab] rounded-full px-4 py-2 min-w-[88px] items-center"
+              className="bg-primary rounded-full px-4 py-2 min-w-[96px] flex-row items-center justify-center gap-1.5"
               style={{ opacity: isRestoring ? 0.7 : 1 }}
             >
               {isRestoring ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text className="text-white text-sm font-semibold font-kumbh">
-                  Restore
-                </Text>
+                <>
+                  <RotateCcw size={13} color="#FFFFFF" />
+                  <Text className="text-white text-xs font-kumbhBold">
+                    Restore
+                  </Text>
+                </>
               )}
             </Pressable>
           </View>
@@ -153,56 +180,62 @@ export default function DeletedChannelsScreen() {
   const emptyComponent = useMemo(() => {
     if (loading) return null;
     return (
-      <View className="px-5 mt-10">
-        <Text className="text-center text-gray-500 font-kumbh">
-          No deleted projects available right now.
+      <View className="mt-4 rounded-[28px] bg-white border border-gray-100 px-6 py-12 items-center">
+        <View className="h-14 w-14 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-3">
+          <Trash2 size={24} color="#4C5FAB" />
+        </View>
+        <Text className="text-center text-[#111827] font-kumbhBold text-base">
+          No deleted projects
+        </Text>
+        <Text className="mt-1 text-center text-[#6B7280] font-kumbh text-sm leading-5">
+          Deleted projects will appear here so you can restore them anytime.
         </Text>
       </View>
     );
   }, [loading]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#f4f5fb]">
-      <View className="px-5 pt-5 pb-4 bg-white border-b border-gray-200 flex-row items-center gap-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 rounded-full bg-gray-100 items-center justify-center"
-        >
-          <ArrowLeft size={20} color="#111827" />
-        </Pressable>
-        <View className="flex-1">
-          <Text className="text-2xl font-semibold text-gray-900 font-kumbh">
-            Deleted Projects
-          </Text>
-          <Text className="text-sm text-gray-500 mt-1 font-kumbh">
-            Review deleted projects and restore when needed.
-          </Text>
-        </View>
-      </View>
+    <SafeAreaView
+      edges={isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]}
+      className="flex-1 bg-[#F5F7FB]"
+    >
+      <PlatformAdaptiveHeader
+        title="Deleted Projects"
+        description="Review deleted projects and restore when needed."
+        backgroundColor="#F5F7FB"
+      />
 
-      {loading ? (
+      {error ? (
+        <View className="mx-4 mt-2 rounded-2xl bg-red-50 border border-red-100 px-4 py-3">
+          <Text className="text-xs text-red-700 font-kumbh">{error}</Text>
+        </View>
+      ) : null}
+
+      {loading && !refreshing ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#4c5fab" />
+          <ActivityIndicator size="small" color="#4C5FAB" />
+          <Text className="mt-2 text-sm text-[#6B7280] font-kumbh">
+            Loading deleted projects…
+          </Text>
         </View>
       ) : (
         <FlatList
           data={channels}
           keyExtractor={(item) => item._id}
           renderItem={renderProject}
-          className="flex-1 px-5 mt-5"
-          contentContainerStyle={{ paddingBottom: 24 }}
+          className="flex-1"
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: 28,
+          }}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           ListEmptyComponent={emptyComponent}
         />
       )}
-
-      {error ? (
-        <View className="px-5 py-3">
-          <Text className="text-sm text-red-500 font-kumbh">{error}</Text>
-        </View>
-      ) : null}
     </SafeAreaView>
   );
 }

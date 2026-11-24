@@ -13,7 +13,13 @@ import {
 } from "@/utils/recruitmentPermissions";
 import { normalizeRole } from "@/utils/roles";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronRight, Pencil, Plus } from "lucide-react-native";
+import {
+    BriefcaseBusiness,
+    ChevronRight,
+    Pencil,
+    Plus,
+    Users,
+} from "lucide-react-native";
 import React, { useEffect } from "react";
 import {
     ActivityIndicator,
@@ -57,11 +63,12 @@ export default function RecruitmentDetailScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <PlatformAdaptiveHeader
                 title="Recruitment Details"
-                headerRight={({ tintColor }) =>
+                backgroundColor="#F5F7FB"
+                headerRight={() =>
                     canEditRecruitment(role) &&
                     isAssignedRecruitment &&
                     recruitmentId ? (
@@ -72,26 +79,38 @@ export default function RecruitmentDetailScreen() {
                                     params: { id: recruitmentId },
                                 })
                             }
-                            className="w-10 h-10 rounded-full items-center justify-center"
+                            className="h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white"
                             hitSlop={8}
                         >
-                            <Pencil size={22} color={tintColor} />
+                            <Pencil size={18} color="#4C5FAB" />
                         </Pressable>
                     ) : null
                 }
             />
-            <ScrollView className="flex-1 px-4 pb-8 mt-3">
+            <ScrollView
+                className="flex-1"
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingTop: 12,
+                    paddingBottom: 36,
+                }}
+                showsVerticalScrollIndicator={false}
+            >
                 {loading && !recruitment ? (
-                    <View className="py-8">
+                    <View className="py-10 items-center">
                         <ActivityIndicator color="#4C5FAB" />
                     </View>
                 ) : null}
                 {error ? (
-                    <Text className="mb-3 text-sm text-red-500">{error}</Text>
+                    <View className="mb-3 rounded-2xl border border-red-100 bg-red-50 p-3.5">
+                        <Text className="text-sm font-kumbh text-red-700">
+                            {error}
+                        </Text>
+                    </View>
                 ) : null}
                 {recruitment && !isAssignedRecruitment ? (
-                    <View className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                        <Text className="text-sm text-amber-800">
+                    <View className="rounded-[24px] border border-amber-200 bg-amber-50 p-4">
+                        <Text className="text-sm font-kumbh text-amber-800">
                             You can only view recruitments assigned to you.
                         </Text>
                     </View>
@@ -100,39 +119,86 @@ export default function RecruitmentDetailScreen() {
                     <>
                         {!isAssignedRecruitment ? null : (
                             <>
-                                <View className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
-                                    <Text className="text-xl font-kumbhBold text-gray-900">
-                                        {recruitment.position}
-                                    </Text>
-                                    <Text className="mt-1 text-sm text-gray-600">
-                                        Company: {recruitment.clientName || "—"}
-                                    </Text>
-                                    <Text className="mt-1 text-sm text-gray-600">
-                                        Recruiter:{" "}
-                                        {recruitment.recruiterName || "—"}
-                                    </Text>
-                                    <Text className="mt-1 text-sm text-gray-600">
-                                        Employment Type:{" "}
-                                        {recruitment.employmentType || "—"}
-                                    </Text>
-                                    <Text className="mt-1 text-sm text-gray-600">
-                                        Openings:{" "}
-                                        {recruitment.numberOfOpenings || 0}
-                                    </Text>
-                                    <Text className="mt-1 text-sm text-gray-600">
-                                        Status: {recruitment.status || "Active"}
-                                    </Text>
-                                    <Text className="mt-2 text-sm text-gray-700">
-                                        {recruitment.description ||
-                                            "No description provided"}
-                                    </Text>
+                                <View className="mb-4 rounded-[28px] border border-gray-100 bg-white p-5">
+                                    <View className="flex-row items-start justify-between gap-3">
+                                        <View className="flex-1 flex-row items-center">
+                                            <View className="mr-3.5 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                                                <BriefcaseBusiness
+                                                    size={22}
+                                                    color="#4C5FAB"
+                                                />
+                                            </View>
+                                            <View className="flex-1">
+                                                <Text className="text-xl font-kumbhBold text-[#111827]">
+                                                    {recruitment.position}
+                                                </Text>
+                                                <Text className="mt-0.5 text-sm font-kumbh text-[#6B7280]">
+                                                    {recruitment.clientName ||
+                                                        "No company"}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <View className="rounded-full bg-[#EEF2FF] px-3 py-1.5">
+                                            <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
+                                                {recruitment.status || "Active"}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    <View className="mt-4 gap-2.5 rounded-2xl bg-[#F5F7FB] p-4">
+                                        <View className="flex-row items-center justify-between">
+                                            <Text className="text-xs font-kumbh text-[#6B7280]">
+                                                Recruiter
+                                            </Text>
+                                            <Text className="text-xs font-kumbhBold text-[#111827]">
+                                                {recruitment.recruiterName ||
+                                                    "—"}
+                                            </Text>
+                                        </View>
+                                        <View className="flex-row items-center justify-between">
+                                            <Text className="text-xs font-kumbh text-[#6B7280]">
+                                                Employment Type
+                                            </Text>
+                                            <Text className="text-xs font-kumbhBold text-[#111827]">
+                                                {recruitment.employmentType ||
+                                                    "—"}
+                                            </Text>
+                                        </View>
+                                        <View className="flex-row items-center justify-between">
+                                            <Text className="text-xs font-kumbh text-[#6B7280]">
+                                                Openings
+                                            </Text>
+                                            <Text className="text-xs font-kumbhBold text-[#111827]">
+                                                {recruitment.numberOfOpenings ||
+                                                    0}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    <View className="mt-3 rounded-2xl bg-[#F5F7FB] p-4">
+                                        <Text className="mb-1 text-xs font-kumbhBold text-[#6B7280]">
+                                            Description
+                                        </Text>
+                                        <Text className="text-sm font-kumbh leading-5 text-[#374151]">
+                                            {recruitment.description ||
+                                                "No description provided"}
+                                        </Text>
+                                    </View>
                                 </View>
 
-                                <View className="rounded-xl border border-gray-200 p-3">
+                                <View className="rounded-[24px] border border-gray-100 bg-white p-4">
                                     <View className="mb-3 flex-row items-center justify-between">
-                                        <Text className="text-lg font-kumbhBold text-gray-900">
-                                            Candidates
-                                        </Text>
+                                        <View className="flex-row items-center gap-2">
+                                            <View className="h-9 w-9 items-center justify-center rounded-xl bg-[#EEF2FF]">
+                                                <Users
+                                                    size={18}
+                                                    color="#4C5FAB"
+                                                />
+                                            </View>
+                                            <Text className="text-base font-kumbhBold text-[#111827]">
+                                                Candidates
+                                            </Text>
+                                        </View>
                                         <View className="flex-row items-center gap-2">
                                             <Pressable
                                                 onPress={() =>
@@ -144,9 +210,9 @@ export default function RecruitmentDetailScreen() {
                                                         },
                                                     })
                                                 }
-                                                className="rounded-lg bg-gray-100 px-3 py-1.5"
+                                                className="rounded-full bg-[#EEF2FF] px-3.5 py-1.5"
                                             >
-                                                <Text className="text-xs font-kumbhBold text-gray-700">
+                                                <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
                                                     View all
                                                 </Text>
                                             </Pressable>
@@ -161,18 +227,18 @@ export default function RecruitmentDetailScreen() {
                                                             },
                                                         })
                                                     }
-                                                    className="h-8 w-8 items-center justify-center rounded-lg"
+                                                    className="h-9 w-9 items-center justify-center rounded-full bg-[#4C5FAB]"
                                                 >
                                                     <Plus
-                                                        size={25}
-                                                        color="black"
+                                                        size={18}
+                                                        color="#FFFFFF"
                                                     />
                                                 </Pressable>
                                             ) : null}
                                         </View>
                                     </View>
                                     {recruitment.candidates?.length ? (
-                                        <View className="gap-2">
+                                        <View className="gap-2.5">
                                             {[...recruitment.candidates]
                                                 .sort((a, b) => {
                                                     const aTime = a.updatedAt
@@ -207,12 +273,12 @@ export default function RecruitmentDetailScreen() {
                                                                 },
                                                             });
                                                         }}
-                                                        className="rounded-xl border border-gray-200 bg-gray-50 p-2.5"
+                                                        className="rounded-2xl border border-gray-100 bg-[#F5F7FB] p-3.5 active:opacity-90"
                                                     >
                                                         <View className="flex-row items-start justify-between">
                                                             <View className="flex-1 pr-2">
                                                                 <Text
-                                                                    className="text-base font-kumbhBold text-gray-900"
+                                                                    className="text-sm font-kumbhBold text-[#111827]"
                                                                     numberOfLines={
                                                                         1
                                                                     }
@@ -222,7 +288,7 @@ export default function RecruitmentDetailScreen() {
                                                                     }
                                                                 </Text>
                                                                 <Text
-                                                                    className="mt-1 text-xs text-gray-600"
+                                                                    className="mt-1 text-xs font-kumbh text-[#6B7280]"
                                                                     numberOfLines={
                                                                         1
                                                                     }
@@ -233,7 +299,7 @@ export default function RecruitmentDetailScreen() {
                                                                 </Text>
                                                             </View>
                                                             <View className="flex-row items-center">
-                                                                <Text className="mr-1 text-[11px] text-gray-500">
+                                                                <Text className="mr-1 text-[11px] font-kumbh text-[#9CA3AF]">
                                                                     {candidate.updatedAt
                                                                         ? new Date(
                                                                               candidate.updatedAt,
@@ -246,8 +312,8 @@ export default function RecruitmentDetailScreen() {
                                                                 />
                                                             </View>
                                                         </View>
-                                                        <View className="mt-2 self-start rounded-full bg-[#E9ECF8] px-2.5 py-1">
-                                                            <Text className="text-[10px] font-kumbhBold text-[#2F3C7A]">
+                                                        <View className="mt-2.5 self-start rounded-full bg-[#EEF2FF] px-3 py-1">
+                                                            <Text className="text-[11px] font-kumbhBold text-[#4C5FAB]">
                                                                 {candidate.currentStage ||
                                                                     candidate.overallStatus ||
                                                                     "New"}
@@ -257,7 +323,7 @@ export default function RecruitmentDetailScreen() {
                                                 ))}
                                             {recruitment.candidates.length >
                                             5 ? (
-                                                <Text className="pt-1 text-xs text-gray-500">
+                                                <Text className="pt-1 text-xs font-kumbh text-[#6B7280]">
                                                     Showing 5 of{" "}
                                                     {
                                                         recruitment.candidates
@@ -268,7 +334,7 @@ export default function RecruitmentDetailScreen() {
                                             ) : null}
                                         </View>
                                     ) : (
-                                        <Text className="py-3 text-sm text-gray-500">
+                                        <Text className="py-3 text-sm font-kumbh text-[#6B7280]">
                                             No candidates added yet
                                         </Text>
                                     )}

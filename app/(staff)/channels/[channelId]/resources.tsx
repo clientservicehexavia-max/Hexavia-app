@@ -5,6 +5,7 @@ import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 import ResourceCard from "@/components/resources/ResourceCard";
 import SkeletonCard from "@/components/resources/SkeletonCard";
 import UploadChooser from "@/components/resources/UploadChooser";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { SwipeableTabView } from "@/components/ui/SwipeableTabView";
 import { showError, showSuccess } from "@/components/ui/toast";
@@ -58,11 +59,16 @@ import * as WebBrowser from "expo-web-browser";
 import {
     ArrowUpDown,
     CloudUpload,
+    Copy,
+    Download,
+    Eye,
     Files,
+    FolderOpen,
     Link2,
     Maximize2,
     Plus,
     StickyNote,
+    Trash2,
     X,
 } from "lucide-react-native";
 import React, {
@@ -124,28 +130,39 @@ function SummaryPill({
     icon,
     label,
     value,
+    active = false,
+    onPress,
 }: {
     icon: React.ReactNode;
     label: string;
     value: number;
+    active?: boolean;
+    onPress?: () => void;
 }) {
     return (
-        <View className="flex-1 min-w-[92px] rounded-2xl bg-white border border-gray-100 px-3 py-3">
-            <View className="flex-row items-center">
-                <View className="h-8 w-8 rounded-full bg-[#EEF2FF] items-center justify-center mr-2">
-                    {icon}
-                </View>
+        <Pressable
+            onPress={onPress}
+            className={`flex-1 flex-row items-center rounded-2xl px-3 py-2.5 border ${
+                active
+                    ? "bg-[#EEF2FF] border-primary/20"
+                    : "bg-[#F5F7FB] border-transparent"
+            }`}
+        >
+            <View className="h-8 w-8 rounded-xl bg-white items-center justify-center mr-2">
+                {icon}
+            </View>
+            <View className="flex-1">
                 <Text
-                    className="text-[11px] text-gray-500 font-kumbh flex-1"
+                    className="text-[11px] text-[#6B7280] font-kumbh"
                     numberOfLines={1}
                 >
                     {label}
                 </Text>
+                <Text className="text-[15px] text-[#111827] font-kumbhBold">
+                    {value}
+                </Text>
             </View>
-            <Text className="mt-3 text-xl text-gray-950 font-kumbhBold">
-                {value}
-            </Text>
-        </View>
+        </Pressable>
     );
 }
 
@@ -1066,10 +1083,11 @@ export default function ChannelResourcesScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-[#F7F8FB]"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <PlatformAdaptiveHeader
                 title="Resources"
+                backgroundColor="#F5F7FB"
                 headerRight={({ tintColor }) => (
                     <View className="flex-row items-center gap-2">
                         <Pressable
@@ -1089,7 +1107,7 @@ export default function ChannelResourcesScreen() {
                             }`}
                         >
                             <ArrowUpDown
-                                size={20}
+                                size={18}
                                 color={
                                     tintColor === "#ffffff" ? "#fff" : PRIMARY
                                 }
@@ -1103,7 +1121,7 @@ export default function ChannelResourcesScreen() {
                                 hitSlop={8}
                                 style={{ backgroundColor: PRIMARY }}
                             >
-                                <CloudUpload size={20} color="#ffffff" />
+                                <CloudUpload size={18} color="#ffffff" />
                             </Pressable>
                         ) : (
                             <Pressable
@@ -1116,57 +1134,58 @@ export default function ChannelResourcesScreen() {
                                 hitSlop={8}
                                 style={{ backgroundColor: PRIMARY }}
                             >
-                                <Plus size={22} color="#ffffff" />
+                                <Plus size={20} color="#ffffff" />
                             </Pressable>
                         )}
                     </View>
                 )}
             />
 
-            <View className="px-5 pt-4 pb-3">
-                <View
-                    className="rounded-[28px] bg-primary p-5 overflow-hidden"
-                    style={{
-                        shadowColor: "#111827",
-                        shadowOpacity: 0.12,
-                        shadowRadius: 18,
-                        shadowOffset: { width: 0, height: 10 },
-                        elevation: 4,
-                    }}
-                >
-                    <Text className="text-white/75 text-xs uppercase tracking-wider font-kumbhBold">
-                        Shared Workspace
-                    </Text>
-                    <Text
-                        className="mt-2 text-2xl text-white font-kumbhBold"
-                        numberOfLines={2}
-                    >
-                        {channelName}
-                    </Text>
-                    <Text
-                        className="mt-3 text-white/85 leading-5 font-kumbh"
-                        numberOfLines={2}
-                    >
-                        Files, links, and notes collected for this channel.
-                    </Text>
-                </View>
+            <View className="px-4 pt-3 pb-2">
+                <View className="rounded-[24px] bg-white border border-gray-100 p-4">
+                    <View className="flex-row items-center">
+                        <View className="h-11 w-11 rounded-2xl bg-[#EEF2FF] items-center justify-center mr-3">
+                            <FolderOpen size={20} color={PRIMARY} />
+                        </View>
+                        <View className="flex-1">
+                            <Text
+                                className="text-[18px] text-[#111827] font-kumbhBold"
+                                numberOfLines={1}
+                            >
+                                {channelName}
+                            </Text>
+                            <Text
+                                className="mt-0.5 text-[12px] text-[#6B7280] font-kumbh"
+                                numberOfLines={1}
+                            >
+                                Files, links, and notes for this project
+                            </Text>
+                        </View>
+                    </View>
 
-                <View className="flex-row gap-3 mt-4">
-                    <SummaryPill
-                        icon={<Files size={16} color={PRIMARY} />}
-                        label="Files"
-                        value={resourceCount}
-                    />
-                    <SummaryPill
-                        icon={<Link2 size={16} color={PRIMARY} />}
-                        label="Links"
-                        value={links.length}
-                    />
-                    <SummaryPill
-                        icon={<StickyNote size={16} color={PRIMARY} />}
-                        label="Notes"
-                        value={notes.length}
-                    />
+                    <View className="flex-row gap-2 mt-3.5 pt-3.5 border-t border-gray-100">
+                        <SummaryPill
+                            icon={<Files size={15} color={PRIMARY} />}
+                            label="Files"
+                            value={resourceCount}
+                            active={index === 0}
+                            onPress={() => setIndex(0)}
+                        />
+                        <SummaryPill
+                            icon={<Link2 size={15} color={PRIMARY} />}
+                            label="Links"
+                            value={links.length}
+                            active={index === 1}
+                            onPress={() => setIndex(1)}
+                        />
+                        <SummaryPill
+                            icon={<StickyNote size={15} color={PRIMARY} />}
+                            label="Notes"
+                            value={notes.length}
+                            active={index === 2}
+                            onPress={() => setIndex(2)}
+                        />
+                    </View>
                 </View>
             </View>
 
@@ -1177,13 +1196,31 @@ export default function ChannelResourcesScreen() {
                 tabBarProps={{
                     activeColor: PRIMARY,
                     inactiveColor: "#6B7280",
+                    style: {
+                        backgroundColor: "#F5F7FB",
+                        borderBottomWidth: 1,
+                        borderBottomColor: "#E5E7EB",
+                    },
+                    renderTabLabel: ({ route, focused, color }) => (
+                        <Text
+                            style={{
+                                color,
+                                fontFamily: focused
+                                    ? "KumbhSans-Bold"
+                                    : "KumbhSans-Regular",
+                                fontSize: 14,
+                            }}
+                        >
+                            {route.title}
+                        </Text>
+                    ),
                 }}
                 renderScene={({ route }) => {
                     if (route.key === "resources") {
                         return (
                             <View className="flex-1">
                                 {loadingInitial ? (
-                                    <View className="px-5 pt-4 flex-row flex-wrap justify-between">
+                                    <View className="px-4 pt-4 flex-row flex-wrap justify-between">
                                         <SkeletonCard width={170} />
                                         <SkeletonCard width={170} />
                                         <SkeletonCard width={170} />
@@ -1194,9 +1231,9 @@ export default function ChannelResourcesScreen() {
                                         className="flex-1"
                                         contentContainerStyle={{
                                             flexGrow: 1,
-                                            paddingLeft: 20,
-                                            paddingRight: 20,
-                                            paddingTop: 32,
+                                            paddingLeft: 16,
+                                            paddingRight: 16,
+                                            paddingTop: 20,
                                             paddingBottom: 110,
                                         }}
                                         refreshControl={
@@ -1208,20 +1245,20 @@ export default function ChannelResourcesScreen() {
                                             />
                                         }
                                     >
-                                        <View className="rounded-[28px] bg-white border border-gray-100 px-5 py-10 items-center">
+                                        <View className="rounded-[28px] bg-white border border-gray-100 px-6 py-10 items-center">
                                             <View className="h-14 w-14 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-4">
                                                 <CloudUpload
                                                     size={24}
                                                     color={PRIMARY}
                                                 />
                                             </View>
-                                            <Text className="text-gray-950 text-lg font-kumbhBold">
+                                            <Text className="text-[#111827] text-lg font-kumbhBold">
                                                 No resources yet
                                             </Text>
-                                            <Text className="text-gray-500 text-center mt-2 leading-5 font-kumbh">
+                                            <Text className="text-[#6B7280] text-center mt-1.5 leading-5 font-kumbh text-[13px]">
                                                 Upload files or save useful
                                                 links for everyone in this
-                                                channel.
+                                                project.
                                             </Text>
 
                                             {!emptyChooserOpen ? (
@@ -1231,19 +1268,19 @@ export default function ChannelResourcesScreen() {
                                                             true,
                                                         )
                                                     }
-                                                    className="mt-5 px-5 py-3 rounded-2xl bg-[#4C5FAB] flex-row items-center"
+                                                    className="mt-5 px-5 py-3 rounded-full bg-primary flex-row items-center active:opacity-90"
                                                 >
                                                     <Plus
-                                                        size={18}
+                                                        size={17}
                                                         color="#ffffff"
                                                     />
-                                                    <Text className="text-white font-kumbhBold ml-2">
+                                                    <Text className="text-white font-kumbhBold ml-1.5 text-[14px]">
                                                         Add resources
                                                     </Text>
                                                 </Pressable>
                                             ) : (
-                                                <View className="mt-5 w-full rounded-2xl border border-gray-100 bg-[#F7F8FB] p-3">
-                                                    <Text className="font-kumbhBold mb-2 text-gray-900">
+                                                <View className="mt-5 w-full rounded-2xl border border-gray-100 bg-[#F5F7FB] p-3">
+                                                    <Text className="font-kumbhBold mb-2.5 text-[#111827] text-[13px]">
                                                         Choose action
                                                     </Text>
                                                     <Pressable
@@ -1253,13 +1290,15 @@ export default function ChannelResourcesScreen() {
                                                             );
                                                             setChooser(true);
                                                         }}
-                                                        className="py-3 px-2 rounded-xl bg-white mb-2 flex-row items-center"
+                                                        className="py-3 px-3 rounded-xl bg-white border border-gray-100 mb-2 flex-row items-center"
                                                     >
-                                                        <CloudUpload
-                                                            size={17}
-                                                            color={PRIMARY}
-                                                        />
-                                                        <Text className="font-kumbh text-gray-800 ml-2">
+                                                        <View className="h-8 w-8 rounded-lg bg-[#EEF2FF] items-center justify-center mr-2.5">
+                                                            <CloudUpload
+                                                                size={16}
+                                                                color={PRIMARY}
+                                                            />
+                                                        </View>
+                                                        <Text className="font-kumbhBold text-[13px] text-[#111827]">
                                                             Upload files
                                                         </Text>
                                                     </Pressable>
@@ -1270,13 +1309,15 @@ export default function ChannelResourcesScreen() {
                                                             );
                                                             openLinkModal();
                                                         }}
-                                                        className="py-3 px-2 rounded-xl bg-white mb-2 flex-row items-center"
+                                                        className="py-3 px-3 rounded-xl bg-white border border-gray-100 mb-2 flex-row items-center"
                                                     >
-                                                        <Link2
-                                                            size={17}
-                                                            color={PRIMARY}
-                                                        />
-                                                        <Text className="font-kumbh text-gray-800 ml-2">
+                                                        <View className="h-8 w-8 rounded-lg bg-[#EEF2FF] items-center justify-center mr-2.5">
+                                                            <Link2
+                                                                size={16}
+                                                                color={PRIMARY}
+                                                            />
+                                                        </View>
+                                                        <Text className="font-kumbhBold text-[13px] text-[#111827]">
                                                             Add a link
                                                         </Text>
                                                     </Pressable>
@@ -1288,7 +1329,7 @@ export default function ChannelResourcesScreen() {
                                                         }
                                                         className="py-2 px-2"
                                                     >
-                                                        <Text className="font-kumbh text-gray-500 text-center">
+                                                        <Text className="font-kumbh text-[13px] text-[#6B7280] text-center">
                                                             Cancel
                                                         </Text>
                                                     </Pressable>
@@ -1313,12 +1354,12 @@ export default function ChannelResourcesScreen() {
                                             idx
                                         }
                                         renderSectionHeader={({ section }) => (
-                                            <View className="px-5 pt-5 pb-3 flex-row items-center justify-between">
-                                                <Text className="font-kumbhBold text-gray-950 text-base">
+                                            <View className="px-4 pt-5 pb-2.5 flex-row items-center justify-between">
+                                                <Text className="font-kumbhBold text-[#111827] text-[15px]">
                                                     {section.title}
                                                 </Text>
-                                                <View className="rounded-full bg-white border border-gray-100 px-3 py-1">
-                                                    <Text className="text-xs text-gray-600 font-kumbhBold">
+                                                <View className="rounded-full bg-[#EEF2FF] px-2.5 py-0.5">
+                                                    <Text className="text-[12px] text-primary font-kumbhBold">
                                                         {section.data.length}
                                                     </Text>
                                                 </View>
@@ -1326,7 +1367,7 @@ export default function ChannelResourcesScreen() {
                                         )}
                                         renderItem={() => null}
                                         renderSectionFooter={({ section }) => (
-                                            <View className="px-5">
+                                            <View className="px-4">
                                                 <FlatList
                                                     data={section.data}
                                                     numColumns={2}
@@ -1345,7 +1386,7 @@ export default function ChannelResourcesScreen() {
                                                         <ResourceCard
                                                             item={item}
                                                             width={0}
-                                                            className="w-[48%]"
+                                                            className="w-[48.5%]"
                                                             selected={
                                                                 selection ===
                                                                 item._id
@@ -1419,14 +1460,7 @@ export default function ChannelResourcesScreen() {
             {activeTab === "resources" && (
                 <Pressable
                     onPress={() => setChooser(true)}
-                    className="absolute right-5 bottom-6 h-14 w-14 rounded-2xl bg-[#4C5FAB] items-center justify-center"
-                    style={{
-                        shadowColor: "#111827",
-                        shadowOpacity: 0.2,
-                        shadowRadius: 12,
-                        shadowOffset: { width: 0, height: 6 },
-                        elevation: 5,
-                    }}
+                    className="absolute right-5 bottom-6 h-14 w-14 rounded-full bg-[#4C5FAB] items-center justify-center shadow-lg"
                     accessibilityLabel="Upload files"
                 >
                     <CloudUpload size={22} color="#fff" />
@@ -1490,19 +1524,24 @@ export default function ChannelResourcesScreen() {
                         onPress={() => !linkSubmitting && closeLinkModal()}
                     />
                     <ScrollView
-                        className="bg-white rounded-t-2xl"
-                        contentContainerStyle={{ padding: 20 }}
+                        className="bg-white rounded-t-[28px]"
+                        contentContainerStyle={{
+                            paddingHorizontal: 20,
+                            paddingTop: 12,
+                            paddingBottom: 28,
+                        }}
                         keyboardShouldPersistTaps="handled"
                     >
-                        <Text className="font-kumbhBold text-lg mb-3">
+                        <View className="w-10 h-1 bg-gray-200 rounded-full self-center mb-4" />
+                        <Text className="font-kumbhBold text-[18px] text-[#111827] mb-4">
                             {editingLink ? "Edit link" : "Add a link"}
                         </Text>
 
-                        <Text className="font-kumbh text-xs text-gray-500 mb-1">
+                        <Text className="font-kumbhBold text-[13px] text-[#374151] mb-1.5">
                             Title (optional)
                         </Text>
-                        <View className="border border-gray-200 rounded-xl px-3 py-2 mb-3">
-                            <TextInput
+                        <View className="h-12 justify-center border border-gray-200 bg-[#F9FAFB] rounded-2xl px-4 mb-3.5">
+                            <CustomTextInput
                                 placeholder="e.g. Project brief"
                                 value={linkForm.title}
                                 onChangeText={(value) =>
@@ -1511,16 +1550,15 @@ export default function ChannelResourcesScreen() {
                                         title: value,
                                     }))
                                 }
-                                className="font-kumbh text-gray-900"
                                 editable={!linkSubmitting}
                             />
                         </View>
 
-                        <Text className="font-kumbh text-xs text-gray-500 mb-1">
+                        <Text className="font-kumbhBold text-[13px] text-[#374151] mb-1.5">
                             URL
                         </Text>
-                        <View className="border border-gray-200 rounded-xl px-3 py-2 mb-3">
-                            <TextInput
+                        <View className="h-12 justify-center border border-gray-200 bg-[#F9FAFB] rounded-2xl px-4 mb-3.5">
+                            <CustomTextInput
                                 placeholder="https://example.com"
                                 value={linkForm.url}
                                 onChangeText={(value) =>
@@ -1532,16 +1570,15 @@ export default function ChannelResourcesScreen() {
                                 autoCapitalize="none"
                                 autoCorrect={false}
                                 keyboardType="url"
-                                className="font-kumbh text-gray-900"
                                 editable={!linkSubmitting}
                             />
                         </View>
 
-                        <Text className="font-kumbh text-xs text-gray-500 mb-1">
+                        <Text className="font-kumbhBold text-[13px] text-[#374151] mb-1.5">
                             Description (optional)
                         </Text>
-                        <View className="border border-gray-200 rounded-xl px-3 py-2">
-                            <TextInput
+                        <View className="border border-gray-200 bg-[#F9FAFB] rounded-2xl px-4 py-3">
+                            <CustomTextInput
                                 placeholder="Add extra context"
                                 value={linkForm.description}
                                 onChangeText={(value) =>
@@ -1552,35 +1589,36 @@ export default function ChannelResourcesScreen() {
                                 }
                                 multiline
                                 numberOfLines={3}
-                                className="font-kumbh text-gray-900"
+                                textAlignVertical="top"
+                                style={{ minHeight: 84 }}
                                 editable={!linkSubmitting}
                             />
                         </View>
 
-                        <View className="flex-row justify-end gap-3 mt-4">
+                        <View className="flex-row gap-3 mt-5">
                             <Pressable
                                 onPress={closeLinkModal}
                                 disabled={linkSubmitting}
-                                className="px-4 py-2 rounded-xl bg-gray-100"
+                                className="h-12 flex-1 rounded-2xl bg-gray-100 items-center justify-center"
                             >
-                                <Text className="font-kumbh text-gray-700">
+                                <Text className="font-kumbhBold text-[14px] text-[#374151]">
                                     Cancel
                                 </Text>
                             </Pressable>
                             <Pressable
                                 onPress={handleSaveLink}
                                 disabled={linkSubmitting}
-                                className="px-4 py-2 rounded-xl bg-[#4C5FAB]"
+                                className="h-12 flex-1 rounded-2xl bg-[#4C5FAB] items-center justify-center"
                             >
                                 {linkSubmitting ? (
                                     <View className="flex-row items-center">
                                         <ActivityIndicator color="#fff" />
-                                        <Text className="text-white font-kumbh ml-2">
+                                        <Text className="text-white font-kumbhBold ml-2 text-[14px]">
                                             Saving…
                                         </Text>
                                     </View>
                                 ) : (
-                                    <Text className="text-white font-kumbhBold">
+                                    <Text className="text-white font-kumbhBold text-[14px]">
                                         Save link
                                     </Text>
                                 )}
@@ -1612,19 +1650,24 @@ export default function ChannelResourcesScreen() {
                         onPress={() => !noteSubmitting && closeNoteModal()}
                     />
                     <ScrollView
-                        className="bg-white rounded-t-2xl"
-                        contentContainerStyle={{ padding: 20 }}
+                        className="bg-white rounded-t-[28px]"
+                        contentContainerStyle={{
+                            paddingHorizontal: 20,
+                            paddingTop: 12,
+                            paddingBottom: 28,
+                        }}
                         keyboardShouldPersistTaps="handled"
                     >
-                        <Text className="font-kumbhBold text-lg mb-3">
+                        <View className="w-10 h-1 bg-gray-200 rounded-full self-center mb-4" />
+                        <Text className="font-kumbhBold text-[18px] text-[#111827] mb-4">
                             {editingNote ? "Edit note" : "Add a note"}
                         </Text>
 
-                        <Text className="font-kumbh text-xs text-gray-500 mb-1">
+                        <Text className="font-kumbhBold text-[13px] text-[#374151] mb-1.5">
                             Title
                         </Text>
-                        <View className="border border-gray-200 rounded-xl px-3 py-2 mb-3">
-                            <TextInput
+                        <View className="h-12 justify-center border border-gray-200 bg-[#F9FAFB] rounded-2xl px-4 mb-3.5">
+                            <CustomTextInput
                                 placeholder="Note title"
                                 value={noteForm.title}
                                 onChangeText={(value) =>
@@ -1633,16 +1676,15 @@ export default function ChannelResourcesScreen() {
                                         title: value,
                                     }))
                                 }
-                                className="font-kumbh text-gray-900"
                                 editable={!noteSubmitting}
                             />
                         </View>
 
-                        <Text className="font-kumbh text-xs text-gray-500 mb-1">
+                        <Text className="font-kumbhBold text-[13px] text-[#374151] mb-1.5">
                             Description
                         </Text>
-                        <View className="border border-gray-200 rounded-xl px-3 py-2">
-                            <TextInput
+                        <View className="border border-gray-200 bg-[#F9FAFB] rounded-2xl px-4 py-3">
+                            <CustomTextInput
                                 placeholder="Write your note here"
                                 value={noteForm.description}
                                 onChangeText={(value) =>
@@ -1652,40 +1694,39 @@ export default function ChannelResourcesScreen() {
                                     }))
                                 }
                                 multiline
-                                numberOfLines={16}
-                                className="font-kumbh text-gray-900"
+                                numberOfLines={10}
                                 editable={!noteSubmitting}
                                 style={{
-                                    minHeight: 500,
+                                    minHeight: 240,
                                     textAlignVertical: "top",
                                 }}
                             />
                         </View>
 
-                        <View className="flex-row justify-end gap-3 mt-4">
+                        <View className="flex-row gap-3 mt-5">
                             <Pressable
                                 onPress={closeNoteModal}
                                 disabled={noteSubmitting}
-                                className="px-4 py-2 rounded-xl bg-gray-100"
+                                className="h-12 flex-1 rounded-2xl bg-gray-100 items-center justify-center"
                             >
-                                <Text className="font-kumbh text-gray-700">
+                                <Text className="font-kumbhBold text-[14px] text-[#374151]">
                                     Cancel
                                 </Text>
                             </Pressable>
                             <Pressable
                                 onPress={handleSaveNote}
                                 disabled={noteSubmitting}
-                                className="px-4 py-2 rounded-xl bg-[#4C5FAB]"
+                                className="h-12 flex-1 rounded-2xl bg-[#4C5FAB] items-center justify-center"
                             >
                                 {noteSubmitting ? (
                                     <View className="flex-row items-center">
                                         <ActivityIndicator color="#fff" />
-                                        <Text className="text-white font-kumbh ml-2">
+                                        <Text className="text-white font-kumbhBold ml-2 text-[14px]">
                                             Saving…
                                         </Text>
                                     </View>
                                 ) : (
-                                    <Text className="text-white font-kumbhBold">
+                                    <Text className="text-white font-kumbhBold text-[14px]">
                                         Save note
                                     </Text>
                                 )}
@@ -1791,11 +1832,23 @@ export default function ChannelResourcesScreen() {
             </Modal>
 
             {activeTab === "resources" && actionFor ? (
-                <View className="absolute inset-0 bg-black/30">
-                    <View className="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl p-4">
-                        <Text className="font-kumbhBold text-base mb-2">
-                            Resource options
+                <View className="absolute inset-0 bg-black/40">
+                    <Pressable
+                        className="flex-1"
+                        onPress={() => setActionFor(null)}
+                    />
+                    <View className="absolute left-0 right-0 bottom-0 bg-white rounded-t-[28px] px-5 pt-3 pb-7">
+                        <View className="w-10 h-1 bg-gray-200 rounded-full self-center mb-4" />
+                        <Text
+                            className="font-kumbhBold text-[18px] text-[#111827] mb-1"
+                            numberOfLines={1}
+                        >
+                            {actionFor.name || "Resource options"}
                         </Text>
+                        <Text className="font-kumbh text-[12px] text-[#6B7280] mb-4">
+                            Choose an action for this file
+                        </Text>
+
                         <Pressable
                             onPress={() => {
                                 setActionFor(null);
@@ -1803,28 +1856,40 @@ export default function ChannelResourcesScreen() {
                                     previewResource(actionFor);
                                 });
                             }}
-                            className="py-3"
+                            className="h-12 rounded-2xl bg-[#F9FAFB] border border-gray-200 px-4 flex-row items-center mb-2.5"
                         >
-                            <Text className="font-kumbh">Preview</Text>
+                            <Eye size={17} color="#4C5FAB" />
+                            <Text className="ml-3 font-kumbhBold text-[14px] text-[#111827]">
+                                Preview
+                            </Text>
                         </Pressable>
+
                         <Pressable
                             onPress={async () => {
                                 await downloadResource(actionFor);
                                 setActionFor(null);
                             }}
-                            className="py-3"
+                            className="h-12 rounded-2xl bg-[#F9FAFB] border border-gray-200 px-4 flex-row items-center mb-2.5"
                         >
-                            <Text className="font-kumbh">Download</Text>
+                            <Download size={17} color="#4C5FAB" />
+                            <Text className="ml-3 font-kumbhBold text-[14px] text-[#111827]">
+                                Download
+                            </Text>
                         </Pressable>
+
                         <Pressable
                             onPress={async () => {
                                 await copyLink(actionFor);
                                 setActionFor(null);
                             }}
-                            className="py-3"
+                            className="h-12 rounded-2xl bg-[#F9FAFB] border border-gray-200 px-4 flex-row items-center mb-2.5"
                         >
-                            <Text className="font-kumbh">Copy link</Text>
+                            <Copy size={17} color="#4C5FAB" />
+                            <Text className="ml-3 font-kumbhBold text-[14px] text-[#111827]">
+                                Copy link
+                            </Text>
                         </Pressable>
+
                         <Pressable
                             onPress={() => {
                                 if (!actionFor._id) {
@@ -1837,17 +1902,19 @@ export default function ChannelResourcesScreen() {
                                 confirmDeleteResource(actionFor);
                                 setActionFor(null);
                             }}
-                            className="py-3"
+                            className="h-12 rounded-2xl bg-red-50 border border-red-100 px-4 flex-row items-center mb-3"
                         >
-                            <Text className="font-kumbh text-red-600">
+                            <Trash2 size={17} color="#DC2626" />
+                            <Text className="ml-3 font-kumbhBold text-[14px] text-red-600">
                                 Delete resource
                             </Text>
                         </Pressable>
+
                         <Pressable
                             onPress={() => setActionFor(null)}
-                            className="py-3"
+                            className="h-12 rounded-2xl bg-gray-100 items-center justify-center"
                         >
-                            <Text className="text-gray-500 font-kumbh">
+                            <Text className="text-[#374151] font-kumbhBold text-[14px]">
                                 Cancel
                             </Text>
                         </Pressable>
@@ -1860,9 +1927,9 @@ export default function ChannelResourcesScreen() {
                     pointerEvents="none"
                     className="absolute left-0 right-0 bottom-[90px] items-center"
                 >
-                    <View className="bg-gray-900 px-4 py-2.5 rounded-xl flex-row items-center">
+                    <View className="bg-[#111827] px-5 py-3 rounded-full flex-row items-center">
                         <ActivityIndicator color="#fff" />
-                        <Text className="text-white ml-2 font-kumbh">
+                        <Text className="text-white ml-2.5 font-kumbhBold text-[13px]">
                             Uploading… {uploadProgress}%
                         </Text>
                     </View>

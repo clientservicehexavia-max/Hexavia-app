@@ -31,19 +31,21 @@ export default function BottomSheetModal({
                 onPress={onRequestClose}
             >
                 <Pressable
-                    className="rounded-t-2xl bg-white px-4 pb-5 pt-2"
+                    className="rounded-t-[28px] border-t border-gray-100 bg-white px-5 pb-6 pt-3"
                     onPress={() => null}
                 >
-                    <View className="items-center">
-                        <View className="w-12 h-1.5 bg-gray-300 rounded-full" />
+                    <View className="items-center pb-2">
+                        <View className="h-1.5 w-11 rounded-full bg-gray-200" />
                     </View>
                     {showActionRow && (
-                        <View className="mt-1 flex-row justify-between">
-                            <Pressable onPress={onRequestClose}>
-                                <Text className="text-lg">Cancel</Text>
+                        <View className="mb-1 flex-row items-center justify-between border-b border-gray-100 pb-2">
+                            <Pressable onPress={onRequestClose} className="py-1.5 px-1">
+                                <Text className="font-kumbh text-base text-gray-500">
+                                    Cancel
+                                </Text>
                             </Pressable>
-                            <Pressable onPress={onDone}>
-                                <Text className="text-lg text-[#4C5FAB]">
+                            <Pressable onPress={onDone} className="py-1.5 px-1">
+                                <Text className="font-kumbhBold text-base text-primary">
                                     Done
                                 </Text>
                             </Pressable>

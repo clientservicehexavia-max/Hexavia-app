@@ -44,6 +44,7 @@ import { selectAdminUsers } from "@/redux/admin/admin.slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import {
     makeSelectClientById,
     selectClientDetailLoading,
@@ -105,7 +106,7 @@ type ApiStatus = "active" | "pending" | "closed";
 type BaseUser = AdminUser & { statusApi: ApiStatus };
 type ClientNote = NonNullable<Client["notes"]>[number];
 
-const BG_INPUT = "#F7F9FC";
+const BG_INPUT = "#FFFFFF";
 const BORDER = "#E5E7EB";
 const PRIMARY = "#4C5FAB";
 const DOCUMENT_TYPES: string[] = ["application/pdf"];
@@ -213,7 +214,7 @@ function escapeHtml(input?: string | number | null) {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
     return (
-        <Text className="font-kumbh text-[13px] text-[#111827] mb-2">
+        <Text className="font-kumbhBold text-[13px] text-[#374151] mb-2">
             {children}
         </Text>
     );
@@ -237,21 +238,26 @@ function Input({
     onFocus?: () => void;
 }) {
     return (
-        <TextInput
-            value={value == null ? "" : String(value)}
-            onChangeText={onChangeText}
-            onBlur={onBlur}
-            onFocus={onFocus}
-            placeholder={placeholder}
-            placeholderTextColor="#9CA3AF"
-            multiline={multiline}
-            keyboardType={keyboardType}
-            className="rounded-2xl px-4 py-3 font-kumbh text-[#111827]"
+        <View
+            className={`rounded-2xl border border-gray-200 bg-white px-4 ${
+                multiline ? "py-3" : "h-14 justify-center"
+            }`}
             style={{
-                backgroundColor: BG_INPUT,
-                minHeight: multiline ? 64 : undefined,
+                minHeight: multiline ? 88 : undefined,
             }}
-        />
+        >
+            <CustomTextInput
+                value={value == null ? "" : String(value)}
+                onChangeText={onChangeText}
+                onBlur={onBlur}
+                onFocus={onFocus}
+                placeholder={placeholder}
+                multiline={multiline}
+                keyboardType={keyboardType}
+                textAlignVertical={multiline ? "top" : "center"}
+                className={multiline ? "w-full min-h-[64px]" : "h-full w-full"}
+            />
+        </View>
     );
 }
 
@@ -1407,31 +1413,31 @@ export default function ClientDetails() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
-            // style={{ paddingTop: Platform.select({ ios: 8, android: 0 }) }}
+            className="flex-1 bg-[#F5F7FB]"
         >
             {/* Header */}
             <PlatformAdaptiveHeader
                 title="Client Details"
-                headerRight={({ tintColor }) =>
+                backgroundColor="#F5F7FB"
+                headerRight={() =>
                     activeTab === "notes" ? (
                         <View
-                            className="flex-row items-center"
+                            className="flex-row items-center ios:mr-3"
                             style={{ gap: 8 }}
                         >
                             <Pressable
                                 onPress={handleExportNotes}
                                 disabled={exportingNotes}
-                                className="w-10 h-10 rounded-full items-center justify-center"
+                                className="w-10 h-10 rounded-full bg-white border border-gray-200 items-center justify-center"
                                 style={{ opacity: exportingNotes ? 0.6 : 1 }}
                             >
                                 {exportingNotes ? (
                                     <ActivityIndicator
                                         size="small"
-                                        color={tintColor}
+                                        color={PRIMARY}
                                     />
                                 ) : (
-                                    <Share2 size={22} color={tintColor} />
+                                    <Share2 size={18} color="#111827" />
                                 )}
                             </Pressable>
                             <Pressable
@@ -1443,24 +1449,26 @@ export default function ClientDetails() {
                                 }}
                                 className="w-10 h-10 bg-primary rounded-full items-center justify-center"
                             >
-                                <Plus size={28} color="#FFFFFF" />
+                                <Plus size={20} color="#FFFFFF" />
                             </Pressable>
                         </View>
                     ) : (
                         <Pressable
                             disabled={saveDisabled}
                             onPress={onSave}
-                            className="w-10 h-10 rounded-full items-center justify-center"
+                            className={`w-10 h-10 rounded-full items-center justify-center ios:mr-3 ${
+                                saveDisabled ? "bg-gray-200" : "bg-primary"
+                            }`}
                         >
                             {mutationLoading ? (
                                 <ActivityIndicator
                                     size="small"
-                                    color={tintColor}
+                                    color="#FFFFFF"
                                 />
                             ) : (
                                 <Check
-                                    size={28}
-                                    color={saveDisabled ? "#9CA3AF" : tintColor}
+                                    size={20}
+                                    color={saveDisabled ? "#9CA3AF" : "#FFFFFF"}
                                 />
                             )}
                         </Pressable>
@@ -1469,61 +1477,43 @@ export default function ClientDetails() {
             />
             {detailLoading && !clientFromStore ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator />
-                    <Text className="mt-2 text-gray-500 font-kumbh">
+                    <ActivityIndicator color={PRIMARY} />
+                    <Text className="mt-2 text-[#6B7280] font-kumbh">
                         Loading client…
                     </Text>
                 </View>
             ) : (
                 <>
-                    <View className="px-4 mt-2 mb-1">
-                        <View
-                            className="rounded-2xl p-1 flex-row border"
-                            style={{
-                                backgroundColor: "#F8FAFC",
-                                borderColor: "#E2E8F0",
-                            }}
-                        >
+                    <View className="px-4 mt-2 mb-2">
+                        <View className="rounded-2xl p-1 flex-row bg-white border border-gray-200">
                             <Pressable
                                 onPress={() => setActiveTab("details")}
-                                className="flex-1 rounded-xl py-2.5 items-center"
-                                style={{
-                                    backgroundColor:
-                                        activeTab === "details"
-                                            ? "#4C5FAB"
-                                            : "transparent",
-                                }}
+                                className={`flex-1 rounded-xl py-2.5 items-center ${
+                                    activeTab === "details" ? "bg-primary" : ""
+                                }`}
                             >
                                 <Text
-                                    className="font-kumbhBold"
-                                    style={{
-                                        color:
-                                            activeTab === "details"
-                                                ? "#FFFFFF"
-                                                : "#374151",
-                                    }}
+                                    className={`font-kumbhBold text-sm ${
+                                        activeTab === "details"
+                                            ? "text-white"
+                                            : "text-[#6B7280]"
+                                    }`}
                                 >
                                     Details
                                 </Text>
                             </Pressable>
                             <Pressable
                                 onPress={() => setActiveTab("notes")}
-                                className="flex-1 rounded-xl py-2.5 items-center"
-                                style={{
-                                    backgroundColor:
-                                        activeTab === "notes"
-                                            ? "#4C5FAB"
-                                            : "transparent",
-                                }}
+                                className={`flex-1 rounded-xl py-2.5 items-center ${
+                                    activeTab === "notes" ? "bg-primary" : ""
+                                }`}
                             >
                                 <Text
-                                    className="font-kumbhBold"
-                                    style={{
-                                        color:
-                                            activeTab === "notes"
-                                                ? "#FFFFFF"
-                                                : "#374151",
-                                    }}
+                                    className={`font-kumbhBold text-sm ${
+                                        activeTab === "notes"
+                                            ? "text-white"
+                                            : "text-[#6B7280]"
+                                    }`}
                                 >
                                     Notes
                                 </Text>
@@ -1582,16 +1572,16 @@ export default function ClientDetails() {
                                         <FieldLabel>Date of Birth</FieldLabel>
                                         <Pressable
                                             onPress={() => setShowBirthdayDatePicker(true)}
-                                            className="flex-row items-center justify-between rounded-2xl bg-gray-200 px-4 py-4"
+                                            className="h-14 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-white px-4"
                                         >
-                                            <Text className={`font-kumbh ${dateOfBirth ? "text-text" : "text-gray-500"}`}>
+                                            <Text className={`font-kumbh text-[15px] ${dateOfBirth ? "text-[#111827]" : "text-[#9CA3AF]"}`}>
                                                 {dateOfBirth || "Select date of birth"}
                                             </Text>
                                             <CalendarDays size={18} color="#4C5FAB" />
                                         </Pressable>
                                         {dateOfBirth ? (
                                             <Pressable onPress={() => setDateOfBirth("")} className="mt-2 self-start">
-                                                <Text className="font-kumbh text-xs text-[#4C5FAB]">Clear date</Text>
+                                                <Text className="font-kumbhBold text-xs text-[#4C5FAB]">Clear date</Text>
                                             </Pressable>
                                         ) : null}
                                     </View>
@@ -1603,18 +1593,14 @@ export default function ClientDetails() {
                                             onPress={() =>
                                                 setShowSourceSheet(true)
                                             }
-                                            className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
-                                            style={{
-                                                backgroundColor: BG_INPUT,
-                                                borderColor: BORDER,
-                                            }}
+                                            className="h-14 rounded-2xl border border-gray-200 bg-white px-4 flex-row items-center justify-between"
                                         >
-                                            <Text className="font-kumbh text-[#111827] capitalize flex-1">
+                                            <Text className={`font-kumbh text-[15px] capitalize flex-1 ${source ? "text-[#111827]" : "text-[#9CA3AF]"}`}>
                                                 {source || "Select Source"}
                                             </Text>
                                             <ChevronDown
                                                 size={18}
-                                                color="#111827"
+                                                color="#4C5FAB"
                                             />
                                         </Pressable>
                                     </View>
@@ -1644,21 +1630,19 @@ export default function ClientDetails() {
                                                             true,
                                                         )
                                                     }
-                                                    className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
-                                                    style={{
-                                                        backgroundColor:
-                                                            BG_INPUT,
-                                                        borderColor: BORDER,
-                                                    }}
+                                                    className="h-14 rounded-2xl border border-gray-200 bg-white px-4 flex-row items-center justify-between"
                                                 >
-                                                    <Text className="font-kumbh text-[#111827]">
+                                                    <Text
+                                                        className={`font-kumbh text-[14px] flex-1 mr-1 ${industry ? "text-[#111827]" : "text-[#9CA3AF]"}`}
+                                                        numberOfLines={1}
+                                                    >
                                                         {industry
                                                             ? industry
                                                             : "Select Industry"}
                                                     </Text>
                                                     <ChevronDown
                                                         size={18}
-                                                        color="#111827"
+                                                        color="#4C5FAB"
                                                     />
                                                 </Pressable>
                                             </View>
@@ -1672,14 +1656,12 @@ export default function ClientDetails() {
                                                             true,
                                                         )
                                                     }
-                                                    className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
-                                                    style={{
-                                                        backgroundColor:
-                                                            BG_INPUT,
-                                                        borderColor: BORDER,
-                                                    }}
+                                                    className="h-14 rounded-2xl border border-gray-200 bg-white px-4 flex-row items-center justify-between"
                                                 >
-                                                    <Text className="font-kumbh text-[#111827]">
+                                                    <Text
+                                                        className={`font-kumbh text-[14px] flex-1 mr-1 ${staffSize ? "text-[#111827]" : "text-[#9CA3AF]"}`}
+                                                        numberOfLines={1}
+                                                    >
                                                         {staffSize
                                                             ? (STAFF_SIZE_OPTIONS.find(
                                                                   (opt) =>
@@ -1693,7 +1675,7 @@ export default function ClientDetails() {
                                                     </Text>
                                                     <ChevronDown
                                                         size={18}
-                                                        color="#111827"
+                                                        color="#4C5FAB"
                                                     />
                                                 </Pressable>
                                             </View>
@@ -1845,19 +1827,14 @@ export default function ClientDetails() {
                                                     onPress={() =>
                                                         setStatusOpen(true)
                                                     }
-                                                    className="rounded-2xl px-4 py-3 flex-row items-center justify-between"
-                                                    style={{
-                                                        backgroundColor:
-                                                            BG_INPUT,
-                                                        borderColor: BORDER,
-                                                    }}
+                                                    className="h-14 rounded-2xl border border-gray-200 bg-white px-4 flex-row items-center justify-between"
                                                 >
-                                                    <Text className="font-kumbh text-[#111827]">
+                                                    <Text className="font-kumbh text-[15px] text-[#111827]">
                                                         {toUiLabel(statusApi)}
                                                     </Text>
                                                     <ChevronDown
                                                         size={18}
-                                                        color="#111827"
+                                                        color="#4C5FAB"
                                                     />
                                                 </Pressable>
                                             </View>
@@ -1872,7 +1849,7 @@ export default function ClientDetails() {
                 </View> */}
 
                                     {/* Joined (read-only) */}
-                                    <View className="mt-6">
+                                    <View className="mt-4">
                                         <FieldLabel>Joined</FieldLabel>
                                         <Pressable
                                             onPress={() => {
@@ -1881,13 +1858,9 @@ export default function ClientDetails() {
                                                 );
                                                 setShowJoinedDatePicker(true);
                                             }}
-                                            className="rounded-2xl px-4 py-3"
-                                            style={{
-                                                backgroundColor: BG_INPUT,
-                                                borderColor: BORDER,
-                                            }}
+                                            className="h-14 rounded-2xl border border-gray-200 bg-white px-4 justify-center"
                                         >
-                                            <Text className="font-kumbh text-[#111827]">
+                                            <Text className="font-kumbh text-[15px] text-[#111827]">
                                                 {formatDate(
                                                     toIsoDateOrUndefined(
                                                         joined,
@@ -1898,16 +1871,11 @@ export default function ClientDetails() {
                                     </View>
 
                                     {/* Client Document */}
-                                    <View className="mt-6">
+                                    <View className="mt-5">
                                         <FieldLabel>
                                             Client Document (PDF)
                                         </FieldLabel>
-                                        <View
-                                            className="rounded-2xl border border-gray-200 p-4"
-                                            style={{
-                                                backgroundColor: BG_INPUT,
-                                            }}
-                                        >
+                                        <View className="rounded-[24px] border border-gray-100 bg-white p-4">
                                             <Text className="font-kumbh text-[#111827]">
                                                 {documentLabel}
                                             </Text>
@@ -2089,18 +2057,11 @@ export default function ClientDetails() {
 
                                         <View style={{ gap: 10 }}>
                                             {clientNotes.length === 0 ? (
-                                                <View
-                                                    className="rounded-2xl p-5 border"
-                                                    style={{
-                                                        backgroundColor:
-                                                            "#F9FAFB",
-                                                        borderColor: "#E5E7EB",
-                                                    }}
-                                                >
-                                                    <Text className="font-kumbhBold text-[#334155] text-sm">
+                                                <View className="rounded-[24px] p-6 border border-gray-100 bg-white items-center">
+                                                    <Text className="font-kumbhBold text-[#111827] text-base">
                                                         No Notes Yet
                                                     </Text>
-                                                    <Text className="font-kumbh text-gray-500 mt-1">
+                                                    <Text className="font-kumbh text-[#6B7280] mt-1 text-center">
                                                         No notes added yet for
                                                         this client.
                                                     </Text>
@@ -2110,13 +2071,7 @@ export default function ClientDetails() {
                                                     (note, index) => (
                                                         <View
                                                             key={`${note.createdAt || "note"}-${index}`}
-                                                            className="rounded-2xl p-4 border"
-                                                            style={{
-                                                                borderColor:
-                                                                    "#E2E8F0",
-                                                                backgroundColor:
-                                                                    "#FFFFFF",
-                                                            }}
+                                                            className="rounded-[24px] p-4 border border-gray-100 bg-white"
                                                         >
                                                             <View className="flex-row items-center justify-between">
                                                                 <Text className="font-kumbhBold text-[#111827] text-base flex-1 pr-3">
@@ -2287,9 +2242,9 @@ export default function ClientDetails() {
                                         : undefined
                                 }
                             >
-                                <View className="bg-white rounded-t-3xl px-5 pt-5 pb-6">
-                                    <View className="items-center mb-3">
-                                        <View className="w-14 h-1.5 rounded-full bg-gray-300" />
+                                <View className="bg-[#F5F7FB] rounded-t-[28px] px-5 pt-4 pb-8">
+                                    <View className="items-center mb-4">
+                                        <View className="w-10 h-1 rounded-full bg-gray-300" />
                                     </View>
 
                                     <Text className="font-kumbhBold text-[#111827] text-lg">

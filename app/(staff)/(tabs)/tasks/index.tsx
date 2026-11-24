@@ -392,28 +392,27 @@ export default function TaskScreen() {
     return (
         <SafeAreaView
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <StatusBar style="dark" />
             <PlatformAdaptiveHeader
                 title="Tasks"
                 headerLeft={() => null}
-                headerRight={({ tintColor }) => (
+                headerRight={() => (
                     <View className="flex-row items-center gap-2 ios:mr-3">
                         <Pressable
                             onPress={() => setShowFilter(true)}
-                            className="w-10 h-10 rounded-full items-center justify-center"
+                            className="w-10 h-10 rounded-full items-center justify-center bg-white border border-gray-200"
                             hitSlop={8}
                         >
-                            <Funnel size={24} color={tintColor ?? "#111827"} />
+                            <Funnel size={18} color="#111827" />
                         </Pressable>
                         <Pressable
                             onPress={() => setShowCreate(true)}
-                            className="w-10 h-10 rounded-full items-center justify-center"
+                            className="w-10 h-10 rounded-full items-center justify-center bg-primary"
                             hitSlop={8}
-                            style={{ backgroundColor: "#4C5FAB" }}
                         >
-                            <Plus size={22} color="white" />
+                            <Plus size={20} color="#FFFFFF" />
                         </Pressable>
                     </View>
                 )}
@@ -436,7 +435,7 @@ export default function TaskScreen() {
                     const SceneHeader = (
                         <>
                             <View
-                                className="px-3 mt-4 flex-row"
+                                className="px-4 mt-3 mb-1 flex-row"
                                 style={{ gap: 8 }}
                             >
                                 {MODE_TABS.map((tab) => {
@@ -447,20 +446,18 @@ export default function TaskScreen() {
                                             onPress={() =>
                                                 handleModeChange(tab.value)
                                             }
-                                            className="rounded-full px-4 py-2"
-                                            style={{
-                                                backgroundColor: selected
-                                                    ? "#111827"
-                                                    : "#E5E7EB",
-                                            }}
+                                            className={`rounded-full px-4 py-2 border ${
+                                                selected
+                                                    ? "bg-primary border-primary"
+                                                    : "bg-white border-gray-200"
+                                            }`}
                                         >
                                             <Text
-                                                className="font-kumbh text-[12px]"
-                                                style={{
-                                                    color: selected
-                                                        ? "#FFFFFF"
-                                                        : "#111827",
-                                                }}
+                                                className={`font-kumbhBold text-[12px] ${
+                                                    selected
+                                                        ? "text-white"
+                                                        : "text-[#374151]"
+                                                }`}
                                             >
                                                 {tab.label}
                                             </Text>

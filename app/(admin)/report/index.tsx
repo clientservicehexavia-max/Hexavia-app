@@ -1,12 +1,22 @@
 import DatePickerModal from "@/components/admin/DatePickerModal";
+import Field from "@/components/admin/Field";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import BottomSheetModal from "@/components/ui/BottomSheetModal";
 import { selectAllChannels } from "@/redux/channels/channels.slice";
 import { fetchChannels } from "@/redux/channels/channels.thunks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { generateChannelSummaryReport } from "@/utils/channelSummary";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useRouter } from "expo-router";
-import { Check, ChevronDown } from "lucide-react-native";
+import {
+    Calendar,
+    Check,
+    ChevronDown,
+    ChevronRight,
+    FileText,
+    Sparkles,
+    X,
+} from "lucide-react-native";
 import { default as React, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -267,11 +277,16 @@ export default function CreateReportScreen() {
     /* ───────── UI ───────── */
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
-            edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
+            className="flex-1 bg-[#F5F7FB]"
+            edges={
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
+            }
         >
             {/* Header */}
-            <PlatformAdaptiveHeader title="Create Report" />
+            <PlatformAdaptiveHeader
+                title="Create Report"
+                backgroundColor="#F5F7FB"
+            />
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
@@ -280,265 +295,288 @@ export default function CreateReportScreen() {
             >
                 <ScrollView
                     className="flex-1"
-                    contentContainerClassName="px-5 pb-32"
+                    contentContainerStyle={{
+                        paddingHorizontal: 16,
+                        paddingTop: 12,
+                        paddingBottom: 40,
+                    }}
                     keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
                 >
-                    {/* Title + blurb */}
-                    <Text className="mt-4 text-2xl font-kumbhBold text-black">
-                        Report
-                    </Text>
-                    <Text className="mt-3 text-base font-kumbh leading-6 text-gray-500">
+                    <Text className="mb-5 font-kumbh text-sm leading-5 text-[#6B7280]">
                         Generate and export an AI summary PDF for a project
                         channel.
                     </Text>
 
-                    {/* Project Name */}
-                    {/* <Text className="mt-6 text-lg font-kumbh text-black">
-                        Project Name
-                    </Text>
-                    <Controller
-                        control={control}
-                        name="projectName"
-                        render={({ field: { onChange, onBlur, value } }) => (
-                            <TextInput
-                                className="mt-2 h-14 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 font-kumbh text-[16px] text-black"
-                                placeholder="Enter Project Name"
-                                placeholderTextColor="#9CA3AF"
-                                onBlur={onBlur}
-                                onChangeText={onChange}
-                                value={value}
-                            />
-                        )}
-                    />
-                    {errors.projectName && (
-                        <Text className="mt-1 font-kumbh text-sm text-red-500">
-                            {errors.projectName.message}
-                        </Text>
-                    )} */}
-
-                    {/* Channel (single) */}
-                    <Text className="mt-5 text-lg font-kumbh text-black">
-                        Project
-                    </Text>
-                    <Controller
-                        control={control}
-                        name="channelIds"
-                        render={({ field: { value } }) => (
-                            <Pressable
-                                onPress={() => setChannelOpen(true)}
-                                className="mt-2 min-h-14 w-full flex-row items-center justify-between rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3"
-                            >
-                                <View className="flex-1">
-                                    {value.length === 0 ? (
-                                        <Text className="font-kumbh text-[16px] text-gray-400">
-                                            Select Project
-                                        </Text>
-                                    ) : (
-                                        <View>
-                                            <View className="flex-row flex-wrap gap-2">
-                                                {selectedNames.map((n) => (
-                                                    <View
-                                                        key={n}
-                                                        className="px-3 py-1 rounded-full bg-white border border-gray-200"
-                                                    >
-                                                        <Text className="font-kumbh text-sm text-gray-700">
-                                                            {n}
-                                                        </Text>
+                    <View className="gap-4">
+                        {/* Channel (single) */}
+                        <View>
+                            <Field label="Project">
+                                <Controller
+                                    control={control}
+                                    name="channelIds"
+                                    render={({ field: { value } }) => (
+                                        <Pressable
+                                            onPress={() => setChannelOpen(true)}
+                                            className="min-h-14 w-full flex-row items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3"
+                                        >
+                                            <View className="flex-1 pr-2">
+                                                {value.length === 0 ? (
+                                                    <Text className="font-kumbh text-base text-[#9CA3AF]">
+                                                        Select Project
+                                                    </Text>
+                                                ) : (
+                                                    <View className="flex-row flex-wrap gap-2">
+                                                        {selectedNames.map(
+                                                            (n) => (
+                                                                <View
+                                                                    key={n}
+                                                                    className="rounded-full bg-[#EEF2FF] px-3 py-1"
+                                                                >
+                                                                    <Text className="font-kumbhBold text-xs text-[#4C5FAB]">
+                                                                        {n}
+                                                                    </Text>
+                                                                </View>
+                                                            ),
+                                                        )}
                                                     </View>
-                                                ))}
+                                                )}
                                             </View>
-                                        </View>
+                                            <ChevronDown
+                                                size={18}
+                                                color="#6B7280"
+                                            />
+                                        </Pressable>
+                                    )}
+                                />
+                            </Field>
+                            {errors.channelIds && (
+                                <Text className="mt-1.5 font-kumbh text-xs text-red-500">
+                                    {String(errors.channelIds.message)}
+                                </Text>
+                            )}
+                        </View>
+
+                        {/* Date Range */}
+                        <View>
+                            <Text className="mb-2 font-kumbhBold text-sm text-[#374151]">
+                                Report Period
+                            </Text>
+                            <View className="flex-row gap-3">
+                                {/* Start Date */}
+                                <View className="flex-1">
+                                    <Text className="mb-1.5 font-kumbh text-xs text-[#6B7280]">
+                                        Start Date
+                                    </Text>
+                                    <Controller
+                                        control={control}
+                                        name="startDate"
+                                        render={() => (
+                                            <Pressable
+                                                onPress={() =>
+                                                    openDatePicker(
+                                                        "start",
+                                                        startDateValue,
+                                                    )
+                                                }
+                                                className="h-14 w-full flex-row items-center justify-between rounded-2xl border border-gray-200 bg-white px-4"
+                                            >
+                                                <Text
+                                                    className={`font-kumbh text-sm ${
+                                                        startDateValue
+                                                            ? "text-[#111827]"
+                                                            : "text-[#9CA3AF]"
+                                                    }`}
+                                                >
+                                                    {formatDate(startDateValue)}
+                                                </Text>
+                                                <Calendar
+                                                    size={17}
+                                                    color="#4C5FAB"
+                                                />
+                                            </Pressable>
+                                        )}
+                                    />
+                                    {errors.startDate && (
+                                        <Text className="mt-1.5 font-kumbh text-xs text-red-500">
+                                            {
+                                                errors.startDate
+                                                    .message as string
+                                            }
+                                        </Text>
                                     )}
                                 </View>
-                                <ChevronDown size={20} color="#6B7280" />
-                            </Pressable>
-                        )}
-                    />
-                    {errors.channelIds && (
-                        <Text className="mt-1 font-kumbh text-sm text-red-500">
-                            {String(errors.channelIds.message)}
-                        </Text>
-                    )}
 
-                    {/* Date Range */}
-                    <View className="mt-5">
-                        <Text className="text-lg font-kumbh text-black">
-                            Report Period
-                        </Text>
-                        <View className="mt-2 flex-row gap-4">
-                            {/* Start Date */}
-                            <View className="flex-1">
-                                <Text className="font-kumbh text-[12px] text-gray-500 mb-1">
-                                    Start Date
-                                </Text>
-                                <Controller
-                                    control={control}
-                                    name="startDate"
-                                    render={() => (
-                                        <Pressable
-                                            onPress={() =>
-                                                openDatePicker(
-                                                    "start",
-                                                    startDateValue,
-                                                )
-                                            }
-                                            className="h-14 w-full flex-row items-center justify-between rounded-2xl border border-gray-200 bg-gray-50 px-4"
-                                        >
-                                            <Text
-                                                className={`font-kumbh text-[16px] ${
-                                                    startDateValue
-                                                        ? "text-black"
-                                                        : "text-gray-400"
-                                                }`}
-                                            >
-                                                {formatDate(startDateValue)}
-                                            </Text>
-                                            <ChevronDown
-                                                size={18}
-                                                color="#6B7280"
-                                            />
-                                        </Pressable>
-                                    )}
-                                />
-                                {errors.startDate && (
-                                    <Text className="mt-1 font-kumbh text-sm text-red-500">
-                                        {errors.startDate.message as string}
+                                {/* End Date */}
+                                <View className="flex-1">
+                                    <Text className="mb-1.5 font-kumbh text-xs text-[#6B7280]">
+                                        End Date
                                     </Text>
-                                )}
-                            </View>
-
-                            {/* End Date */}
-                            <View className="flex-1">
-                                <Text className="font-kumbh text-[12px] text-gray-500 mb-1">
-                                    End Date
-                                </Text>
-                                <Controller
-                                    control={control}
-                                    name="endDate"
-                                    render={() => (
-                                        <Pressable
-                                            onPress={() =>
-                                                openDatePicker(
-                                                    "end",
-                                                    endDateValue,
-                                                )
-                                            }
-                                            className="h-14 w-full flex-row items-center justify-between rounded-2xl border border-gray-200 bg-gray-50 px-4"
-                                        >
-                                            <Text
-                                                className={`font-kumbh text-[16px] ${
-                                                    endDateValue
-                                                        ? "text-black"
-                                                        : "text-gray-400"
-                                                }`}
+                                    <Controller
+                                        control={control}
+                                        name="endDate"
+                                        render={() => (
+                                            <Pressable
+                                                onPress={() =>
+                                                    openDatePicker(
+                                                        "end",
+                                                        endDateValue,
+                                                    )
+                                                }
+                                                className="h-14 w-full flex-row items-center justify-between rounded-2xl border border-gray-200 bg-white px-4"
                                             >
-                                                {formatDate(endDateValue)}
-                                            </Text>
-                                            <ChevronDown
-                                                size={18}
-                                                color="#6B7280"
-                                            />
-                                        </Pressable>
+                                                <Text
+                                                    className={`font-kumbh text-sm ${
+                                                        endDateValue
+                                                            ? "text-[#111827]"
+                                                            : "text-[#9CA3AF]"
+                                                    }`}
+                                                >
+                                                    {formatDate(endDateValue)}
+                                                </Text>
+                                                <Calendar
+                                                    size={17}
+                                                    color="#4C5FAB"
+                                                />
+                                            </Pressable>
+                                        )}
+                                    />
+                                    {errors.endDate && (
+                                        <Text className="mt-1.5 font-kumbh text-xs text-red-500">
+                                            {errors.endDate.message as string}
+                                        </Text>
                                     )}
-                                />
-                                {errors.endDate && (
-                                    <Text className="mt-1 font-kumbh text-sm text-red-500">
-                                        {errors.endDate.message as string}
-                                    </Text>
-                                )}
+                                </View>
                             </View>
                         </View>
                     </View>
 
                     {/* Footer buttons */}
-                    <View className="mt-10 flex-row items-center justify-between">
+                    <View className="mt-8 gap-3">
                         <Pressable
                             disabled={isSubmitting || isGenerating}
                             onPress={onGenerate}
-                            className="flex-1 rounded-2xl bg-primary py-4 disabled:opacity-60"
+                            className="h-14 flex-row items-center justify-center gap-2 rounded-2xl bg-[#4C5FAB] active:opacity-90 disabled:opacity-60"
                         >
-                            <Text className="text-center font-kumbh text-[16px] font-semibold text-white">
+                            <Sparkles size={18} color="#FFFFFF" />
+                            <Text className="font-kumbhBold text-base text-white">
                                 {isGenerating ? "Generating..." : "AI Generate"}
                             </Text>
                         </Pressable>
-                    </View>
 
-                    <Pressable
-                        onPress={() =>
-                            router.push("/(admin)/report/saved-reports")
-                        }
-                        className="mt-4 rounded-2xl border border-gray-200 bg-white py-3"
-                    >
-                        <Text className="text-center font-kumbhBold text-gray-800">
-                            View Saved Reports
-                        </Text>
-                    </Pressable>
+                        <Pressable
+                            onPress={() =>
+                                router.push("/(admin)/report/saved-reports")
+                            }
+                            className="flex-row items-center justify-between rounded-[22px] border border-gray-100 bg-white p-4 active:opacity-90"
+                        >
+                            <View className="flex-row items-center gap-3">
+                                <View className="h-10 w-10 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                                    <FileText size={18} color="#4C5FAB" />
+                                </View>
+                                <View>
+                                    <Text className="font-kumbhBold text-sm text-[#111827]">
+                                        View Saved Reports
+                                    </Text>
+                                    <Text className="mt-0.5 font-kumbh text-xs text-[#6B7280]">
+                                        Browse previously generated summaries
+                                    </Text>
+                                </View>
+                            </View>
+                            <ChevronRight size={18} color="#9CA3AF" />
+                        </Pressable>
+                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
 
             {/* Channel Picker Modal */}
-            <Modal visible={channelOpen} transparent animationType="fade">
-                <Pressable
-                    onPress={() => setChannelOpen(false)}
-                    className="flex-1 bg-black/30"
-                />
-                <View className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-white p-5">
-                    <View className="mb-3 flex-row items-center justify-between">
-                        <Text className="text-lg font-kumbh font-semibold text-black">
+            <BottomSheetModal
+                visible={channelOpen}
+                onRequestClose={() => setChannelOpen(false)}
+                showActionRow={false}
+            >
+                <View className="mb-4 flex-row items-center justify-between">
+                    <View>
+                        <Text className="text-xl font-kumbhBold text-[#111827]">
                             Select Project
                         </Text>
-                        <Pressable onPress={clearAll} className="px-2 py-1">
-                            <Text className="font-kumbh text-primary">
-                                Clear
-                            </Text>
-                        </Pressable>
+                        <Text className="mt-1 font-kumbh text-xs text-[#6B7280]">
+                            Choose a project channel for this report
+                        </Text>
                     </View>
-
-                    <FlatList
-                        data={channels}
-                        keyExtractor={(i) => i._id}
-                        ItemSeparatorComponent={() => (
-                            <View className="h-[1px] bg-gray-100" />
-                        )}
-                        renderItem={({ item }) => {
-                            const checked = selectedIds.includes(item._id);
-                            return (
-                                <Pressable
-                                    onPress={() => toggleId(item._id)}
-                                    className="py-3 flex-row items-center justify-between"
-                                >
-                                    <Text className="font-kumbh text-[16px] text-black">
-                                        {item.name}
-                                    </Text>
-                                    <View
-                                        className={`w-6 h-6 rounded-md border items-center justify-center ${
-                                            checked
-                                                ? "bg-primary border-primary"
-                                                : "border-gray-300 bg-white"
-                                        }`}
-                                    >
-                                        {checked ? (
-                                            <Check size={16} color="#fff" />
-                                        ) : null}
-                                    </View>
-                                </Pressable>
-                            );
-                        }}
-                        style={{ maxHeight: 380 }}
-                    />
-
-                    <View className="mt-4 flex-row gap-3">
+                    <View className="flex-row items-center gap-2">
+                        {selectedIds.length > 0 ? (
+                            <Pressable
+                                onPress={clearAll}
+                                className="rounded-full bg-[#EEF2FF] px-3 py-1.5"
+                            >
+                                <Text className="font-kumbhBold text-xs text-[#4C5FAB]">
+                                    Clear
+                                </Text>
+                            </Pressable>
+                        ) : null}
                         <Pressable
                             onPress={() => setChannelOpen(false)}
-                            className="flex-1 items-center justify-center rounded-2xl border border-gray-200 py-3"
+                            className="h-9 w-9 items-center justify-center rounded-full bg-[#F5F7FB]"
                         >
-                            <Text className="font-kumbh">Done</Text>
+                            <X size={17} color="#374151" />
                         </Pressable>
                     </View>
-
-                    <View className="h-3" />
                 </View>
-            </Modal>
+
+                <FlatList
+                    data={channels}
+                    keyExtractor={(i) => i._id}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
+                    renderItem={({ item }) => {
+                        const checked = selectedIds.includes(item._id);
+                        return (
+                            <Pressable
+                                onPress={() => toggleId(item._id)}
+                                className={`flex-row items-center justify-between rounded-2xl border px-4 py-3.5 ${
+                                    checked
+                                        ? "border-[#4C5FAB] bg-[#EEF2FF]"
+                                        : "border-gray-100 bg-[#F5F7FB]"
+                                }`}
+                            >
+                                <Text
+                                    className={`flex-1 pr-3 font-kumbhBold text-sm ${
+                                        checked
+                                            ? "text-[#4C5FAB]"
+                                            : "text-[#111827]"
+                                    }`}
+                                >
+                                    {item.name}
+                                </Text>
+                                <View
+                                    className={`h-6 w-6 items-center justify-center rounded-full border ${
+                                        checked
+                                            ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                            : "border-gray-300 bg-white"
+                                    }`}
+                                >
+                                    {checked ? (
+                                        <Check size={14} color="#FFFFFF" />
+                                    ) : null}
+                                </View>
+                            </Pressable>
+                        );
+                    }}
+                    style={{ maxHeight: 380 }}
+                />
+
+                <Pressable
+                    onPress={() => setChannelOpen(false)}
+                    className="mt-4 h-12 items-center justify-center rounded-2xl bg-[#4C5FAB]"
+                >
+                    <Text className="font-kumbhBold text-sm text-white">
+                        Done
+                    </Text>
+                </Pressable>
+
+                <View className="h-2" />
+            </BottomSheetModal>
 
             <DatePickerModal
                 visible={showDate}
@@ -550,11 +588,16 @@ export default function CreateReportScreen() {
 
             {/* Generating overlay */}
             <Modal visible={isGenerating} transparent animationType="fade">
-                <View className="flex-1 items-center justify-center bg-black/40">
-                    <View className="rounded-2xl bg-white px-5 py-6 items-center">
-                        <ActivityIndicator size="large" />
-                        <Text className="mt-3 font-kumbh">
+                <View className="flex-1 items-center justify-center bg-black/40 px-6">
+                    <View className="items-center rounded-[24px] border border-gray-100 bg-white px-7 py-6">
+                        <View className="mb-3 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                            <ActivityIndicator size="small" color="#4C5FAB" />
+                        </View>
+                        <Text className="font-kumbhBold text-base text-[#111827]">
                             Generating summary...
+                        </Text>
+                        <Text className="mt-1 font-kumbh text-xs text-[#6B7280]">
+                            Preparing your AI report PDF
                         </Text>
                     </View>
                 </View>

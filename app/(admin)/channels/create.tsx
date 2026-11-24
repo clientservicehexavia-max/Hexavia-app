@@ -1,5 +1,10 @@
-// app/(admin)/channels/create.tsx
 import { useRouter } from "expo-router";
+import {
+    FolderKanban,
+    Hash,
+    RefreshCcw,
+    Shield,
+} from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
     KeyboardAvoidingView,
@@ -14,9 +19,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Field from "@/components/admin/Field";
-import HexButton from "@/components/ui/HexButton";
-
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
+import HexButton from "@/components/ui/HexButton";
 import { showError } from "@/components/ui/toast";
 import {
     selectChannelsState,
@@ -83,10 +88,12 @@ export default function CreateChannel() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-[#F5F7FB]"
         >
-            {/* Header */}
-            <PlatformAdaptiveHeader title="Create New Project" />
+            <PlatformAdaptiveHeader
+                title="Create New Project"
+                backgroundColor="#F5F7FB"
+            />
 
             <KeyboardAvoidingView
                 className="flex-1"
@@ -100,87 +107,106 @@ export default function CreateChannel() {
             >
                 <ScrollView
                     className="flex-1"
-                    contentContainerClassName="pb-10 pt-4"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerClassName="px-4 pt-3 pb-12"
                     keyboardShouldPersistTaps="handled"
                 >
                     {!!error && (
-                        <View className="mb-3 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
-                            <Text className="text-red-700 font-kumbh">
+                        <View className="mb-4 rounded-2xl bg-red-50 border border-red-100 px-4 py-3">
+                            <Text className="text-red-700 text-xs font-kumbh">
                                 {error}
                             </Text>
                         </View>
                     )}
 
                     <Field label="Name of Project">
-                        <TextInput
-                            placeholder="Enter Project Name"
-                            placeholderTextColor="#9CA3AF"
-                            value={name}
-                            onChangeText={setName}
-                            className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
-                            autoCapitalize="words"
-                        />
+                        <View className="h-14 flex-row items-center rounded-2xl border border-gray-200 bg-white px-4">
+                            <FolderKanban size={18} color="#6B7280" />
+                            <CustomTextInput
+                                placeholder="Enter Project Name"
+                                value={name}
+                                onChangeText={setName}
+                                autoCapitalize="words"
+                                className="flex-1 h-full ml-3"
+                            />
+                        </View>
                     </Field>
 
-                    <Field label="Descriptions">
-                        <TextInput
-                            placeholder="Enter Description"
-                            placeholderTextColor="#9CA3AF"
-                            value={desc}
-                            onChangeText={setDesc}
-                            multiline
-                            className="bg-gray-200 rounded-2xl px-4 py-4 min-h-[88px] font-kumbh text-text"
-                        />
+                    <Field label="Description">
+                        <View className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5">
+                            <CustomTextInput
+                                placeholder="Enter Description"
+                                value={desc}
+                                onChangeText={setDesc}
+                                multiline
+                                textAlignVertical="top"
+                                style={{ minHeight: 96 }}
+                            />
+                        </View>
                     </Field>
 
-                    <View className="mb-5">
-                        <View className="flex-row items-center justify-between">
-                            <View>
-                                <Text className="text-[12px] text-gray-500 mb-1">
+                    <View className="mb-4 flex-row items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3.5">
+                        <View className="flex-1 flex-row items-center gap-3">
+                            <View className="h-10 w-10 rounded-xl bg-[#EEF2FF] items-center justify-center">
+                                <Shield size={18} color="#4C5FAB" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-[14px] font-kumbhBold text-[#111827]">
                                     Staff only channel
                                 </Text>
-                                <Text className="text-[10px] text-gray-400">
+                                <Text className="mt-0.5 text-[12px] leading-[16px] font-kumbh text-[#6B7280]">
                                     Toggle on if this project should be
                                     restricted to staff.
                                 </Text>
                             </View>
-                            <Switch
-                                value={isStaff}
-                                onValueChange={setIsStaff}
-                                trackColor={{
-                                    false: "#d1d5db",
-                                    true: "#4C5FAB",
-                                }}
-                                ios_backgroundColor="#d1d5db"
-                            />
                         </View>
+                        <Switch
+                            value={isStaff}
+                            onValueChange={setIsStaff}
+                            trackColor={{
+                                false: "#D1D5DB",
+                                true: "#4C5FAB",
+                            }}
+                            thumbColor="#FFFFFF"
+                            ios_backgroundColor="#D1D5DB"
+                        />
                     </View>
 
-                    <View className="flex-row gap-3">
-                        <Field label="Project Code" className="flex-1">
-                            <View className="relative">
-                                <TextInput
-                                    placeholder="Auto-generated"
-                                    placeholderTextColor="#9CA3AF"
-                                    value={code}
-                                    onChangeText={setCode}
-                                    editable={false}
-                                    selectTextOnFocus={false}
-                                    className="bg-gray-200 rounded-2xl px-4 py-4 pr-24 font-kumbh text-text opacity-90"
-                                    autoCapitalize="characters"
-                                />
-                                <Pressable
-                                    onPress={onGenerateCode}
-                                    disabled={creating}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-2 rounded-xl bg-primary-50 border border-primary-100"
-                                >
-                                    <Text className="font-kumbhBold text-primary-700">
-                                        Generate
+                    <Field label="Project Code" className="mb-6">
+                        <View className="flex-row items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                            <View className="flex-1 flex-row items-center gap-3">
+                                <View className="h-10 w-10 rounded-xl bg-[#EEF2FF] items-center justify-center">
+                                    <Hash size={18} color="#4C5FAB" />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-[11px] font-kumbh text-[#6B7280]">
+                                        Auto-generated code
                                     </Text>
-                                </Pressable>
+                                    <TextInput
+                                        placeholder="Auto-generated"
+                                        placeholderTextColor="#9CA3AF"
+                                        value={code}
+                                        onChangeText={setCode}
+                                        editable={false}
+                                        selectTextOnFocus={false}
+                                        autoCapitalize="characters"
+                                        className="mt-0.5 p-0 font-kumbhBold text-[16px] tracking-widest text-[#111827]"
+                                    />
+                                </View>
                             </View>
-                        </Field>
-                    </View>
+                            <Pressable
+                                onPress={onGenerateCode}
+                                disabled={creating}
+                                hitSlop={6}
+                                className="flex-row items-center gap-1.5 rounded-xl bg-[#EEF2FF] px-3.5 py-2.5 active:opacity-80"
+                            >
+                                <RefreshCcw size={14} color="#4C5FAB" />
+                                <Text className="text-[13px] font-kumbhBold text-primary">
+                                    Generate
+                                </Text>
+                            </Pressable>
+                        </View>
+                    </Field>
 
                     <HexButton
                         title={creating ? "Creating..." : "Create Project"}

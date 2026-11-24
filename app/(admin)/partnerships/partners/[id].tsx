@@ -1,5 +1,6 @@
 import { api } from "@/api/axios";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { selectAllDeals } from "@/redux/deal/deal.selectors";
 import { fetchDeals } from "@/redux/deal/deal.thunks";
 import {
@@ -44,7 +45,6 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -73,8 +73,8 @@ function Section({
     children: React.ReactNode;
 }) {
     return (
-        <View className="mb-6">
-            <Text className="mb-3 text-lg font-kumbhBold text-gray-900">
+        <View className="mb-5">
+            <Text className="mb-2.5 text-[12px] font-kumbhBold uppercase tracking-wider text-[#6B7280]">
                 {title}
             </Text>
             {children}
@@ -84,9 +84,9 @@ function Section({
 
 function StatCard({ label, value }: { label: string; value: string }) {
     return (
-        <View className="flex-1 rounded-xl border border-blue-100 bg-blue-50 p-3">
-            <Text className="text-xs font-kumbh text-gray-500">{label}</Text>
-            <Text className="mt-2 text-xl font-kumbhBold text-gray-900">
+        <View className="flex-1 rounded-[22px] border border-gray-100 bg-white p-4">
+            <Text className="text-[12px] font-kumbh text-[#6B7280]">{label}</Text>
+            <Text className="mt-1.5 text-[18px] font-kumbhBold text-[#111827]">
                 {value}
             </Text>
         </View>
@@ -105,15 +105,13 @@ function Pill({
     return (
         <Pressable
             onPress={onPress}
-            className={`px-3 py-2 rounded-full border ${
-                active
-                    ? "bg-blue-500 border-blue-500"
-                    : "bg-white border-gray-200"
+            className={`flex-1 h-9 rounded-xl items-center justify-center ${
+                active ? "bg-[#4C5FAB]" : ""
             }`}
         >
             <Text
-                className={`text-sm font-medium ${
-                    active ? "text-white" : "text-gray-700"
+                className={`text-xs font-kumbhBold ${
+                    active ? "text-white" : "text-[#6B7280]"
                 }`}
             >
                 {label}
@@ -137,12 +135,12 @@ function ActionButton({
 }) {
     const rootClass =
         variant === "primary"
-            ? "h-11 px-3 rounded-lg bg-blue-500 flex-row items-center justify-center"
-            : "h-11 px-3 rounded-lg bg-gray-100 flex-row items-center justify-center";
+            ? "h-12 px-4 rounded-2xl bg-[#4C5FAB] flex-row items-center justify-center"
+            : "h-12 px-4 rounded-2xl bg-[#F9FAFB] border border-gray-200 flex-row items-center justify-center";
     const textClass =
         variant === "primary"
-            ? "font-semibold ml-2 text-white"
-            : "font-semibold ml-2 text-gray-900";
+            ? "font-kumbhBold text-[14px] ml-2 text-white"
+            : "font-kumbhBold text-[14px] ml-2 text-[#111827]";
 
     return (
         <Pressable
@@ -170,19 +168,20 @@ function FormModal({
     return (
         <Modal visible={visible} animationType="slide" transparent>
             <KeyboardAvoidingView
-                className="flex-1 bg-black/30 justify-end"
+                className="flex-1 bg-black/40 justify-end"
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
             >
-                <View className="bg-white rounded-t-3xl max-h-[88%]">
-                    <View className="px-5 py-4 border-b border-gray-100 flex-row items-center justify-between">
-                        <Text className="text-xl font-bold text-gray-900">
+                <View className="bg-white rounded-t-[28px] pt-3 max-h-[88%]">
+                    <View className="w-10 h-1 rounded-full bg-gray-200 self-center mb-3" />
+                    <View className="px-5 pb-3.5 border-b border-gray-100 flex-row items-center justify-between">
+                        <Text className="text-[18px] font-kumbhBold text-[#111827]">
                             {title}
                         </Text>
                         <Pressable
                             onPress={onClose}
                             className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center"
                         >
-                            <X size={18} color="#111827" />
+                            <X size={17} color="#374151" />
                         </Pressable>
                     </View>
                     <ScrollView
@@ -212,18 +211,18 @@ function ContactRow({
     return (
         <Wrapper
             onPress={onPress}
-            className="mb-2 flex-row items-center rounded-xl bg-gray-50 p-3"
+            className="mb-2.5 flex-row items-center rounded-[22px] bg-white border border-gray-100 p-3.5"
         >
-            <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-white">
+            <View className="mr-3 h-10 w-10 items-center justify-center rounded-2xl bg-[#EEF2FF]">
                 {icon}
             </View>
             <View className="flex-1">
-                <Text className="text-xs font-kumbh text-gray-500">
+                <Text className="text-[11px] font-kumbh text-[#6B7280]">
                     {label}
                 </Text>
                 <Text
-                    className={`mt-1 text-sm font-kumbh ${
-                        onPress ? "text-[#4C5FAB]" : "text-gray-900"
+                    className={`mt-0.5 text-[14px] font-kumbhBold ${
+                        onPress ? "text-[#4C5FAB]" : "text-[#111827]"
                     }`}
                     numberOfLines={2}
                 >
@@ -479,7 +478,7 @@ export default function PartnerDetailScreen() {
 
     if (loading && !partner) {
         return (
-            <SafeAreaView className="flex-1 items-center justify-center bg-white">
+            <SafeAreaView className="flex-1 items-center justify-center bg-[#F5F7FB]">
                 <ActivityIndicator size="large" color="#4C5FAB" />
             </SafeAreaView>
         );
@@ -487,8 +486,10 @@ export default function PartnerDetailScreen() {
 
     if (!partner) {
         return (
-            <SafeAreaView className="flex-1 items-center justify-center bg-white">
-                <Text className="text-gray-500">Partner not found</Text>
+            <SafeAreaView className="flex-1 items-center justify-center bg-[#F5F7FB]">
+                <Text className="text-[#6B7280] font-kumbh">
+                    Partner not found
+                </Text>
             </SafeAreaView>
         );
     }
@@ -559,9 +560,9 @@ export default function PartnerDetailScreen() {
                         {partner.engagementTags.map((tag) => (
                             <View
                                 key={tag}
-                                className="rounded-full bg-blue-100 px-3 py-1"
+                                className="rounded-full bg-[#EEF2FF] px-3 py-1.5"
                             >
-                                <Text className="text-sm font-kumbhBold text-blue-800">
+                                <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
                                     {tag}
                                 </Text>
                             </View>
@@ -571,19 +572,19 @@ export default function PartnerDetailScreen() {
             ) : null}
 
             <Section title="Notes">
-                <View className="rounded-xl bg-gray-50 p-4">
-                    <Text className="font-kumbh text-gray-700">
+                <View className="rounded-[22px] bg-white border border-gray-100 p-4">
+                    <Text className="font-kumbh text-[14px] leading-5 text-[#4B5563]">
                         {partner.notes || "No notes added."}
                     </Text>
                 </View>
             </Section>
 
             <Section title="Metadata">
-                <View className="rounded-xl bg-gray-50 p-4">
-                    <Text className="mb-2 text-sm font-kumbh text-gray-600">
+                <View className="rounded-[22px] bg-white border border-gray-100 p-4">
+                    <Text className="mb-2 text-[13px] font-kumbh text-[#6B7280]">
                         Created: {formatDate(partner.createdAt)}
                     </Text>
-                    <Text className="text-sm font-kumbh text-gray-600">
+                    <Text className="text-[13px] font-kumbh text-[#6B7280]">
                         Last Updated: {formatDate(partner.updatedAt)}
                     </Text>
                 </View>
@@ -602,26 +603,26 @@ export default function PartnerDetailScreen() {
                                 `/(admin)/partnerships/deals/${deal._id}`,
                             )
                         }
-                        className="mb-3 rounded-xl border border-gray-200 bg-white p-4"
+                        className="mb-3 rounded-[24px] border border-gray-100 bg-white p-4 active:opacity-85"
                     >
                         <View className="flex-row items-start justify-between gap-3">
                             <View className="flex-1">
                                 <Text
-                                    className="text-base font-kumbhBold text-gray-900"
+                                    className="text-[15px] font-kumbhBold text-[#111827]"
                                     numberOfLines={2}
                                 >
                                     {deal.title}
                                 </Text>
-                                <Text className="mt-1 text-sm font-kumbh text-gray-500">
+                                <Text className="mt-1 text-[13px] font-kumbh text-[#6B7280]">
                                     {deal.introductionType ||
                                         "No introduction type"}
                                 </Text>
-                                <Text className="mt-2 text-xs font-kumbh text-[#4C5FAB]">
+                                <Text className="mt-2 text-[11px] font-kumbh text-[#9CA3AF]">
                                     Updated: {formatDate(deal.updatedAt)}
                                 </Text>
                             </View>
-                            <View className="rounded-full bg-blue-50 px-3 py-1">
-                                <Text className="text-xs font-kumbhBold text-blue-700">
+                            <View className="rounded-full bg-[#EEF2FF] px-3 py-1">
+                                <Text className="text-[11px] font-kumbhBold text-[#4C5FAB]">
                                     {deal.stage}
                                 </Text>
                             </View>
@@ -629,7 +630,11 @@ export default function PartnerDetailScreen() {
                     </Pressable>
                 ))
             ) : (
-                <Text className="text-gray-500">No deals connected yet.</Text>
+                <View className="rounded-[24px] bg-white border border-gray-100 px-5 py-8 items-center">
+                    <Text className="text-[#6B7280] font-kumbh text-[13px]">
+                        No deals connected yet.
+                    </Text>
+                </View>
             )}
         </View>
     );
@@ -639,7 +644,7 @@ export default function PartnerDetailScreen() {
             <View className="mb-4">
                 <ActionButton
                     label="Upload Document"
-                    icon={<Upload size={18} color="white" />}
+                    icon={<Upload size={17} color="white" />}
                     onPress={() => setDocumentModalVisible(true)}
                 />
             </View>
@@ -647,30 +652,30 @@ export default function PartnerDetailScreen() {
                 partner.documents.map((url, index) => (
                     <View
                         key={`${url}-${index}`}
-                        className="bg-gray-50 rounded-lg p-3 mb-2 flex-row items-center justify-between gap-4"
+                        className="bg-white border border-gray-100 rounded-[22px] p-4 mb-2.5 flex-row items-center justify-between gap-3"
                     >
                         <View className="flex-1">
                             <Text
-                                className="text-gray-900 font-medium"
+                                className="text-[#111827] font-kumbhBold text-[14px]"
                                 numberOfLines={2}
                             >
                                 {getDocLabel(url)}
                             </Text>
-                            <Text className="text-gray-500 text-sm">
+                            <Text className="text-[#6B7280] font-kumbh text-[12px] mt-0.5">
                                 Uploaded document
                             </Text>
                         </View>
-                        <View className="flex-row items-center">
+                        <View className="flex-row items-center gap-1.5">
                             <Pressable
                                 onPress={() => handleDeleteDocument(index)}
                                 disabled={
                                     deletingDocumentIndex === index ||
                                     uploadingDocument
                                 }
-                                className="p-2"
+                                className="h-9 w-9 rounded-full bg-red-50 items-center justify-center"
                             >
                                 <Trash2
-                                    size={18}
+                                    size={16}
                                     color={
                                         deletingDocumentIndex === index
                                             ? "#d1d5db"
@@ -680,17 +685,19 @@ export default function PartnerDetailScreen() {
                             </Pressable>
                             <Pressable
                                 onPress={() => Linking.openURL(url)}
-                                className="p-2"
+                                className="h-9 w-9 rounded-full bg-[#EEF2FF] items-center justify-center"
                             >
-                                <ExternalLink size={18} color="#3b82f6" />
+                                <ExternalLink size={16} color="#4C5FAB" />
                             </Pressable>
                         </View>
                     </View>
                 ))
             ) : (
-                <Text className="text-gray-500">
-                    No partner documents uploaded.
-                </Text>
+                <View className="rounded-[24px] bg-white border border-gray-100 px-5 py-8 items-center">
+                    <Text className="text-[#6B7280] font-kumbh text-[13px]">
+                        No partner documents uploaded.
+                    </Text>
+                </View>
             )}
         </View>
     );
@@ -704,157 +711,151 @@ export default function PartnerDetailScreen() {
     return (
         <>
             <SafeAreaView
-                className="flex-1 bg-white"
+                className="flex-1 bg-[#F5F7FB]"
                 edges={
                     isIOS
                         ? ["left", "right"]
                         : ["top", "left", "right", "bottom"]
                 }
             >
-                <View className="flex-1 px-4">
-                    <PlatformAdaptiveHeader
-                        title="Partner Details"
-                        headerRight={({ tintColor }) => (
-                            <View className="flex-row gap-2">
-                                <Pressable
-                                    onPress={() =>
-                                        router.push({
-                                            pathname:
-                                                "/(admin)/partnerships/partners/create",
-                                            params: { partnerId },
-                                        })
-                                    }
-                                    className="h-10 w-10 items-center justify-center rounded-full"
-                                >
-                                    <Edit2 size={20} color={tintColor} />
-                                </Pressable>
-                                <Pressable
-                                    onPress={handleDelete}
-                                    disabled={deleting}
-                                    className="h-10 w-10 items-center justify-center rounded-full bg-red-500"
-                                >
-                                    {deleting ? (
-                                        <ActivityIndicator
-                                            size="small"
-                                            color="white"
-                                        />
-                                    ) : (
-                                        <Trash2 size={20} color="white" />
-                                    )}
-                                </Pressable>
-                            </View>
-                        )}
-                    />
-
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                        <View className="mb-5 rounded-2xl bg-blue-50 p-4">
-                            <View className="flex-row items-start justify-between">
-                                <View className="flex-1 pr-3">
-                                    <Text
-                                        className="text-3xl font-kumbhBold text-gray-900"
-                                        numberOfLines={2}
-                                    >
-                                        {partner.name}
-                                    </Text>
-                                    <Text
-                                        className="mt-2 text-base font-kumbh text-gray-600"
-                                        numberOfLines={2}
-                                    >
-                                        {partner.company || "No company added"}
-                                    </Text>
-                                </View>
-                                <View
-                                    className={`rounded-full px-3 py-1 ${
-                                        partner.status === "active"
-                                            ? "bg-emerald-100"
-                                            : "bg-slate-100"
-                                    }`}
-                                >
-                                    <Text
-                                        className={`text-sm capitalize font-kumbhBold ${
-                                            partner.status === "active"
-                                                ? "text-emerald-700"
-                                                : "text-slate-700"
-                                        }`}
-                                    >
-                                        {partner.status}
-                                    </Text>
-                                </View>
-                            </View>
-
-                            <View className="mt-4 flex-row flex-wrap gap-2">
-                                {partner.partnerType ? (
-                                    <View className="flex-row items-center rounded-full bg-white px-3 py-1">
-                                        <BriefcaseBusiness
-                                            size={13}
-                                            color="#4C5FAB"
-                                        />
-                                        <Text className="ml-1 text-sm capitalize font-kumbhBold text-[#4C5FAB]">
-                                            {partner.partnerType}
-                                        </Text>
-                                    </View>
-                                ) : null}
-                                {partner.industry ? (
-                                    <View className="flex-row items-center rounded-full bg-white px-3 py-1">
-                                        <Building2 size={13} color="#4C5FAB" />
-                                        <Text className="ml-1 text-sm capitalize font-kumbhBold text-[#4C5FAB]">
-                                            {partner.industry}
-                                        </Text>
-                                    </View>
-                                ) : null}
-                            </View>
-
+                <PlatformAdaptiveHeader
+                    title="Partner Details"
+                    backgroundColor="#F5F7FB"
+                    headerRight={() => (
+                        <View className="flex-row gap-2 ios:mr-3">
                             <Pressable
-                                onPress={handleGeneratePartnerReport}
-                                disabled={generatingReport}
-                                className="mt-4 h-12 flex-row items-center justify-center rounded-xl bg-white"
+                                onPress={() =>
+                                    router.push({
+                                        pathname:
+                                            "/(admin)/partnerships/partners/create",
+                                        params: { partnerId },
+                                    })
+                                }
+                                className="h-9 w-9 items-center justify-center rounded-full bg-white border border-gray-200"
                             >
-                                {generatingReport ? (
+                                <Edit2 size={16} color="#4C5FAB" />
+                            </Pressable>
+                            <Pressable
+                                onPress={handleDelete}
+                                disabled={deleting}
+                                className="h-9 w-9 items-center justify-center rounded-full bg-red-50 border border-red-100"
+                            >
+                                {deleting ? (
                                     <ActivityIndicator
                                         size="small"
-                                        color="#4C5FAB"
+                                        color="#DC2626"
                                     />
                                 ) : (
-                                    <Share2 size={18} color="#4C5FAB" />
+                                    <Trash2 size={16} color="#DC2626" />
                                 )}
-                                <Text className="ml-2 text-sm font-kumbhBold text-[#4C5FAB]">
-                                    {generatingReport
-                                        ? "Generating..."
-                                        : "Generate Partner Report"}
-                                </Text>
                             </Pressable>
                         </View>
+                    )}
+                />
 
-                        <View className="mb-4 flex-row gap-3">
-                            <StatCard label="Deals" value={dealLabel} />
-                            <StatCard
-                                label="Documents"
-                                value={String(partner.documents?.length ?? 0)}
-                            />
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerClassName="px-4 pt-3 pb-12"
+                >
+                    <View className="mb-4 rounded-[28px] bg-white border border-gray-100 p-5">
+                        <View className="flex-row items-start justify-between">
+                            <View className="flex-1 pr-3">
+                                <Text
+                                    className="text-[22px] font-kumbhBold text-[#111827]"
+                                    numberOfLines={2}
+                                >
+                                    {partner.name}
+                                </Text>
+                                <Text
+                                    className="mt-1 text-[14px] font-kumbh text-[#6B7280]"
+                                    numberOfLines={2}
+                                >
+                                    {partner.company || "No company added"}
+                                </Text>
+                            </View>
+                            <View
+                                className={`rounded-full px-3 py-1 ${
+                                    partner.status === "active"
+                                        ? "bg-emerald-50"
+                                        : "bg-slate-100"
+                                }`}
+                            >
+                                <Text
+                                    className={`text-xs capitalize font-kumbhBold ${
+                                        partner.status === "active"
+                                            ? "text-emerald-700"
+                                            : "text-slate-700"
+                                    }`}
+                                >
+                                    {partner.status}
+                                </Text>
+                            </View>
                         </View>
 
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            className="mb-4"
-                        >
-                            <View className="flex-row gap-2">
-                                {TABS.map((tab) => (
-                                    <Pill
-                                        key={tab}
-                                        label={tab}
-                                        active={activeTab === tab}
-                                        onPress={() => setActiveTab(tab)}
+                        <View className="mt-3.5 flex-row flex-wrap gap-2">
+                            {partner.partnerType ? (
+                                <View className="flex-row items-center rounded-full bg-[#EEF2FF] px-3 py-1">
+                                    <BriefcaseBusiness
+                                        size={13}
+                                        color="#4C5FAB"
                                     />
-                                ))}
-                            </View>
-                        </ScrollView>
+                                    <Text className="ml-1.5 text-xs capitalize font-kumbhBold text-[#4C5FAB]">
+                                        {partner.partnerType}
+                                    </Text>
+                                </View>
+                            ) : null}
+                            {partner.industry ? (
+                                <View className="flex-row items-center rounded-full bg-[#EEF2FF] px-3 py-1">
+                                    <Building2 size={13} color="#4C5FAB" />
+                                    <Text className="ml-1.5 text-xs capitalize font-kumbhBold text-[#4C5FAB]">
+                                        {partner.industry}
+                                    </Text>
+                                </View>
+                            ) : null}
+                        </View>
 
-                        {renderTabContent()}
+                        <Pressable
+                            onPress={handleGeneratePartnerReport}
+                            disabled={generatingReport}
+                            className="mt-4 h-12 flex-row items-center justify-center rounded-2xl bg-[#EEF2FF]"
+                        >
+                            {generatingReport ? (
+                                <ActivityIndicator
+                                    size="small"
+                                    color="#4C5FAB"
+                                />
+                            ) : (
+                                <Share2 size={17} color="#4C5FAB" />
+                            )}
+                            <Text className="ml-2 text-sm font-kumbhBold text-[#4C5FAB]">
+                                {generatingReport
+                                    ? "Generating..."
+                                    : "Generate Partner Report"}
+                            </Text>
+                        </Pressable>
+                    </View>
 
-                        <View className="mb-10" />
-                    </ScrollView>
-                </View>
+                    <View className="mb-4 flex-row gap-3">
+                        <StatCard label="Deals" value={dealLabel} />
+                        <StatCard
+                            label="Documents"
+                            value={String(partner.documents?.length ?? 0)}
+                        />
+                    </View>
+
+                    <View className="mb-5 h-11 flex-row rounded-2xl border border-gray-200 bg-white p-1">
+                        {TABS.map((tab) => (
+                            <Pill
+                                key={tab}
+                                label={tab}
+                                active={activeTab === tab}
+                                onPress={() => setActiveTab(tab)}
+                            />
+                        ))}
+                    </View>
+
+                    {renderTabContent()}
+                </ScrollView>
             </SafeAreaView>
 
             <FormModal
@@ -867,21 +868,21 @@ export default function PartnerDetailScreen() {
                 }}
             >
                 <View className="mb-4">
-                    <Text className="text-gray-700 font-semibold mb-2">
+                    <Text className="text-sm text-[#374151] font-kumbhBold mb-2">
                         Document name
                     </Text>
-                    <TextInput
-                        value={documentName}
-                        onChangeText={setDocumentName}
-                        placeholder="Optional"
-                        placeholderTextColor="#9CA3AF"
-                        className="border border-gray-300 rounded-lg px-4 py-3 text-base"
-                    />
+                    <View className="h-12 justify-center rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4">
+                        <CustomTextInput
+                            value={documentName}
+                            onChangeText={setDocumentName}
+                            placeholder="Optional"
+                        />
+                    </View>
                 </View>
                 <View className="mb-4">
                     <ActionButton
                         label={documentFile ? documentFile.name : "Choose file"}
-                        icon={<FileText size={18} color="#111827" />}
+                        icon={<FileText size={17} color="#4C5FAB" />}
                         variant="secondary"
                         onPress={pickFile}
                     />
@@ -890,7 +891,7 @@ export default function PartnerDetailScreen() {
                     label={
                         uploadingDocument ? "Uploading..." : "Upload Document"
                     }
-                    icon={<Check size={18} color="white" />}
+                    icon={<Check size={17} color="white" />}
                     disabled={uploadingDocument}
                     onPress={handleUploadDocument}
                 />

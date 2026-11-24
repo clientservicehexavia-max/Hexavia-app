@@ -1,4 +1,5 @@
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import CustomTextInput from "@/components/ui/CustomInput";
 import HexButton from "@/components/ui/HexButton";
 import {
     forgotPassword as forgotPasswordThunk,
@@ -129,54 +130,60 @@ export default function OtpVerification() {
         <SafeAreaView
             accessible={false}
             edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <StatusBar style="dark" />
-            <PlatformAdaptiveHeader title="Verify Password" />
+            <PlatformAdaptiveHeader
+                title="Verify OTP"
+                backgroundColor="#F5F7FB"
+            />
 
             <KeyboardAwareScrollView
                 enableOnAndroid
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{
                     paddingHorizontal: 20,
+                    paddingTop: 12,
                     paddingBottom: 32,
                 }}
             >
                 {type === "signup" && (
-                    <View className="mt-[70px] flex flex-row justify-between gap-2">
-                        <View className="flex-1 h-1 bg-gray-200 rounded-xl" />
-                        <View className="flex-1 h-1 bg-primary rounded-xl" />
-                        <View className="flex-1 h-1 bg-gray-200 rounded-xl" />
+                    <View className="mb-6 flex-row justify-between gap-2">
+                        <View className="h-1.5 flex-1 rounded-full bg-gray-200" />
+                        <View className="h-1.5 flex-1 rounded-full bg-primary" />
+                        <View className="h-1.5 flex-1 rounded-full bg-gray-200" />
                     </View>
                 )}
 
                 {/* Title + subtitle */}
-                <View
-                    className={`${type === "login" || type === "forgotPassword" ? "mt-10" : "mt-6"}`}
-                >
-                    <Text className="text-base text-gray-500 mt-2 font-kumbhLight">
+                <View className="mb-8">
+                    <Text className="font-kumbh text-[15px] leading-6 text-gray-500">
                         We’ve sent you an OTP Code via Email. Please enter the{" "}
                         {DIGITS}
                         -digit code sent to{" "}
-                        <Text className="text-primary font-kumbh">
+                        <Text className="font-kumbhBold text-primary">
                             {String(maskedFromParams)}
                         </Text>
                     </Text>
                 </View>
 
                 {/* OTP Boxes */}
-                <View className="mt-8 flex-row justify-between px-2">
+                <View className="flex-row justify-between gap-2">
                     {Array.from({ length: DIGITS }).map((_, i) => {
                         const isActive = focusIdx === i;
                         const hasValue = otp[i]?.length > 0;
                         return (
                             <View
                                 key={i}
-                                className={`w-14 h-16 rounded-2xl items-center justify-center border
-                    ${isActive ? "border-primary" : hasValue ? "border-gray-400" : "border-gray-300"}
-                    bg-white`}
+                                className={`h-14 flex-1 items-center justify-center rounded-2xl border bg-white ${
+                                    isActive
+                                        ? "border-primary"
+                                        : hasValue
+                                          ? "border-gray-300"
+                                          : "border-gray-200"
+                                }`}
                             >
-                                <TextInput
+                                <CustomTextInput
                                     ref={(ref) => {
                                         if (ref) inputs.current[i] = ref;
                                     }}
@@ -190,8 +197,8 @@ export default function OtpVerification() {
                                     onChangeText={(t) => handleChange(t, i)}
                                     onKeyPress={(e) => handleKeyPress(e, i)}
                                     onFocus={() => setFocusIdx(i)}
-                                    className="text-3xl text-black font-kumbh text-center w-full"
-                                    selectionColor="#7C3AED"
+                                    className="h-full w-full text-center font-kumbhBold text-2xl"
+                                    selectionColor="#4C5FAB"
                                 />
                             </View>
                         );
@@ -199,9 +206,9 @@ export default function OtpVerification() {
                 </View>
 
                 {/* Resend */}
-                <View className="mt-8 items-center">
-                    <Text className="text-gray-700 font-kumbh">
-                        Didn’t Receive it?{" "}
+                <View className="mt-6 items-center">
+                    <Text className="font-kumbh text-sm text-gray-600">
+                        Didn’t receive it?{" "}
                         <Text
                             className={`font-kumbhBold ${seconds > 0 ? "text-gray-400" : "text-primary"}`}
                             onPress={resend}
@@ -215,7 +222,7 @@ export default function OtpVerification() {
                 </View>
 
                 {/* Verify button */}
-                <View className="mt-12">
+                <View className="mt-8">
                     <HexButton
                         title="Verify"
                         onPress={onVerify}

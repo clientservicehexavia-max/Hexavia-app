@@ -11,7 +11,7 @@ export default function SectionTitle({
     return (
         <Text
             className={clsx(
-                "text-lg font-kumbh font-semibold text-gray-700",
+                "text-base font-kumbhBold text-[#111827]",
                 className,
             )}
         >

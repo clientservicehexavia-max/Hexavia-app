@@ -166,18 +166,18 @@ export default function StatusScreen() {
         role === "staff" ? "/(staff)/(tabs)/tasks" : "/(client)/(tabs)/tasks";
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <SafeAreaView className="flex-1 bg-[#F5F7FB]">
             <Stack.Screen options={{ headerShown: false }} />
             <StatusBar style="dark" />
 
-            <View className="flex-row items-center justify-between px-4 pt-2 pb-3 mt-5">
+            <View className="flex-row items-center justify-between px-5 pt-2 pb-3 mt-3">
                 <Pressable
                     onPress={() => router.push(backPath)}
-                    className="h-9 w-9 rounded-full items-center justify-center"
+                    className="h-10 w-10 rounded-full bg-white border border-gray-100 items-center justify-center"
                 >
-                    <Ionicons name="chevron-back" size={22} color="#111827" />
+                    <Ionicons name="chevron-back" size={20} color="#111827" />
                 </Pressable>
-                <Text className="font-kumbhBold text-2xl ml-3 text-[#111827]">
+                <Text className="font-kumbhBold text-xl text-[#111827]">
                     Task Boards
                 </Text>
                 <View className="w-10" />

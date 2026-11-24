@@ -1,3 +1,4 @@
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { StatusKey, TAB_ORDER } from "@/features/staff/types";
 import React, { useEffect, useState } from "react";
 import {
@@ -7,7 +8,6 @@ import {
     Platform,
     Pressable,
     Text,
-    TextInput,
     TouchableWithoutFeedback,
     View,
 } from "react-native";
@@ -76,13 +76,14 @@ export default function FilterModal({
             >
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <View className="flex-1 bg-black/40 justify-end">
-                        <View className="bg-white rounded-t-3xl px-5 py-8">
-                            <Text className="font-kumbh text-[18px] text-[#111827]">
+                        <View className="bg-white rounded-t-[28px] px-5 py-7">
+                            <View className="w-10 h-1 bg-gray-200 rounded-full self-center mb-4" />
+                            <Text className="font-kumbhBold text-[19px] text-[#111827]">
                                 Filter Tasks
                             </Text>
 
                             {/* Mode */}
-                            <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                            <Text className="font-kumbhBold text-[13px] text-[#374151] mt-4 mb-2">
                                 Mode
                             </Text>
                             <View className="flex-row" style={{ gap: 8 }}>
@@ -92,20 +93,18 @@ export default function FilterModal({
                                         <Pressable
                                             key={m}
                                             onPress={() => setMode(m)}
-                                            className="rounded-full px-4 py-2"
-                                            style={{
-                                                backgroundColor: selected
-                                                    ? "#111827"
-                                                    : "#E5E7EB",
-                                            }}
+                                            className={`rounded-full px-4 py-2 border ${
+                                                selected
+                                                    ? "bg-primary border-primary"
+                                                    : "bg-[#F9FAFB] border-gray-200"
+                                            }`}
                                         >
                                             <Text
-                                                className="font-kumbh text-[12px]"
-                                                style={{
-                                                    color: selected
-                                                        ? "#fff"
-                                                        : "#111827",
-                                                }}
+                                                className={`font-kumbhBold text-[12px] ${
+                                                    selected
+                                                        ? "text-white"
+                                                        : "text-[#374151]"
+                                                }`}
                                             >
                                                 {m === "all"
                                                     ? "All"
@@ -119,24 +118,27 @@ export default function FilterModal({
                             </View>
 
                             {/* Project Code (disabled for personal-only view) */}
-                            <TextInput
-                                editable={canEditChannelCode}
-                                value={channelCode}
-                                onChangeText={setChannelCode}
-                                placeholder={
-                                    canEditChannelCode
-                                        ? "Project Code (e.g. #5839)"
-                                        : "Project Code (disabled in Personal mode)"
-                                }
-                                placeholderTextColor="#9CA3AF"
-                                className="font-kumbh mt-4 rounded-xl bg-[#F3F4F6] px-4 py-3 text-[#111827]"
+                            <View
+                                className="mt-4 rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-2.5"
                                 style={{
                                     opacity: canEditChannelCode ? 1 : 0.5,
                                 }}
-                            />
+                            >
+                                <CustomTextInput
+                                    editable={canEditChannelCode}
+                                    value={channelCode}
+                                    onChangeText={setChannelCode}
+                                    placeholder={
+                                        canEditChannelCode
+                                            ? "Project Code (e.g. #5839)"
+                                            : "Project Code (disabled in Personal mode)"
+                                    }
+                                    className="py-1"
+                                />
+                            </View>
 
                             {/* Statuses */}
-                            <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                            <Text className="font-kumbhBold text-[13px] text-[#374151] mt-4 mb-2">
                                 Statuses
                             </Text>
                             <View
@@ -149,20 +151,18 @@ export default function FilterModal({
                                         <Pressable
                                             key={s}
                                             onPress={() => toggle(s)}
-                                            className="rounded-full px-4 py-2"
-                                            style={{
-                                                backgroundColor: selected
-                                                    ? "#111827"
-                                                    : "#E5E7EB",
-                                            }}
+                                            className={`rounded-full px-4 py-2 border ${
+                                                selected
+                                                    ? "bg-primary border-primary"
+                                                    : "bg-[#F9FAFB] border-gray-200"
+                                            }`}
                                         >
                                             <Text
-                                                className="font-kumbh text-[12px]"
-                                                style={{
-                                                    color: selected
-                                                        ? "#fff"
-                                                        : "#111827",
-                                                }}
+                                                className={`font-kumbhBold text-[12px] capitalize ${
+                                                    selected
+                                                        ? "text-white"
+                                                        : "text-[#374151]"
+                                                }`}
                                             >
                                                 {s.replace("-", " ")}
                                             </Text>
@@ -173,17 +173,23 @@ export default function FilterModal({
 
                             {/* Actions */}
                             <View className="flex-row justify-between items-center mt-6">
-                                <Pressable onPress={reset}>
-                                    <Text className="font-kumbh text-[#EF4444]">
+                                <Pressable
+                                    onPress={reset}
+                                    className="px-3 py-2 rounded-xl bg-red-50"
+                                >
+                                    <Text className="font-kumbhBold text-[#EF4444]">
                                         Reset
                                     </Text>
                                 </Pressable>
                                 <View
                                     className="flex-row items-center"
-                                    style={{ gap: 12 }}
+                                    style={{ gap: 10 }}
                                 >
-                                    <Pressable onPress={onClose}>
-                                        <Text className="font-kumbh text-[#6B7280]">
+                                    <Pressable
+                                        onPress={onClose}
+                                        className="px-4 py-3 rounded-2xl border border-gray-200 bg-white"
+                                    >
+                                        <Text className="font-kumbhBold text-[#374151]">
                                             Cancel
                                         </Text>
                                     </Pressable>
@@ -195,10 +201,9 @@ export default function FilterModal({
                                                 statuses,
                                             })
                                         }
-                                        className="rounded-xl px-5 py-3"
-                                        style={{ backgroundColor: "#4C5FAB" }}
+                                        className="rounded-2xl px-6 py-3 bg-primary"
                                     >
-                                        <Text className="font-kumbh text-white">
+                                        <Text className="font-kumbhBold text-white">
                                             Apply
                                         </Text>
                                     </Pressable>

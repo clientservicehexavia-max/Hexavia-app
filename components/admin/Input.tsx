@@ -1,5 +1,6 @@
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import clsx from "clsx";
-import { ReturnKeyTypeOptions, TextInput } from "react-native";
+import { ReturnKeyTypeOptions, View } from "react-native";
 
 export default function Input({
     multiline,
@@ -17,19 +18,23 @@ export default function Input({
     returnKeyType?: ReturnKeyTypeOptions;
 }) {
     return (
-        <TextInput
-            placeholder={placeholder}
-            multiline={multiline}
-            keyboardType={keyboardType}
-            value={value}
-            onChangeText={onChangeText}
+        <View
             className={clsx(
-                "bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text",
-                multiline && "min-h-[88px]",
+                "rounded-2xl border border-gray-200 bg-white px-4 justify-center",
+                multiline ? "py-3 min-h-[96px] justify-start" : "h-14",
             )}
-            placeholderTextColor="#9CA3AF"
-            returnKeyType={returnKeyType}
-            blurOnSubmit={!multiline}
-        />
+        >
+            <CustomTextInput
+                placeholder={placeholder}
+                multiline={multiline}
+                keyboardType={keyboardType}
+                value={value}
+                onChangeText={onChangeText}
+                textAlignVertical={multiline ? "top" : "center"}
+                className={multiline ? "w-full min-h-[72px]" : "h-full w-full"}
+                returnKeyType={returnKeyType}
+                blurOnSubmit={!multiline}
+            />
+        </View>
     );
 }

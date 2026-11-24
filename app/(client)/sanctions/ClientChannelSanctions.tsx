@@ -48,13 +48,13 @@ export default function ClientChannelSanctions({ channelId }: Props) {
   const rows = useAppSelector(selectRows);
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-[#F5F7FB]">
       <StatusBar style="dark" />
-      <View className="px-4 pt-4 pb-2">
-        <Text className="text-lg font-kumbhBold text-gray-900">
+      <View className="px-5 pt-4 pb-3">
+        <Text className="text-lg font-kumbhBold text-[#111827]">
           Active Sanctions (Channel)
         </Text>
-        <Text className="text-xs text-gray-500 mt-1">
+        <Text className="text-xs font-kumbh text-[#6B7280] mt-1">
           Showing sanctions for staff who belong to this client’s channel.
         </Text>
       </View>
@@ -62,7 +62,7 @@ export default function ClientChannelSanctions({ channelId }: Props) {
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="small" color={PRIMARY} />
-          <Text className="mt-2 text-gray-500 font-kumbh text-sm">
+          <Text className="mt-2 text-[#6B7280] font-kumbh text-sm">
             Loading…
           </Text>
         </View>
@@ -70,10 +70,10 @@ export default function ClientChannelSanctions({ channelId }: Props) {
         <FlatList
           data={rows}
           keyExtractor={(i: any) => String(i?._id)}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
           ListEmptyComponent={
-            <View className="py-16 items-center">
-              <Text className="text-gray-500 font-kumbh">
+            <View className="mt-4 rounded-[24px] bg-white border border-gray-100 p-8 items-center">
+              <Text className="text-[#6B7280] font-kumbh text-center">
                 No active sanctions for members of this channel.
               </Text>
             </View>
@@ -87,26 +87,17 @@ export default function ClientChannelSanctions({ channelId }: Props) {
               "Unknown";
 
             return (
-              <View
-                className="mb-3 p-4 rounded-2xl bg-white"
-                style={{
-                  shadowColor: "#000",
-                  shadowOpacity: 0.06,
-                  shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 3 },
-                  elevation: 2,
-                }}
-              >
+              <View className="mb-3 p-4 rounded-[24px] bg-white border border-gray-100">
                 <View className="flex-row items-center justify-between mb-2">
                   <Text
-                    className="text-[15px] font-kumbhBold text-gray-900"
+                    className="text-[15px] font-kumbhBold text-[#111827] flex-1 mr-2"
                     numberOfLines={1}
                   >
                     {recipientName}
                   </Text>
                   <View
-                    className="px-2 py-[2px] rounded-full"
-                    style={{ backgroundColor: "#E8EDFF" }}
+                    className="px-3 py-1 rounded-full"
+                    style={{ backgroundColor: "#EEF2FF" }}
                   >
                     <Text
                       className="text-[11px] font-kumbhBold"
@@ -118,17 +109,17 @@ export default function ClientChannelSanctions({ channelId }: Props) {
                 </View>
 
                 <Text
-                  className="text-[13px] text-gray-800 mb-2"
+                  className="text-[13px] font-kumbh text-[#374151] mb-2 leading-5"
                   numberOfLines={3}
                 >
                   {item?.reason || "—"}
                 </Text>
 
-                <View className="flex-row">
-                  <Text className="text-[12px] text-gray-500">
+                <View className="flex-row items-center pt-2 border-t border-gray-100">
+                  <Text className="text-[12px] font-kumbh text-[#6B7280]">
                     Created:&nbsp;
                   </Text>
-                  <Text className="text-[12px] text-gray-700">
+                  <Text className="text-[12px] font-kumbhBold text-[#374151]">
                     {formatDate(item?.createdAt)}
                   </Text>
                 </View>

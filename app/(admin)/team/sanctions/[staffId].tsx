@@ -26,13 +26,14 @@ import {
     ScrollView,
     Switch,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { showError, showSuccess } from "@/components/ui/toast";
+import { PRIMARY } from "@/constants/Colors";
 import {
     selectSanctions,
     selectSanctionsError,
@@ -226,28 +227,30 @@ export default function StaffSanctions() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-[#F5F7FB]"
         >
             {/* Header */}
             <PlatformAdaptiveHeader
                 title={staffName ? `${staffName}'s Sanctions` : "Sanctions"}
-                headerRight={({ tintColor }) => (
+                backgroundColor="#F5F7FB"
+                headerRight={() => (
                     <Pressable
                         onPress={() => {
                             setCreateReason("");
                             createReasonRef.current = "";
                             setCreateOpen(true);
                         }}
-                        className="w-10 h-10 rounded-full items-center justify-center"
+                        className="w-10 h-10 rounded-full items-center justify-center ios:mr-3"
                         hitSlop={8}
+                        style={{ backgroundColor: PRIMARY }}
                     >
-                        <Plus size={30} color={tintColor} />
+                        <Plus size={20} color="#FFFFFF" />
                     </Pressable>
                 )}
             />
 
             {/* Pills */}
-            <View className="flex-row gap-2 mt-3">
+            <View className="flex-row gap-2 mt-2 px-4">
                 {(["All", "Active", "Resolved"] as const).map((tab) => (
                     <Pressable
                         key={tab}
@@ -260,7 +263,7 @@ export default function StaffSanctions() {
                     >
                         <Text
                             className={`text-sm font-kumbhBold ${
-                                filter === tab ? "text-white" : "text-gray-700"
+                                filter === tab ? "text-white" : "text-[#374151]"
                             }`}
                         >
                             {tab}
@@ -272,8 +275,8 @@ export default function StaffSanctions() {
             {/* List */}
             {loading && userSanctions.length === 0 ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator color="#7C3AED" />
-                    <Text className="mt-2 text-gray-500 font-kumbh">
+                    <ActivityIndicator color={PRIMARY} />
+                    <Text className="mt-2 text-[#6B7280] font-kumbh">
                         Loading sanctions…
                     </Text>
                 </View>
@@ -281,7 +284,7 @@ export default function StaffSanctions() {
                 <FlatList
                     data={data}
                     keyExtractor={(i) => i.id}
-                    contentContainerClassName="pt-4 pb-10"
+                    contentContainerClassName="pt-4 pb-10 px-4"
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -298,11 +301,11 @@ export default function StaffSanctions() {
                                 <View className="flex-row items-center gap-2">
                                     <Pressable
                                         onPress={() => openEdit(item)}
-                                        className="px-3 py-2 rounded-xl bg-gray-100 active:bg-gray-200"
+                                        className="px-3 py-1.5 rounded-full bg-[#EEF2FF]"
                                     >
                                         <View className="flex-row items-center gap-1">
-                                            <Pencil size={16} color="#374151" />
-                                            <Text className="text-gray-800 font-kumbhBold text-xs">
+                                            <Pencil size={13} color="#4C5FAB" />
+                                            <Text className="text-primary font-kumbhBold text-xs">
                                                 Edit
                                             </Text>
                                         </View>
@@ -310,14 +313,14 @@ export default function StaffSanctions() {
                                     <Pressable
                                         disabled={deletingId === item.id}
                                         onPress={() => confirmDelete(item.id)}
-                                        className={`px-3 py-2 rounded-xl active:bg-red-100 ${
+                                        className={`px-3 py-1.5 rounded-full ${
                                             deletingId === item.id
                                                 ? "bg-red-100/60"
                                                 : "bg-red-50"
                                         }`}
                                     >
                                         <View className="flex-row items-center gap-1">
-                                            <Trash2 size={16} color="#B91C1C" />
+                                            <Trash2 size={13} color="#B91C1C" />
                                             <Text className="text-red-700 font-kumbhBold text-xs">
                                                 {deletingId === item.id
                                                     ? "Deleting…"
@@ -330,13 +333,13 @@ export default function StaffSanctions() {
 
                             <Divider />
 
-                            <Row icon={<Calendar size={16} color="#6366F1" />}>
+                            <Row icon={<Calendar size={16} color="#4C5FAB" />}>
                                 <Label>Date</Label>
                                 <Value>{formatDate(item.date)}</Value>
                             </Row>
 
                             <Row
-                                icon={<ShieldAlert size={16} color="#6366F1" />}
+                                icon={<ShieldAlert size={16} color="#4C5FAB" />}
                             >
                                 <Label>Reason</Label>
                                 <Value>{item.reason}</Value>
@@ -344,8 +347,8 @@ export default function StaffSanctions() {
                         </Card>
                     )}
                     ListEmptyComponent={
-                        <View className="px-5 py-12">
-                            <Text className="text-center text-gray-500 font-kumbh">
+                        <View className="mt-2 rounded-[24px] bg-white border border-gray-100 px-5 py-12">
+                            <Text className="text-center text-[#6B7280] font-kumbh">
                                 {error
                                     ? `Error: ${error}`
                                     : "No sanctions found for this staff."}
@@ -378,53 +381,55 @@ export default function StaffSanctions() {
                                 justifyContent: "flex-end",
                             }}
                         >
-                            <View className="w-full rounded-t-3xl bg-white p-5">
-                                <View className="items-center mb-3">
-                                    <View className="w-12 h-1.5 rounded-full bg-gray-300" />
+                            <View className="w-full rounded-t-[28px] bg-white px-5 pt-4 pb-8">
+                                <View className="items-center mb-4">
+                                    <View className="w-10 h-1 rounded-full bg-gray-200" />
                                 </View>
 
-                                <Text className="text-gray-900 font-kumbhBold text-lg mb-3">
+                                <Text className="text-[#111827] font-kumbhBold text-[19px] mb-4">
                                     Create Sanction
                                 </Text>
 
-                                <Text className="text-gray-700 font-kumbh mb-2">
+                                <Text className="text-[#374151] font-kumbhBold text-sm mb-2">
                                     Reason
                                 </Text>
-                                <TextInput
-                                    placeholder="Enter reason"
-                                    placeholderTextColor="#9CA3AF"
-                                    value={createReason}
-                                    onChangeText={(text) => {
-                                        createReasonRef.current = text;
-                                        setCreateReason(text);
-                                    }}
-                                    onEndEditing={(e) => {
-                                        createReasonRef.current =
-                                            e.nativeEvent.text;
-                                        setCreateReason(e.nativeEvent.text);
-                                    }}
-                                    className="bg-gray-50 text-gray-900 rounded-xl px-4 py-3 font-kumbh mb-6 border border-gray-200"
-                                    multiline
-                                />
+                                <View className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3 mb-6">
+                                    <CustomTextInput
+                                        placeholder="Enter reason"
+                                        value={createReason}
+                                        onChangeText={(text) => {
+                                            createReasonRef.current = text;
+                                            setCreateReason(text);
+                                        }}
+                                        onEndEditing={(e) => {
+                                            createReasonRef.current =
+                                                e.nativeEvent.text;
+                                            setCreateReason(e.nativeEvent.text);
+                                        }}
+                                        multiline
+                                        textAlignVertical="top"
+                                        style={{ minHeight: 96 }}
+                                    />
+                                </View>
 
                                 <View className="flex-row gap-3">
                                     <Pressable
                                         onPress={() => {
                                             setCreateOpen(false);
                                         }}
-                                        className="flex-1 rounded-2xl bg-gray-100 py-3 items-center"
+                                        className="flex-1 h-12 rounded-2xl border border-gray-200 bg-white items-center justify-center"
                                     >
-                                        <Text className="text-gray-800 font-kumbhBold">
+                                        <Text className="text-[#374151] font-kumbhBold">
                                             Cancel
                                         </Text>
                                     </Pressable>
                                     <Pressable
                                         disabled={creating}
                                         onPress={handleCreate}
-                                        className={`flex-1 rounded-2xl py-3 items-center ${
+                                        className={`flex-1 h-12 rounded-2xl items-center justify-center ${
                                             creating
-                                                ? "bg-[#7C3AED]/60"
-                                                : "bg-[#7C3AED]"
+                                                ? "bg-primary/60"
+                                                : "bg-primary"
                                         }`}
                                     >
                                         <Text className="text-white font-kumbhBold">
@@ -460,36 +465,38 @@ export default function StaffSanctions() {
                                 justifyContent: "flex-end",
                             }}
                         >
-                            <View className="w-full rounded-t-3xl bg-white p-5 pb-8">
-                                <View className="items-center mb-3">
-                                    <View className="w-12 h-1.5 rounded-full bg-gray-300" />
+                            <View className="w-full rounded-t-[28px] bg-white px-5 pt-4 pb-8">
+                                <View className="items-center mb-4">
+                                    <View className="w-10 h-1 rounded-full bg-gray-200" />
                                 </View>
 
-                                <Text className="text-gray-900 font-kumbhBold text-lg mb-3">
+                                <Text className="text-[#111827] font-kumbhBold text-[19px] mb-4">
                                     Update Sanction
                                 </Text>
 
-                                <Text className="text-gray-700 font-kumbh mb-2">
+                                <Text className="text-[#374151] font-kumbhBold text-sm mb-2">
                                     Reason
                                 </Text>
-                                <TextInput
-                                    placeholder="Enter reason"
-                                    placeholderTextColor="#9CA3AF"
-                                    value={editReason}
-                                    onChangeText={setEditReason}
-                                    className="bg-gray-50 text-gray-900 rounded-xl px-4 py-3 font-kumbh mb-4 border border-gray-200"
-                                    multiline
-                                />
+                                <View className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3 mb-4">
+                                    <CustomTextInput
+                                        placeholder="Enter reason"
+                                        value={editReason}
+                                        onChangeText={setEditReason}
+                                        multiline
+                                        textAlignVertical="top"
+                                        style={{ minHeight: 96 }}
+                                    />
+                                </View>
 
-                                <View className="flex-row items-center justify-between mb-6">
-                                    <Text className="text-gray-700 font-kumbh">
-                                        Active
+                                <View className="flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3 mb-6">
+                                    <Text className="text-[#374151] font-kumbhBold">
+                                        Active Sanction
                                     </Text>
                                     <Switch
                                         value={editActive}
                                         onValueChange={setEditActive}
                                         trackColor={{
-                                            true: "#7C3AED",
+                                            true: "#4C5FAB",
                                             false: "#D1D5DB",
                                         }}
                                     />
@@ -498,19 +505,19 @@ export default function StaffSanctions() {
                                 <View className="flex-row gap-3">
                                     <Pressable
                                         onPress={closeEdit}
-                                        className="flex-1 rounded-2xl bg-gray-100 py-3 items-center"
+                                        className="flex-1 h-12 rounded-2xl border border-gray-200 bg-white items-center justify-center"
                                     >
-                                        <Text className="text-gray-800 font-kumbhBold">
+                                        <Text className="text-[#374151] font-kumbhBold">
                                             Cancel
                                         </Text>
                                     </Pressable>
                                     <Pressable
                                         disabled={updating}
                                         onPress={handleSave}
-                                        className={`flex-1 rounded-2xl py-3 items-center ${
+                                        className={`flex-1 h-12 rounded-2xl items-center justify-center ${
                                             updating
-                                                ? "bg-[#7C3AED]/60"
-                                                : "bg-[#7C3AED]"
+                                                ? "bg-primary/60"
+                                                : "bg-primary"
                                         }`}
                                     >
                                         <Text className="text-white font-kumbhBold">
@@ -531,7 +538,7 @@ export default function StaffSanctions() {
 
 function Card({ children }: { children: React.ReactNode }) {
     return (
-        <View className="rounded-2xl bg-white border border-gray-200 p-4 shadow-sm">
+        <View className="rounded-[24px] bg-white border border-gray-100 p-4">
             {children}
         </View>
     );

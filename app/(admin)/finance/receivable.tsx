@@ -1,4 +1,7 @@
 import DatePickerModal from "@/components/admin/DatePickerModal";
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
+import { showError, showSuccess } from "@/components/ui/toast";
 import clsx from "clsx";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Calendar } from "lucide-react-native";
@@ -9,13 +12,9 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
-import { showError, showSuccess } from "@/components/ui/toast";
 import { selectCurrentClient } from "@/redux/client/client.selectors";
 import {
     createClient,
@@ -199,11 +198,14 @@ export default function ReceivableForm() {
 
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
-            edges={isIOS ? ["left", "right"] : ["top", "left", "right"]}
+            className="flex-1 bg-[#F5F7FB]"
+            edges={
+                isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
+            }
         >
             <PlatformAdaptiveHeader
                 title={isEditing ? "Edit Receivable" : "Record Receivable"}
+                backgroundColor="#F5F7FB"
             />
 
             <KeyboardAvoidingView
@@ -212,84 +214,87 @@ export default function ReceivableForm() {
                     ios: "padding",
                     android: "height",
                 })}
+                keyboardVerticalOffset={
+                    Platform.select({ ios: 70, android: 0 }) as number
+                }
             >
                 <ScrollView
                     className="flex-1"
-                    contentContainerClassName="px-5 pb-10 pt-2"
+                    contentContainerClassName="px-4 pb-12 pt-3"
                     keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
                 >
-                    <Text className="text-[14px] text-gray-500 font-kumbh my-6">
-                        {isEditing
-                            ? "Update this external receivable"
-                            : "Add a manual receivable for an external client"}
-                    </Text>
-
                     {/* Amount + Date */}
-                    <View className="flex-row gap-3">
+                    <View className="flex-row gap-3 mb-4">
                         <View className="flex-1">
-                            <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                            <Text className="mb-2 text-sm text-[#374151] font-kumbhBold">
                                 Amount
                             </Text>
-                            <View className="rounded-xl bg-gray-100 px-4 ios:py-4">
-                                <TextInput
+                            <View className="h-14 flex-row items-center rounded-2xl border border-gray-200 bg-white px-4">
+                                <Text className="font-kumbhBold text-[15px] text-[#6B7280] mr-1.5">
+                                    ₦
+                                </Text>
+                                <CustomTextInput
                                     value={amount}
                                     onChangeText={setAmount}
-                                    placeholder="Enter Amount"
-                                    placeholderTextColor="#9CA3AF"
+                                    placeholder="0.00"
                                     keyboardType="numeric"
-                                    className="font-kumbh text-[14px] text-[#111827]"
+                                    className="flex-1 h-full"
                                 />
                             </View>
                         </View>
 
                         <View className="flex-1">
-                            <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                            <Text className="mb-2 text-sm text-[#374151] font-kumbhBold">
                                 Date
                             </Text>
                             <Pressable
                                 onPress={openPicker}
-                                className="rounded-xl bg-gray-100 px-4 ios:py-3.5 android:py-[10px] flex-row items-center justify-between"
+                                className="h-14 rounded-2xl border border-gray-200 bg-white px-4 flex-row items-center justify-between"
                             >
-                                <Text className="font-kumbh text-[16px] text-[#111827]">
+                                <Text
+                                    className={clsx(
+                                        "font-kumbh text-[15px]",
+                                        date
+                                            ? "text-[#111827]"
+                                            : "text-[#9CA3AF]",
+                                    )}
+                                >
                                     {date || "DD/MM/YYYY"}
                                 </Text>
-                                <Calendar size={18} color="#111827" />
+                                <Calendar size={18} color="#4C5FAB" />
                             </Pressable>
                         </View>
                     </View>
 
-                    <View className="mt-5">
-                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                    <View className="mb-4">
+                        <Text className="mb-2 text-sm text-[#374151] font-kumbhBold">
                             Client Name
                         </Text>
-                        <View className="rounded-xl bg-gray-100 px-4 py-3">
-                            <TextInput
+                        <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                            <CustomTextInput
                                 value={clientName}
                                 onChangeText={setClientName}
                                 placeholder="Enter Client Name"
-                                placeholderTextColor="#9CA3AF"
-                                className="font-kumbh text-[14px] text-[#111827]"
                             />
                         </View>
                     </View>
 
-                    <View className="mt-5">
-                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                    <View className="mb-4">
+                        <Text className="mb-2 text-sm text-[#374151] font-kumbhBold">
                             Company Name
                         </Text>
-                        <View className="rounded-xl bg-gray-100 px-4 py-3">
-                            <TextInput
+                        <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                            <CustomTextInput
                                 value={companyName}
                                 onChangeText={setCompanyName}
                                 placeholder="Enter Company Name"
-                                placeholderTextColor="#9CA3AF"
-                                className="font-kumbh text-[14px] text-[#111827]"
                             />
                         </View>
                     </View>
 
-                    <View className="mt-5">
-                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                    <View className="mb-4">
+                        <Text className="mb-2 text-sm text-[#374151] font-kumbhBold">
                             Source
                         </Text>
                         <View className="flex-row flex-wrap gap-2">
@@ -307,7 +312,7 @@ export default function ReceivableForm() {
                                             "px-4 py-2 rounded-full border",
                                             active
                                                 ? "bg-[#4C5FAB] border-[#4C5FAB]"
-                                                : "bg-gray-100 border-gray-200",
+                                                : "bg-white border-gray-200",
                                         )}
                                     >
                                         <Text
@@ -315,7 +320,7 @@ export default function ReceivableForm() {
                                                 "font-kumbhBold text-[13px]",
                                                 active
                                                     ? "text-white"
-                                                    : "text-[#111827]",
+                                                    : "text-[#374151]",
                                             )}
                                         >
                                             {item}
@@ -327,9 +332,9 @@ export default function ReceivableForm() {
                     </View>
 
                     {source === "BWE" ? (
-                        <View className="flex-row gap-3 mt-5">
+                        <View className="flex-row gap-3 mb-4">
                             <View className="flex-1">
-                                <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                                <Text className="mb-2 text-sm text-[#374151] font-kumbhBold">
                                     Table Type
                                 </Text>
                                 <View className="flex-row gap-2">
@@ -347,18 +352,18 @@ export default function ReceivableForm() {
                                                     setTableType(item)
                                                 }
                                                 className={clsx(
-                                                    "flex-1 h-11 rounded-xl items-center justify-center",
+                                                    "flex-1 h-12 rounded-2xl border items-center justify-center",
                                                     active
-                                                        ? "bg-[#4C5FAB]"
-                                                        : "bg-gray-100",
+                                                        ? "bg-[#4C5FAB] border-[#4C5FAB]"
+                                                        : "bg-white border-gray-200",
                                                 )}
                                             >
                                                 <Text
                                                     className={clsx(
-                                                        "font-kumbhBold",
+                                                        "font-kumbhBold text-[13px] capitalize",
                                                         active
                                                             ? "text-white"
-                                                            : "text-[#111827]",
+                                                            : "text-[#374151]",
                                                     )}
                                                 >
                                                     {item}
@@ -370,7 +375,7 @@ export default function ReceivableForm() {
                             </View>
 
                             <View className="flex-1">
-                                <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                                <Text className="mb-2 text-sm text-[#374151] font-kumbhBold">
                                     Attendance
                                 </Text>
                                 <View className="flex-row gap-2">
@@ -388,18 +393,18 @@ export default function ReceivableForm() {
                                                     setAttendance(item)
                                                 }
                                                 className={clsx(
-                                                    "flex-1 h-11 rounded-xl items-center justify-center",
+                                                    "flex-1 h-12 rounded-2xl border items-center justify-center",
                                                     active
-                                                        ? "bg-[#4C5FAB]"
-                                                        : "bg-gray-100",
+                                                        ? "bg-[#4C5FAB] border-[#4C5FAB]"
+                                                        : "bg-white border-gray-200",
                                                 )}
                                             >
                                                 <Text
                                                     className={clsx(
-                                                        "font-kumbhBold",
+                                                        "font-kumbhBold text-[13px] capitalize",
                                                         active
                                                             ? "text-white"
-                                                            : "text-[#111827]",
+                                                            : "text-[#374151]",
                                                     )}
                                                 >
                                                     {item}
@@ -413,42 +418,39 @@ export default function ReceivableForm() {
                     ) : null}
 
                     {source === "Inner Circle" ? (
-                        <View className="mt-5">
-                            <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                        <View className="mb-4">
+                            <Text className="mb-2 text-sm text-[#374151] font-kumbhBold">
                                 Attendance
                             </Text>
-                            <View className="rounded-xl bg-gray-100 px-4 py-3">
-                                <Text className="font-kumbh text-[14px] text-[#111827]">
+                            <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                                <Text className="font-kumbh text-[15px] text-[#111827] capitalize">
                                     virtual
                                 </Text>
                             </View>
                         </View>
                     ) : null}
 
-                    <View className="mt-5">
-                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                    <View className="mb-6">
+                        <Text className="mb-2 text-sm text-[#374151] font-kumbhBold">
                             Notes
                         </Text>
-                        <View className="rounded-xl bg-gray-100 px-4 py-3">
-                            <TextInput
+                        <View className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5">
+                            <CustomTextInput
                                 value={desc}
                                 onChangeText={setDesc}
                                 placeholder="Enter Notes"
-                                placeholderTextColor="#9CA3AF"
                                 multiline
-                                className="font-kumbh text-[14px] text-[#111827] min-h-[92px]"
+                                textAlignVertical="top"
+                                style={{ minHeight: 100 }}
                             />
                         </View>
                     </View>
 
                     <Pressable
                         onPress={onSave}
-                        className={clsx(
-                            "mt-10 h-12 rounded-xl items-center justify-center active:opacity-90",
-                            "bg-[#4C5FAB]",
-                        )}
+                        className="h-14 rounded-2xl bg-[#4C5FAB] items-center justify-center active:opacity-90"
                     >
-                        <Text className="text-white font-kumbhBold">
+                        <Text className="text-white text-[15px] font-kumbhBold">
                             {isEditing
                                 ? "Update Receivable"
                                 : "Save Receivable"}

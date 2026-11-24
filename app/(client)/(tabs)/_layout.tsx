@@ -1,7 +1,14 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
+import TabButton from "@/components/ui/TabButton";
 import { Tabs, usePathname, useRouter, useSegments } from "expo-router";
+import {
+    ClipboardList,
+    Home,
+    MessageSquare,
+    UserRound,
+} from "lucide-react-native";
 import React, { useEffect } from "react";
-import { Text, View } from "react-native";
+import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { fetchChannels } from "@/redux/channels/channels.thunks";
 import { selectAllChannels } from "@/redux/channels/channels.slice";
@@ -11,51 +18,8 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 const PRIMARY = "#4C5FAB";
 const INACTIVE = "#9CA3AF";
 
-function TabButton({
-    focused,
-    label,
-    activeName,
-    inactiveName,
-}: {
-    focused: boolean;
-    label: string;
-    activeName: React.ComponentProps<typeof Ionicons>["name"];
-    inactiveName: React.ComponentProps<typeof Ionicons>["name"];
-}) {
-    return (
-        <View
-            className="rounded-xl"
-            style={{
-                paddingVertical: 6,
-                paddingHorizontal: 12,
-                alignItems: "center",
-                backgroundColor: "transparent",
-                width: 75,
-            }}
-        >
-            <Ionicons
-                name={focused ? activeName : inactiveName}
-                size={24}
-                color={focused ? PRIMARY : INACTIVE}
-            />
-            <Text
-                style={{
-                    marginTop: 4,
-                    fontSize: 12,
-                    fontFamily: focused
-                        ? "KumbhSans-Bold"
-                        : "KumbhSans-Regular",
-                    fontWeight: "500",
-                    color: focused ? PRIMARY : INACTIVE,
-                }}
-            >
-                {label}
-            </Text>
-        </View>
-    );
-}
-
 export default function StaffTabsLayout() {
+    const inset = useSafeAreaInsets();
     const router = useRouter();
     const pathname = usePathname();
     const segments = useSegments();
@@ -91,13 +55,16 @@ export default function StaffTabsLayout() {
                 tabBarActiveTintColor: PRIMARY,
                 tabBarInactiveTintColor: INACTIVE,
                 tabBarStyle: {
-                    height: 75,
+                    height:
+                        Platform.OS === "android" && inset.bottom !== 0
+                            ? 52 + inset.bottom
+                            : Platform.OS === "ios"
+                              ? 83
+                              : 75,
                     backgroundColor: "#FFFFFF",
                     borderTopWidth: 1,
-                    paddingHorizontal: 18,
-                    paddingVertical: 10,
-                    paddingTop: 6,
-                    borderTopColor: "#eee",
+                    paddingHorizontal: 8,
+                    borderTopColor: "#E5E7EB",
                 },
                 tabBarItemStyle: { paddingVertical: 4 },
             }}
@@ -109,8 +76,8 @@ export default function StaffTabsLayout() {
                         <TabButton
                             focused={focused}
                             label="Home"
-                            activeName="home"
-                            inactiveName="home-outline"
+                            icon={Home}
+                            width={75}
                         />
                     ),
                 }}
@@ -123,8 +90,8 @@ export default function StaffTabsLayout() {
                         <TabButton
                             focused={focused}
                             label="Task"
-                            activeName="clipboard"
-                            inactiveName="clipboard-outline"
+                            icon={ClipboardList}
+                            width={75}
                         />
                     ),
                 }}
@@ -151,8 +118,8 @@ export default function StaffTabsLayout() {
                         <TabButton
                             focused={focused || isChatRouteActive}
                             label="Chat"
-                            activeName="chatbubble"
-                            inactiveName="chatbubble-outline"
+                            icon={MessageSquare}
+                            width={75}
                         />
                     ),
                 }}
@@ -167,8 +134,8 @@ export default function StaffTabsLayout() {
                         <TabButton
                             focused={focused}
                             label="Profile"
-                            activeName="person"
-                            inactiveName="person-outline"
+                            icon={UserRound}
+                            width={75}
                         />
                     ),
                 }}

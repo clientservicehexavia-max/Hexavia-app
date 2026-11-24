@@ -109,13 +109,13 @@ export default function BoardCard({
             </View>
 
             <View
-                className="h-[1px] my-[1px]"
+                className="h-[1px] my-1"
                 style={{ backgroundColor: hairline }}
             />
 
             {!!description && (
                 <Text
-                    className="font-kumbh mt-1 leading-5"
+                    className="font-kumbh mt-1 leading-5 text-[13px]"
                     style={{ color: subColor }}
                     numberOfLines={3}
                 >
@@ -124,7 +124,7 @@ export default function BoardCard({
             )}
 
             {!!assignees?.length && (
-                <View className="mt-1 flex-row flex-wrap" style={{ gap: 6 }}>
+                <View className="mt-1.5 flex-row flex-wrap" style={{ gap: 6 }}>
                     {assignees.map((assignee) => (
                         <View
                             key={assignee}
@@ -147,7 +147,7 @@ export default function BoardCard({
             )}
 
             <View
-                className="mt-2 self-start px-3.5 py-1.5 rounded-full"
+                className="mt-2.5 self-start px-3.5 py-1 rounded-full"
                 style={{
                     backgroundColor: chipBg,
                     borderWidth: 1,
@@ -155,7 +155,7 @@ export default function BoardCard({
                 }}
             >
                 <Text
-                    className="text-[12px] font-kumbhBold"
+                    className="text-[11px] font-kumbhBold"
                     style={{ color: chipText }}
                 >
                     {statusLabel}

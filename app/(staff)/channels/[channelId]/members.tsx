@@ -2,7 +2,9 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     CalendarDays,
+    ChevronRight,
     FileText,
+    FolderKanban,
     FolderOpen,
     Plus,
     Share2,
@@ -22,10 +24,7 @@ import {
     Text,
     View,
 } from "react-native";
-import {
-    SafeAreaView,
-    useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/api/axios";
 import OptionSheet from "@/components/common/OptionSheet";
@@ -69,14 +68,6 @@ function initialsFrom(value?: string | null) {
     return ((a?.[0] ?? "") + (b?.[0] ?? "")).toUpperCase() || "?";
 }
 
-function Chip({ children }: { children: React.ReactNode }) {
-    return (
-        <View className="bg-white/20 rounded-full px-3 py-1.5 mr-2 mb-2 border border-white/20">
-            <Text className="text-xs text-white font-kumbh">{children}</Text>
-        </View>
-    );
-}
-
 function formatRole(role?: string | null) {
     const value = String(role || "member").trim();
     if (!value) return "Member";
@@ -87,77 +78,40 @@ function formatRole(role?: string | null) {
         .join(" ");
 }
 
-function StatTile({
-    icon,
+function ActionCardButton({
     label,
-    value,
+    subtitle,
+    icon,
+    onPress,
 }: {
-    icon: React.ReactNode;
     label: string;
-    value: string;
+    subtitle: string;
+    icon: React.ReactNode;
+    onPress: () => void;
 }) {
     return (
-        <View className="flex-1 min-w-[96px] rounded-2xl bg-white border border-gray-100 px-4 py-3">
-            <View className="flex-row items-center">
-                <View className="h-8 w-8 rounded-full bg-[#EEF2FF] items-center justify-center mr-2">
-                    {icon}
-                </View>
+        <Pressable
+            onPress={onPress}
+            className="flex-1 rounded-[22px] bg-white border border-gray-100 p-3.5 flex-row items-center active:opacity-85"
+        >
+            <View className="h-10 w-10 rounded-xl bg-[#EEF2FF] items-center justify-center mr-3">
+                {icon}
+            </View>
+            <View className="flex-1">
                 <Text
-                    className="text-xs text-gray-500 font-kumbh flex-1"
+                    className="text-[14px] font-kumbhBold text-[#111827]"
                     numberOfLines={1}
                 >
                     {label}
                 </Text>
+                <Text
+                    className="text-[11px] font-kumbh text-[#6B7280] mt-0.5"
+                    numberOfLines={1}
+                >
+                    {subtitle}
+                </Text>
             </View>
-            <Text
-                className="mt-3 text-lg text-gray-950 font-kumbhBold"
-                numberOfLines={1}
-            >
-                {value}
-            </Text>
-        </View>
-    );
-}
-
-function ActionButton({
-    label,
-    icon,
-    onPress,
-    variant = "light",
-    disabled,
-}: {
-    label: string;
-    icon: React.ReactNode;
-    onPress: () => void;
-    variant?: "primary" | "light";
-    disabled?: boolean;
-}) {
-    const isPrimary = variant === "primary";
-    return (
-        <Pressable
-            onPress={onPress}
-            disabled={disabled}
-            className={`flex-1 min-h-[48px] rounded-2xl px-4 flex-row items-center justify-center ${
-                isPrimary ? "bg-primary" : "bg-white border border-gray-100"
-            }`}
-            style={{
-                opacity: disabled ? 0.72 : 1,
-                shadowColor: "#111827",
-                shadowOpacity: isPrimary ? 0.12 : 0.05,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 6 },
-                elevation: isPrimary ? 3 : 1,
-            }}
-        >
-            {icon}
-            <Text
-                className={`ml-2 text-sm font-kumbhBold ${
-                    isPrimary ? "text-white" : "text-gray-900"
-                }`}
-                numberOfLines={1}
-            >
-                {label}
-            </Text>
+            <ChevronRight size={16} color="#9CA3AF" />
         </Pressable>
     );
 }
@@ -841,27 +795,27 @@ function RowMember({
     ].includes(String(item.role || "").toLowerCase());
 
     return (
-        <View className="mx-5 mb-3 rounded-3xl bg-white border border-gray-100 px-4 py-3 flex-row items-center">
+        <View className="mx-4 mb-2.5 rounded-[22px] bg-white border border-gray-100 px-4 py-3.5 flex-row items-center">
             <Pressable
                 onPress={onPress}
-                className="flex-row items-center flex-1 active:bg-gray-50"
+                className="flex-row items-center flex-1 active:opacity-80"
                 disabled={!onPress}
             >
                 {item.avatar ? (
                     <Image
                         source={{ uri: item.avatar }}
-                        className="w-12 h-12 rounded-2xl"
+                        className="w-11 h-11 rounded-2xl"
                     />
                 ) : (
-                    <View className="w-12 h-12 rounded-2xl bg-[#EEF2FF] items-center justify-center">
-                        <Text className="text-[#4C5FAB] font-kumbhBold">
+                    <View className="w-11 h-11 rounded-2xl bg-[#EEF2FF] items-center justify-center">
+                        <Text className="text-[14px] text-[#4C5FAB] font-kumbhBold">
                             {initialsFrom(item.username)}
                         </Text>
                     </View>
                 )}
                 <View className="ml-3 flex-1">
                     <Text
-                        className="text-base text-gray-950 font-kumbhBold"
+                        className="text-[15px] text-[#111827] font-kumbhBold"
                         numberOfLines={1}
                     >
                         {item.username || "Member"}
@@ -874,7 +828,7 @@ function RowMember({
                                 style={{ marginRight: 4 }}
                             />
                         )}
-                        <Text className="text-xs text-gray-500 font-kumbh">
+                        <Text className="text-[12px] text-[#6B7280] font-kumbh">
                             {displayRole}
                         </Text>
                     </View>
@@ -885,14 +839,14 @@ function RowMember({
                 <Pressable
                     onPress={onRemove}
                     disabled={isRemoving}
-                    className="h-10 w-10 bg-red-50 rounded-full items-center justify-center active:bg-red-100"
+                    className="h-9 w-9 bg-red-50 border border-red-100 rounded-full items-center justify-center active:bg-red-100"
                     accessibilityRole="button"
                     accessibilityLabel={`Remove ${item.username || "member"}`}
                 >
                     {isRemoving ? (
                         <ActivityIndicator size="small" color="#dc2626" />
                     ) : (
-                        <UserMinus size={17} color="#dc2626" />
+                        <UserMinus size={16} color="#dc2626" />
                     )}
                 </Pressable>
             )}
@@ -904,7 +858,6 @@ export default function ChannelInfoScreen() {
     const { channelId: rawId } = useLocalSearchParams<{ channelId: string }>();
     const channelId = typeof rawId === "string" ? rawId : rawId?.[0];
 
-    const insets = useSafeAreaInsets();
     const dispatch = useAppDispatch();
     const router = useRouter();
 
@@ -1365,37 +1318,37 @@ export default function ChannelInfoScreen() {
         }
     }, [channelId, channel, router]);
 
+    const isIOS = Platform.OS === "ios";
+
     const header = (
-        <View className="px-5 pt-4 pb-5">
-            <View
-                className="rounded-[28px] bg-primary p-5 overflow-hidden"
-                style={{
-                    shadowColor: "#111827",
-                    shadowOpacity: 0.14,
-                    shadowRadius: 18,
-                    shadowOffset: { width: 0, height: 10 },
-                    elevation: 4,
-                }}
-            >
-                <View className="flex-row items-start justify-between">
-                    <View className="flex-1 pr-4">
-                        <Text className="text-white/75 text-xs uppercase tracking-wider font-kumbhBold">
-                            Project Channel
-                        </Text>
-                        <Text
-                            className="mt-2 text-2xl text-white font-kumbhBold"
-                            numberOfLines={2}
-                        >
-                            {channel?.name ?? "Channel"}
-                        </Text>
+        <View className="px-4 pt-3 pb-4">
+            <View className="rounded-[28px] bg-white border border-gray-100 p-5">
+                <View className="flex-row items-start justify-between gap-3">
+                    <View className="flex-row items-center flex-1">
+                        <View className="h-12 w-12 rounded-2xl bg-[#EEF2FF] items-center justify-center mr-3.5">
+                            <FolderKanban size={22} color="#4C5FAB" />
+                        </View>
+                        <View className="flex-1">
+                            <Text
+                                className="text-[20px] text-[#111827] font-kumbhBold"
+                                numberOfLines={2}
+                            >
+                                {channel?.name ?? "Channel"}
+                            </Text>
+                            {(channel as any)?.createdBy ? (
+                                <Text
+                                    className="mt-0.5 text-[12px] font-kumbh text-[#6B7280]"
+                                    numberOfLines={1}
+                                >
+                                    Created by {ownerName}
+                                </Text>
+                            ) : null}
+                        </View>
                     </View>
 
                     {!!(channel as any)?.code && (
-                        <View className="rounded-2xl bg-white/15 px-3 py-2 border border-white/15">
-                            <Text className="text-white/70 text-[10px] uppercase font-kumbhBold">
-                                Code
-                            </Text>
-                            <Text className="text-white text-sm font-kumbhBold">
+                        <View className="rounded-xl bg-[#EEF2FF] px-3 py-1.5">
+                            <Text className="text-primary text-[11px] font-kumbhBold tracking-wider">
                                 {(channel as any).code}
                             </Text>
                         </View>
@@ -1404,44 +1357,52 @@ export default function ChannelInfoScreen() {
 
                 {!!channel?.description && (
                     <Text
-                        className="mt-4 text-white/85 leading-5 font-kumbh"
-                        numberOfLines={3}
+                        className="mt-4 text-[14px] text-[#4B5563] leading-5 font-kumbh"
+                        numberOfLines={4}
                     >
                         {channel.description}
                     </Text>
                 )}
 
-                <View className="flex-row flex-wrap mt-5">
-                    <Chip>
-                        {members.length} member{members.length === 1 ? "" : "s"}
-                    </Chip>
-                    {(channel as any)?.createdAt ? (
-                        <Chip>Created {createdDate}</Chip>
-                    ) : null}
-                    {(channel as any)?.createdBy ? (
-                        <Chip>Owner: {ownerName}</Chip>
-                    ) : null}
+                <View className="flex-row gap-3 mt-4 pt-4 border-t border-gray-100">
+                    <View className="flex-1 flex-row items-center rounded-2xl bg-[#F5F7FB] px-3.5 py-3">
+                        <View className="h-8 w-8 rounded-xl bg-white items-center justify-center mr-2.5">
+                            <UsersRound size={15} color={PRIMARY} />
+                        </View>
+                        <View className="flex-1">
+                            <Text className="text-[11px] font-kumbh text-[#6B7280]">
+                                Members
+                            </Text>
+                            <Text className="text-[15px] font-kumbhBold text-[#111827]">
+                                {members.length}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View className="flex-1 flex-row items-center rounded-2xl bg-[#F5F7FB] px-3.5 py-3">
+                        <View className="h-8 w-8 rounded-xl bg-white items-center justify-center mr-2.5">
+                            <CalendarDays size={15} color={PRIMARY} />
+                        </View>
+                        <View className="flex-1">
+                            <Text className="text-[11px] font-kumbh text-[#6B7280]">
+                                Created
+                            </Text>
+                            <Text
+                                className="text-[15px] font-kumbhBold text-[#111827]"
+                                numberOfLines={1}
+                            >
+                                {createdDate}
+                            </Text>
+                        </View>
+                    </View>
                 </View>
             </View>
 
-            <View className="flex-row gap-3 mt-4">
-                <StatTile
-                    icon={<UsersRound size={16} color={PRIMARY} />}
-                    label="Members"
-                    value={String(members.length)}
-                />
-                <StatTile
-                    icon={<CalendarDays size={16} color={PRIMARY} />}
-                    label="Created"
-                    value={createdDate}
-                />
-            </View>
-
-            <View className="flex-row gap-3 mt-4">
-                <ActionButton
+            <View className="flex-row gap-3 mt-3.5">
+                <ActionCardButton
                     label="Resources"
-                    icon={<FolderOpen size={18} color="#ffffff" />}
-                    variant="primary"
+                    subtitle="Files & links"
+                    icon={<FolderOpen size={18} color={PRIMARY} />}
                     onPress={() =>
                         router.push({
                             pathname:
@@ -1451,8 +1412,9 @@ export default function ChannelInfoScreen() {
                     }
                 />
 
-                <ActionButton
+                <ActionCardButton
                     label="Tasks"
+                    subtitle="Project board"
                     icon={<FileText size={18} color={PRIMARY} />}
                     onPress={() =>
                         router.push({
@@ -1463,60 +1425,96 @@ export default function ChannelInfoScreen() {
                     }
                 />
             </View>
-            <View className="mt-3 flex-row">
-                <ActionButton
-                    label={
-                        isGeneratingReport
-                            ? "Generating report..."
-                            : "Generate Report"
-                    }
-                    icon={
-                        isGeneratingReport ? (
-                            <ActivityIndicator size="small" color="#ffffff" />
-                        ) : (
-                            <Share2 size={18} color="#ffffff" />
-                        )
-                    }
-                    variant="primary"
-                    disabled={isGeneratingReport}
-                    onPress={handleGenerateReport}
-                />
-            </View>
 
-            <Text className="text-lg text-gray-950 font-kumbhBold mt-5">
-                Members
-            </Text>
+            <Pressable
+                onPress={handleGenerateReport}
+                disabled={isGeneratingReport}
+                className="mt-3 rounded-2xl bg-primary px-4 py-3.5 flex-row items-center justify-center active:opacity-90"
+                style={{ opacity: isGeneratingReport ? 0.72 : 1 }}
+            >
+                {isGeneratingReport ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                    <Share2 size={17} color="#ffffff" />
+                )}
+                <Text className="ml-2 text-[14px] font-kumbhBold text-white">
+                    {isGeneratingReport
+                        ? "Generating report..."
+                        : "Generate Report"}
+                </Text>
+            </Pressable>
+
+            <View className="flex-row items-center justify-between mt-6">
+                <View className="flex-row items-center gap-2">
+                    <Text className="text-[16px] text-[#111827] font-kumbhBold">
+                        Members
+                    </Text>
+                    <View className="rounded-full bg-[#EEF2FF] px-2.5 py-0.5">
+                        <Text className="text-[12px] font-kumbhBold text-primary">
+                            {members.length}
+                        </Text>
+                    </View>
+                </View>
+
+                {canManageMembers && (
+                    <Pressable
+                        onPress={handleOpenAddMember}
+                        disabled={isAddingMember}
+                        className="flex-row items-center gap-1 rounded-full bg-white border border-gray-200 px-3 py-1.5 active:opacity-80"
+                    >
+                        {isAddingMember ? (
+                            <ActivityIndicator size="small" color="#4C5FAB" />
+                        ) : (
+                            <Plus size={14} color="#4C5FAB" />
+                        )}
+                        <Text className="text-[12px] font-kumbhBold text-primary">
+                            Add member
+                        </Text>
+                    </Pressable>
+                )}
+            </View>
         </View>
     );
 
     if (isLoading) {
         return (
-            <View
-                style={{ paddingTop: insets.top }}
-                className="flex-1 bg-[#F7F8FB] items-center justify-center"
+            <SafeAreaView
+                edges={
+                    isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
+                }
+                className="flex-1 bg-[#F5F7FB]"
             >
-                <ActivityIndicator />
-                <Text className="text-gray-600 mt-3 font-kumbh">
-                    Loading channel...
-                </Text>
-            </View>
+                <PlatformAdaptiveHeader
+                    title="Channel Info"
+                    backgroundColor="#F5F7FB"
+                />
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator color="#4C5FAB" />
+                    <Text className="text-[#6B7280] mt-3 font-kumbh">
+                        Loading channel…
+                    </Text>
+                </View>
+            </SafeAreaView>
         );
     }
 
-    const isIOS = Platform.OS === "ios";
     return (
         <SafeAreaView
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
-            <PlatformAdaptiveHeader title="Channel Info" />
+            <PlatformAdaptiveHeader
+                title="Channel Info"
+                backgroundColor="#F5F7FB"
+            />
 
             <FlatList
                 data={members}
                 keyExtractor={(m) => m.id}
                 ListHeaderComponent={header}
+                showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => {
                     const memberRole = (item.role ?? "").toLowerCase();
                     const isPrivileged = isAdminLikeRole(memberRole);
@@ -1542,16 +1540,18 @@ export default function ChannelInfoScreen() {
                         onRefresh={onRefresh}
                     />
                 }
-                contentContainerStyle={{ paddingBottom: 24 }}
+                contentContainerStyle={{
+                    paddingBottom: canManageMembers ? 96 : 28,
+                }}
                 ListEmptyComponent={
-                    <View className="mx-5 mt-2 rounded-3xl bg-white border border-gray-100 px-5 py-12 items-center">
+                    <View className="mx-4 mt-1 rounded-[28px] bg-white border border-gray-100 px-6 py-12 items-center">
                         <View className="h-12 w-12 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-3">
                             <UsersRound size={22} color={PRIMARY} />
                         </View>
-                        <Text className="text-gray-950 font-kumbhBold">
-                            No members found.
+                        <Text className="text-[#111827] font-kumbhBold text-[15px]">
+                            No members found
                         </Text>
-                        <Text className="text-gray-500 mt-1 text-center font-kumbh">
+                        <Text className="text-[#6B7280] mt-1 text-center font-kumbh text-[13px]">
                             Added members will appear here.
                         </Text>
                     </View>

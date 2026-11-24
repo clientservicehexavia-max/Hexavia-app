@@ -1,7 +1,9 @@
 import { fetchBirthdaySummary } from "@/api/birthdays";
 import BottomSheetModal from "@/components/ui/BottomSheetModal";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
+    ChevronRight,
     Filter as FilterIcon,
     Gift,
     Mail,
@@ -9,6 +11,7 @@ import {
     Phone,
     Plus,
     Search,
+    Users,
     X,
 } from "lucide-react-native";
 import React, {
@@ -25,7 +28,6 @@ import {
     Pressable,
     RefreshControl,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -450,147 +452,76 @@ export default function ClientsIndex() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             {/* Header */}
-            <View className="pb-4 px-4">
-                <PlatformAdaptiveHeader
-                    title="Clients"
-                    headerRight={({ tintColor }) => (
-                        <View className="flex-row items-center gap-1.5 ios:mr-3">
-                            <Pressable
-                                onPress={() =>
-                                    router.push({
-                                        pathname: "/(admin)/birthdays",
-                                        params: { filter: "clients" },
-                                    })
-                                }
-                                className="h-10 w-10 items-center justify-center rounded-full"
-                            >
-                                <Gift size={22} color={tintColor} />
-                                {birthdayCount > 0 ? (
-                                    <View className="absolute right-0.5 top-0.5 min-w-4 h-4 rounded-full bg-amber-500 px-1 items-center justify-center">
-                                        <Text className="text-[9px] leading-3 font-kumbhBold text-white">
-                                            {birthdayCount > 99
-                                                ? "99+"
-                                                : birthdayCount}
-                                        </Text>
-                                    </View>
-                                ) : null}
-                            </Pressable>
-                            <Pressable
-                                onPress={() => setShowFilters(true)}
-                                className={clsx(
-                                    "w-10 h-10 rounded-full items-center justify-center",
-                                    hasAppliedFilters
-                                        ? "bg-blue-50"
-                                        : "bg-transparent",
-                                )}
-                            >
-                                <FilterIcon
-                                    size={22}
-                                    color={
-                                        hasAppliedFilters
-                                            ? "#2563EB"
-                                            : tintColor
-                                    }
-                                />
-                                {hasAppliedFilters ? (
-                                    <View className="absolute right-1.5 top-1.5 min-w-4 h-4 rounded-full bg-blue-600 px-1 items-center justify-center">
-                                        <Text className="text-[9px] leading-3 font-kumbhBold text-white">
-                                            {appliedFilterCount}
-                                        </Text>
-                                    </View>
-                                ) : null}
-                            </Pressable>
-                            <Pressable
-                                onPress={() =>
-                                    router.push("/(admin)/clients/create")
-                                }
-                                className="w-10 h-10 rounded-full items-center justify-center bg-primary"
-                            >
-                                <Plus size={24} color="white" />
-                            </Pressable>
-                        </View>
-                    )}
-                    headerLeft={() => null}
-                />
-
-                {/* Search */}
-                <View className="mt-3">
-                    <View className="w-full flex-row items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 h-12">
-                        <Search size={18} color="#6B7280" />
-                        <TextInput
-                            value={query}
-                            onChangeText={setQuery}
-                            placeholder="Search name, project, email, industry"
-                            placeholderTextColor="#9CA3AF"
-                            className="flex-1 text-[15px] font-kumbh text-gray-800"
-                            returnKeyType="search"
-                        />
-                    </View>
-                </View>
-
-                {/* Tabs */}
-                <View className="mt-6 flex-row items-center justify-around gap-8 px-1">
-                    {(["all", "active", "closed"] as const).map((t) => (
+            <PlatformAdaptiveHeader
+                title="Clients"
+                backgroundColor="#F5F7FB"
+                headerRight={({ tintColor }) => (
+                    <View className="flex-row items-center gap-2 ios:mr-3">
                         <Pressable
-                            key={t}
-                            onPress={() => switchTab(t)}
-                            className="items-center"
+                            onPress={() =>
+                                router.push({
+                                    pathname: "/(admin)/birthdays",
+                                    params: { filter: "clients" },
+                                })
+                            }
+                            className="h-10 w-10 items-center justify-center rounded-full bg-white border border-gray-200"
                         >
-                            <Text
-                                className={`text-base font-kumbh ${
-                                    tab === t
-                                        ? "text-blue-600 font-kumbhBold"
-                                        : "text-gray-600"
-                                }`}
-                            >
-                                {labelForTab(t)}
-                            </Text>
-                            {tab === t ? (
-                                <View className="h-[3px] w-16 bg-blue-300 rounded-full mt-1" />
-                            ) : (
-                                <View className="h-[3px] w-16 mt-1" />
+                            <Gift size={18} color={tintColor ?? "#111827"} />
+                            {birthdayCount > 0 ? (
+                                <View className="absolute -right-0.5 -top-0.5 min-w-4 h-4 rounded-full bg-amber-500 px-1 items-center justify-center">
+                                    <Text className="text-[9px] leading-3 font-kumbhBold text-white">
+                                        {birthdayCount > 99
+                                            ? "99+"
+                                            : birthdayCount}
+                                    </Text>
+                                </View>
+                            ) : null}
+                        </Pressable>
+                        <Pressable
+                            onPress={() => setShowFilters(true)}
+                            className={clsx(
+                                "w-10 h-10 rounded-full items-center justify-center border",
+                                hasAppliedFilters
+                                    ? "bg-[#EEF2FF] border-primary/30"
+                                    : "bg-white border-gray-200",
                             )}
-                        </Pressable>
-                    ))}
-                </View>
-
-                <View className="mt-4">
-                    <RangeTabs
-                        value={range}
-                        onChange={(v) => {
-                            setRange(v);
-                            // reset to page 1 because range changes result set
-                            dispatch(setClientFilters({ ...filters, page: 1 }));
-                        }}
-                    />
-                </View>
-
-                {hasAppliedFilters ? (
-                    <View className="mt-3 flex-row items-center justify-between rounded-xl border border-blue-100 bg-blue-50 px-3 py-2">
-                        <Text className="text-xs font-kumbh text-blue-700">
-                            {appliedFilterCount} filter
-                            {appliedFilterCount > 1 ? "s" : ""} active
-                        </Text>
-                        <Pressable
-                            onPress={clearFilters}
-                            className="flex-row items-center gap-1 rounded-full bg-white px-3 py-1.5"
                         >
-                            <X size={13} color="#2563EB" />
-                            <Text className="text-xs font-kumbhBold text-blue-700">
-                                Clear
-                            </Text>
+                            <FilterIcon
+                                size={18}
+                                color={
+                                    hasAppliedFilters
+                                        ? "#4C5FAB"
+                                        : (tintColor ?? "#111827")
+                                }
+                            />
+                            {hasAppliedFilters ? (
+                                <View className="absolute -right-0.5 -top-0.5 min-w-4 h-4 rounded-full bg-primary px-1 items-center justify-center">
+                                    <Text className="text-[9px] leading-3 font-kumbhBold text-white">
+                                        {appliedFilterCount}
+                                    </Text>
+                                </View>
+                            ) : null}
+                        </Pressable>
+                        <Pressable
+                            onPress={() =>
+                                router.push("/(admin)/clients/create")
+                            }
+                            className="w-10 h-10 rounded-full items-center justify-center bg-primary"
+                        >
+                            <Plus size={20} color="#FFFFFF" />
                         </Pressable>
                     </View>
-                ) : null}
-            </View>
+                )}
+                headerLeft={() => null}
+            />
 
-            {loading && clients.length === 0 ? (
+            {loading && clients.length === 0 && !refreshing ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator />
-                    <Text className="mt-2 text-gray-500 font-kumbh">
+                    <ActivityIndicator color="#4C5FAB" />
+                    <Text className="mt-2 text-[#6B7280] font-kumbh">
                         Loading clients…
                     </Text>
                 </View>
@@ -600,8 +531,9 @@ export default function ClientsIndex() {
                         data={pagedList}
                         keyExtractor={(item) => item._id}
                         contentContainerStyle={{
-                            paddingBottom: totalPages > 1 ? 100 : 20,
+                            paddingBottom: totalPages > 1 ? 100 : 24,
                             paddingHorizontal: 16,
+                            paddingTop: 6,
                         }}
                         keyboardShouldPersistTaps="handled"
                         removeClippedSubviews
@@ -612,8 +544,86 @@ export default function ClientsIndex() {
                                 onRefresh={onRefresh}
                             />
                         }
+                        ListHeaderComponent={
+                            <View className="mb-3">
+                                {/* Search */}
+                                <View className="h-14 w-full flex-row items-center rounded-2xl border border-gray-200 bg-white px-4">
+                                    <View className="mr-3">
+                                        <Search size={18} color="#6B7280" />
+                                    </View>
+                                    <CustomTextInput
+                                        value={query}
+                                        onChangeText={setQuery}
+                                        placeholder="Search name, project, email, industry"
+                                        className="h-full flex-1"
+                                        returnKeyType="search"
+                                    />
+                                    {query.length > 0 ? (
+                                        <Pressable
+                                            onPress={() => setQuery("")}
+                                            hitSlop={8}
+                                            className="ml-2 h-7 w-7 rounded-full bg-[#F3F4F6] items-center justify-center"
+                                        >
+                                            <X size={14} color="#6B7280" />
+                                        </Pressable>
+                                    ) : null}
+                                </View>
+
+                                {/* Status Tabs */}
+                                <View className="mt-3 h-11 flex-row rounded-2xl border border-gray-200 bg-white p-1">
+                                    {(["all", "active", "closed"] as const).map(
+                                        (t) => {
+                                            const active = tab === t;
+                                            return (
+                                                <Pressable
+                                                    key={t}
+                                                    onPress={() =>
+                                                        switchTab(t)
+                                                    }
+                                                    className={`flex-1 rounded-xl items-center justify-center ${
+                                                        active
+                                                            ? "bg-primary"
+                                                            : ""
+                                                    }`}
+                                                >
+                                                    <Text
+                                                        className={`text-xs font-kumbhBold ${
+                                                            active
+                                                                ? "text-white"
+                                                                : "text-[#6B7280]"
+                                                        }`}
+                                                    >
+                                                        {labelForTab(t)}
+                                                    </Text>
+                                                </Pressable>
+                                            );
+                                        },
+                                    )}
+                                </View>
+
+                                {hasAppliedFilters ? (
+                                    <View className="mt-3 flex-row items-center justify-between rounded-2xl border border-primary/20 bg-[#EEF2FF] px-3.5 py-2">
+                                        <Text className="text-xs font-kumbhBold text-primary">
+                                            {appliedFilterCount} filter
+                                            {appliedFilterCount > 1 ? "s" : ""}{" "}
+                                            active
+                                        </Text>
+                                        <Pressable
+                                            onPress={clearFilters}
+                                            className="flex-row items-center gap-1 rounded-full bg-white px-3 py-1"
+                                        >
+                                            <X size={12} color="#4C5FAB" />
+                                            <Text className="text-xs font-kumbhBold text-primary">
+                                                Clear
+                                            </Text>
+                                        </Pressable>
+                                    </View>
+                                ) : null}
+                            </View>
+                        }
+                        ItemSeparatorComponent={() => <View className="h-3" />}
                         renderItem={({ item }) => (
-                            <View className="bg-white border border-gray-200 rounded-xl p-4 my-1">
+                            <View className="bg-white border border-gray-100 rounded-[24px] p-4">
                                 <ClientRow
                                     item={item}
                                     onPress={(id) =>
@@ -626,28 +636,36 @@ export default function ClientsIndex() {
                             </View>
                         )}
                         ListEmptyComponent={
-                            <View className="px-5 py-16">
-                                <Text className="text-center text-gray-500 font-kumbh">
-                                    No clients found.
+                            <View className="mt-2 rounded-[24px] bg-white border border-gray-100 px-5 py-12 items-center">
+                                <View className="h-12 w-12 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-3">
+                                    <Users size={22} color="#4C5FAB" />
+                                </View>
+                                <Text className="text-center text-[#111827] font-kumbhBold text-base">
+                                    No clients found
+                                </Text>
+                                <Text className="mt-1 text-center text-[#6B7280] font-kumbh text-sm">
+                                    Try adjusting your search, status, or timeframe.
                                 </Text>
                             </View>
                         }
                     />
 
                     {totalPages > 1 && !query.trim() && (
-                        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-5 py-3">
+                        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-3">
                             <View className="flex-row items-center justify-between">
                                 <Pressable
                                     disabled={!canPrev}
                                     onPress={() => gotoPage(currentPage - 1)}
-                                    className={`px-4 py-2 rounded-xl border ${
-                                        canPrev ? "bg-white" : "bg-gray-100"
+                                    className={`px-4 py-2 rounded-2xl border ${
+                                        canPrev
+                                            ? "bg-white border-gray-200"
+                                            : "bg-gray-50 border-gray-100"
                                     }`}
                                 >
                                     <Text
-                                        className={`font-kumbh ${
+                                        className={`font-kumbhBold text-sm ${
                                             canPrev
-                                                ? "text-gray-800"
+                                                ? "text-[#111827]"
                                                 : "text-gray-400"
                                         }`}
                                     >
@@ -655,7 +673,7 @@ export default function ClientsIndex() {
                                     </Text>
                                 </Pressable>
 
-                                <Text className="font-kumbh text-gray-700">
+                                <Text className="font-kumbhBold text-xs text-[#6B7280]">
                                     Page {currentPage} / {totalPages} •{" "}
                                     {totalClients} clients
                                 </Text>
@@ -663,14 +681,16 @@ export default function ClientsIndex() {
                                 <Pressable
                                     disabled={!canNext}
                                     onPress={() => gotoPage(currentPage + 1)}
-                                    className={`px-4 py-2 rounded-xl border ${
-                                        canNext ? "bg-white" : "bg-gray-100"
+                                    className={`px-4 py-2 rounded-2xl border ${
+                                        canNext
+                                            ? "bg-white border-gray-200"
+                                            : "bg-gray-50 border-gray-100"
                                     }`}
                                 >
                                     <Text
-                                        className={`font-kumbh ${
+                                        className={`font-kumbhBold text-sm ${
                                             canNext
-                                                ? "text-gray-800"
+                                                ? "text-[#111827]"
                                                 : "text-gray-400"
                                         }`}
                                     >
@@ -686,6 +706,11 @@ export default function ClientsIndex() {
             <FilterModal
                 open={showFilters}
                 form={form}
+                range={range}
+                onRangeChange={(nextRange) => {
+                    setRange(nextRange);
+                    dispatch(setClientFilters({ ...filters, page: 1 }));
+                }}
                 industryOptions={dynamicIndustryOpts}
                 engagementOptions={dynamicEngagementOpts}
                 sourceOptions={dynamicSourceOpts}
@@ -698,6 +723,13 @@ export default function ClientsIndex() {
                         page: 1,
                     };
                     if (!next.status) delete next.status;
+                    setTab(
+                        next.status === "active"
+                            ? "active"
+                            : next.status === "closed"
+                              ? "closed"
+                              : "all",
+                    );
                     if (JSON.stringify(next) !== JSON.stringify(filters)) {
                         dispatch(setClientFilters(next));
                     }
@@ -717,8 +749,11 @@ function ClientRow({
     onPress: (id: string) => void;
 }) {
     const name = item.name || "Unknown";
-    const createdAt = (item as any).createdAt ?? (item as any).created_at;
-    const updatedAt = (item as any).updatedAt ?? (item as any).updated_at;
+    const updatedAt =
+        (item as any).updatedAt ??
+        (item as any).updated_at ??
+        (item as any).createdAt ??
+        (item as any).created_at;
     const badgeText = item.status
         ? capitalize(normalizeClientStatus(item.status))
         : "—";
@@ -726,72 +761,141 @@ function ClientRow({
         item.status === "closed" ||
         item.status === "completed" ||
         item.status === "past"
-            ? "bg-blue-100 text-blue-700"
+            ? "bg-[#EEF2FF] text-primary"
             : item.status === "pending"
-              ? "bg-yellow-100 text-yellow-700"
+              ? "bg-amber-50 text-amber-700"
               : item.status === "active" || item.status === "current"
-                ? "bg-green-100 text-green-700"
+                ? "bg-emerald-50 text-emerald-700"
                 : "bg-gray-100 text-gray-700";
 
+    const initials = getInitials(name);
+    const contactLine = item.email || item.phoneNumber || "No contact info";
+
     return (
-        <Pressable onPress={() => onPress(item._id)} className="py-1">
-            <Row label="Name" value={name} />
-            <Row label="Project" value={item.projectName ?? "—"} />
+        <Pressable onPress={() => onPress(item._id)}>
+            {/* Top summary header */}
+            <View className="flex-row items-center">
+                <View className="h-11 w-11 rounded-full bg-[#EEF2FF] items-center justify-center mr-3">
+                    <Text className="font-kumbhBold text-[14px] text-primary">
+                        {initials}
+                    </Text>
+                </View>
+                <View className="flex-1 mr-2">
+                    <Text
+                        className="font-kumbhBold text-[16px] text-[#111827]"
+                        numberOfLines={1}
+                    >
+                        {name}
+                    </Text>
+                    <Text
+                        className="font-kumbh text-[13px] text-[#6B7280] mt-0.5"
+                        numberOfLines={1}
+                    >
+                        {item.projectName ?? "No project name"}
+                    </Text>
+                </View>
+                <View className={`px-2.5 py-1 rounded-full ${badgeStyle}`}>
+                    <Text className="text-[11px] font-kumbhBold">
+                        {badgeText}
+                    </Text>
+                </View>
+            </View>
 
-            <Row
-                label="Email"
-                value={item.email ?? "—"}
-                actions={
-                    item.email
-                        ? [
-                              {
-                                  icon: Mail,
-                                  onPress: () => openEmail(item.email),
-                                  label: "Email client",
-                              },
-                          ]
-                        : undefined
-                }
-            />
+            {/* Key info strip */}
+            <View className="mt-3 rounded-2xl bg-[#F5F7FB] px-3.5 py-2.5 flex-row items-center justify-between gap-2">
+                <View className="flex-1">
+                    <Text className="font-kumbh text-[11px] text-[#6B7280]">
+                        Receivable
+                    </Text>
+                    <Text
+                        className="font-kumbhBold text-[14px] text-[#111827] mt-0.5"
+                        numberOfLines={1}
+                    >
+                        {formatMoney(item.payableAmount)}
+                    </Text>
+                </View>
+                <View className="flex-1 items-center">
+                    <Text className="font-kumbh text-[11px] text-[#6B7280]">
+                        Industry
+                    </Text>
+                    <Text
+                        className="font-kumbhBold text-[13px] text-primary mt-0.5"
+                        numberOfLines={1}
+                    >
+                        {item.industry ?? "—"}
+                    </Text>
+                </View>
+                <View className="flex-1 items-end">
+                    <Text className="font-kumbh text-[11px] text-[#6B7280]">
+                        Engagement
+                    </Text>
+                    <Text
+                        className="font-kumbhBold text-[13px] text-[#111827] mt-0.5"
+                        numberOfLines={1}
+                    >
+                        {item.engagement ?? "—"}
+                    </Text>
+                </View>
+            </View>
 
-            <Row
-                label="Phone"
-                value={item.phoneNumber ?? "—"}
-                actions={
-                    item.phoneNumber
-                        ? [
-                              {
-                                  icon: Phone,
-                                  onPress: () => dialPhone(item.phoneNumber),
-                                  label: "Call client",
-                              },
-                              {
-                                  icon: MessageCircle,
-                                  onPress: () => openWhatsApp(item.phoneNumber),
-                                  label: "Message on WhatsApp",
-                              },
-                          ]
-                        : undefined
-                }
-            />
+            {/* Compact contact & meta footer */}
+            <View className="mt-3 pt-2.5 border-t border-gray-100 flex-row items-center justify-between">
+                <View className="flex-1 mr-2">
+                    <Text
+                        className="font-kumbh text-[12px] text-[#374151]"
+                        numberOfLines={1}
+                    >
+                        {contactLine}
+                    </Text>
+                    <Text
+                        className="font-kumbh text-[11px] text-[#9CA3AF] mt-0.5"
+                        numberOfLines={1}
+                    >
+                        {item.source ? `${item.source} • ` : ""}
+                        {formatShortDate(updatedAt)}
+                    </Text>
+                </View>
 
-            <Row label="Industry" value={item.industry ?? "—"} />
-            <Row label="Source" value={item.source ?? "—"} />
-            <Row label="Engagement" value={item.engagement ?? "—"} />
-            <Row label="Receivable" value={formatMoney(item.payableAmount)} />
-            <Row label="Created At" value={formatDateTime(createdAt)} />
-            <Row label="Updated At" value={formatDateTime(updatedAt)} />
-
-            <Row
-                label="Status"
-                right={
-                    <View className={`px-3 py-1 rounded-full ${badgeStyle}`}>
-                        <Text className="text-xs font-kumbhBold">
-                            {badgeText}
-                        </Text>
-                    </View>
-                }
-            />
+                <View className="flex-row items-center gap-1.5">
+                    {item.email ? (
+                        <Pressable
+                            onPress={(event: any) => {
+                                event?.stopPropagation?.();
+                                openEmail(item.email);
+                            }}
+                            className="w-8 h-8 rounded-full border border-gray-200 bg-[#F9FAFB] items-center justify-center"
+                            accessibilityLabel="Email client"
+                        >
+                            <Mail size={14} color="#4C5FAB" />
+                        </Pressable>
+                    ) : null}
+                    {item.phoneNumber ? (
+                        <>
+                            <Pressable
+                                onPress={(event: any) => {
+                                    event?.stopPropagation?.();
+                                    dialPhone(item.phoneNumber);
+                                }}
+                                className="w-8 h-8 rounded-full border border-gray-200 bg-[#F9FAFB] items-center justify-center"
+                                accessibilityLabel="Call client"
+                            >
+                                <Phone size={14} color="#4C5FAB" />
+                            </Pressable>
+                            <Pressable
+                                onPress={(event: any) => {
+                                    event?.stopPropagation?.();
+                                    openWhatsApp(item.phoneNumber);
+                                }}
+                                className="w-8 h-8 rounded-full border border-gray-200 bg-[#F9FAFB] items-center justify-center"
+                                accessibilityLabel="Message on WhatsApp"
+                            >
+                                <MessageCircle size={14} color="#10B981" />
+                            </Pressable>
+                        </>
+                    ) : null}
+                    <ChevronRight size={16} color="#9CA3AF" />
+                </View>
+            </View>
         </Pressable>
     );
 }
@@ -814,10 +918,10 @@ function Row({
     right?: React.ReactNode;
 }) {
     return (
-        <View className="flex-row items-center py-2">
+        <View className="flex-row items-center py-1.5">
             {/* Fixed label column */}
             <Text
-                className="w-28 text-base text-gray-700 font-kumbh"
+                className="w-24 text-[13px] text-[#6B7280] font-kumbh"
                 numberOfLines={1}
             >
                 {label}
@@ -829,7 +933,7 @@ function Row({
                     right
                 ) : (
                     <Text
-                        className="flex-1 min-w-0 text-base text-text font-kumbhBold text-right"
+                        className="flex-1 min-w-0 text-[13px] text-[#111827] font-kumbhBold text-right"
                         numberOfLines={1}
                         ellipsizeMode="tail"
                     >
@@ -838,7 +942,7 @@ function Row({
                 )}
 
                 {actions?.length ? (
-                    <View className="flex-row items-center ml-3">
+                    <View className="flex-row items-center ml-2.5">
                         {actions.map((action, index) => (
                             <Pressable
                                 key={`${label}-${index}`}
@@ -846,10 +950,10 @@ function Row({
                                     event?.stopPropagation?.();
                                     action.onPress();
                                 }}
-                                className="w-9 h-9 rounded-full border border-gray-200 bg-white items-center justify-center ml-2"
+                                className="w-8 h-8 rounded-full border border-gray-200 bg-[#F9FAFB] items-center justify-center ml-1.5"
                                 accessibilityLabel={action.label}
                             >
-                                <action.icon size={16} color="#111827" />
+                                <action.icon size={14} color="#4C5FAB" />
                             </Pressable>
                         ))}
                     </View>
@@ -862,6 +966,8 @@ function Row({
 type FilterModalProps = {
     open: boolean;
     form: ClientFilters;
+    range: RangeKey;
+    onRangeChange: (v: RangeKey) => void;
     industryOptions: string[];
     engagementOptions: string[];
     sourceOptions: string[];
@@ -874,6 +980,8 @@ type FilterModalProps = {
 function FilterModal({
     open,
     form,
+    range,
+    onRangeChange,
     industryOptions,
     engagementOptions,
     sourceOptions,
@@ -919,6 +1027,10 @@ function FilterModal({
                     <X size={17} color="#374151" />
                 </Pressable>
             </View>
+
+            <Field label="Time Window">
+                <RangeTabs value={range} onChange={onRangeChange} />
+            </Field>
 
             <Field label="Status">
                 <PillGroup
@@ -1001,22 +1113,22 @@ function FilterModal({
             <View className="flex-row items-center justify-between border-t border-gray-100 pt-4 mt-2">
                 <Pressable
                     onPress={onClear}
-                    className="h-11 px-4 rounded-xl border border-gray-200 items-center justify-center"
+                    className="h-12 px-4 rounded-2xl border border-gray-200 bg-white items-center justify-center"
                 >
-                    <Text className="font-kumbh text-gray-700">Clear</Text>
+                    <Text className="font-kumbhBold text-sm text-[#374151]">Clear</Text>
                 </Pressable>
-                <View className="flex-row gap-3">
+                <View className="flex-row gap-2.5">
                     <Pressable
                         onPress={onClose}
-                        className="h-11 px-4 rounded-xl border border-gray-200 items-center justify-center"
+                        className="h-12 px-4 rounded-2xl border border-gray-200 bg-white items-center justify-center"
                     >
-                        <Text className="font-kumbh text-gray-700">Cancel</Text>
+                        <Text className="font-kumbhBold text-sm text-[#374151]">Cancel</Text>
                     </Pressable>
                     <Pressable
                         onPress={onApply}
-                        className="h-11 px-5 rounded-xl bg-blue-600 items-center justify-center"
+                        className="h-12 px-5 rounded-2xl bg-primary items-center justify-center"
                     >
-                        <Text className="font-kumbhBold text-white">Apply</Text>
+                        <Text className="font-kumbhBold text-sm text-white">Apply</Text>
                     </Pressable>
                 </View>
             </View>
@@ -1152,11 +1264,22 @@ function formatMoney(n?: number) {
     }
 }
 
-function formatDateTime(value?: string) {
+function formatShortDate(value?: string) {
     if (!value) return "—";
     const dt = new Date(value);
     if (isNaN(dt.getTime())) return "—";
-    return dt.toLocaleString();
+    return dt.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+}
+
+function getInitials(name: string) {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "?";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function RangeTabs({
@@ -1169,7 +1292,7 @@ function RangeTabs({
     const options: RangeKey[] = ["24H", "7D", "30D", "1Y"];
 
     return (
-        <View className="flex-row bg-white border border-gray-200 rounded-xl p-1">
+        <View className="flex-row gap-2">
             {options.map((opt) => {
                 const active = opt === value;
                 return (
@@ -1177,14 +1300,16 @@ function RangeTabs({
                         key={opt}
                         onPress={() => onChange(opt)}
                         className={clsx(
-                            "flex-1 py-2 rounded-xl items-center justify-center",
-                            active ? "bg-gray-900" : "bg-transparent",
+                            "flex-1 py-2 rounded-full border items-center justify-center",
+                            active
+                                ? "bg-[#EEF2FF] border-primary/40"
+                                : "bg-white border-gray-200",
                         )}
                     >
                         <Text
                             className={clsx(
-                                "font-kumbh text-sm",
-                                active ? "text-white" : "text-gray-700",
+                                "font-kumbhBold text-xs",
+                                active ? "text-primary" : "text-[#6B7280]",
                             )}
                         >
                             {opt}

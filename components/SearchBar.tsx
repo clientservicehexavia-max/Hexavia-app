@@ -1,8 +1,7 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import React from "react";
-import { TextInput, View } from "react-native";
-
-const INACTIVE = "#9CA3AF";
+import { CustomTextInput } from "@/components/ui/CustomInput";
+import { Search, X } from "lucide-react-native";
+import React, { useState } from "react";
+import { Pressable, View } from "react-native";
 
 export default function SearchBar({
   value,
@@ -13,26 +12,37 @@ export default function SearchBar({
   onChange: (t: string) => void;
   onOpenFilter: () => void;
 }) {
+  const [focused, setFocused] = useState(false);
+
   return (
-    <View className="flex-row items-center px-4 pt-3 pb-4">
-      <View className="flex-1 flex-row items-center bg-gray-100 rounded-2xl h-12 px-3">
-        <Ionicons name="search" size={18} color={INACTIVE} />
-        <TextInput
+    <View className="px-4 pt-3 pb-3">
+      <View
+        className={`h-14 w-full flex-row items-center rounded-2xl border bg-white px-4 ${
+          focused ? "border-primary" : "border-gray-200"
+        }`}
+      >
+        <View className="mr-3">
+          <Search size={18} color={focused ? "#4C5FAB" : "#6B7280"} />
+        </View>
+        <CustomTextInput
           value={value}
           onChangeText={onChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder="Search by name or enter Project Code"
-          placeholderTextColor="#9CA3AF"
-          className="flex-1 ml-2 text-gray-800 font-kumbh"
+          className="h-full flex-1"
           returnKeyType="search"
         />
+        {value.length > 0 ? (
+          <Pressable
+            onPress={() => onChange("")}
+            hitSlop={8}
+            className="ml-2 h-7 w-7 rounded-full bg-[#F3F4F6] items-center justify-center"
+          >
+            <X size={14} color="#6B7280" />
+          </Pressable>
+        ) : null}
       </View>
-      {/* <Pressable
-        onPress={onOpenFilter}
-        className="ml-3 h-12 w-12 rounded-2xl bg-gray-100 items-center justify-center"
-        android_ripple={{ color: "#e5e7eb", radius: 24 }}
-      >
-        <Ionicons name="filter" size={20} color="#111827" />
-      </Pressable> */}
     </View>
   );
 }

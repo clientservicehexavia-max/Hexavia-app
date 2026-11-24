@@ -39,45 +39,41 @@ function ChannelCard({ item, width, gap, isMember = true, onJoin }: Props) {
       style={{ width, marginRight: gap }}
     >
       <View
-        className="rounded-2xl p-4"
+        className="justify-between rounded-[24px] p-5"
         style={{
           backgroundColor: item.color,
           height: 200,
-          justifyContent: "space-between",
         }}
       >
-        <View className="flex-row justify-between">
+        <View className="flex-row items-start justify-between">
           <Text
-            className="text-white text-lg font-kumbhBold"
-            numberOfLines={1}
+            className="flex-1 font-kumbhBold text-lg text-white"
+            numberOfLines={2}
           >
             {item.title}
           </Text>
-          {/* <View className="size-16 rounded-full overflow-hidden border border-white/40">
-            {item.logo ? (
-              <Image source={{ uri: item.logo }} className="h-full w-full" />
-            ) : (
-              <View className="h-full w-full bg-white/30" />
-            )}
-          </View> */}
         </View>
 
         {/* Bottom (no member avatars to keep it clean & light) */}
-        <View className="mt-4 flex-row justify-between items-center">
+        <View className="mt-4 flex-row items-end justify-between">
           <Text
-            className="text-white/90 flex-1 leading-5 text-[10px] font-kumbh"
+            className="mr-2 flex-1 font-kumbh text-xs leading-4 text-white/90"
             numberOfLines={2}
           >
             {item.subtitle}
           </Text>
-          <View className="ml-2">
+          <View>
             {isMember ? (
-              <Text className="text-white/90 font-kumbh text-[10px]">
-                Code: {item.code}
-              </Text>
+              <View className="rounded-full bg-white/20 px-2.5 py-1">
+                <Text className="font-kumbhBold text-[11px] text-white">
+                  {item.code}
+                </Text>
+              </View>
             ) : (
-              <View className="bg-white/20 px-3 py-1 rounded-full">
-                <Text className="text-white font-kumbh text-[12px]">Join</Text>
+              <View className="rounded-full bg-white px-3.5 py-1.5">
+                <Text className="font-kumbhBold text-xs text-[#111827]">
+                  Join
+                </Text>
               </View>
             )}
           </View>

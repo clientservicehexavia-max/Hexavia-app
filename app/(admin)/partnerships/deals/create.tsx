@@ -1,3 +1,16 @@
+import Field from "@/components/admin/Field";
+import Input from "@/components/admin/Input";
+import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { PartnerPicker } from "@/components/partnership/PartnerPicker";
+import { CustomTextInput } from "@/components/ui/CustomInput";
+import { selectDealById, selectDealLoading } from "@/redux/deal/deal.selectors";
+import {
+    createDeal,
+    fetchDealById,
+    updateDeal,
+} from "@/redux/deal/deal.thunks";
+import type { Deal } from "@/redux/deal/deal.types";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
@@ -9,21 +22,9 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
-import { PartnerPicker } from "@/components/partnership/PartnerPicker";
-import { selectDealById, selectDealLoading } from "@/redux/deal/deal.selectors";
-import {
-    createDeal,
-    fetchDealById,
-    updateDeal,
-} from "@/redux/deal/deal.thunks";
-import type { Deal } from "@/redux/deal/deal.types";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 const DEAL_STAGES = [
     "Introduced",
@@ -347,11 +348,36 @@ export default function CreateDealScreen() {
 
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
         >
+            <PlatformAdaptiveHeader
+                title={dealId ? "Edit Deal" : "Add Deal"}
+                backgroundColor="#F5F7FB"
+                headerRight={() => (
+                    <Pressable
+                        onPress={handleSubmit}
+                        disabled={submitting || loading}
+                        className={`w-10 h-10 rounded-full items-center justify-center ios:mr-3 ${
+                            submitting || loading ? "bg-gray-200" : "bg-primary"
+                        }`}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                            <Check
+                                size={20}
+                                color={
+                                    submitting || loading ? "#9CA3AF" : "#FFFFFF"
+                                }
+                            />
+                        )}
+                    </Pressable>
+                )}
+            />
+
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 className="flex-1"
@@ -359,107 +385,67 @@ export default function CreateDealScreen() {
                     Platform.select({ ios: 70, android: 0 }) as number
                 }
             >
-                <View className="flex-1 px-4">
-                    <PlatformAdaptiveHeader
-                        title={dealId ? "Edit Deal" : "Add Deal"}
-                        headerRight={({ tintColor }) => (
-                            <Pressable
-                                onPress={handleSubmit}
-                                disabled={submitting || loading}
-                                className="w-10 h-10 rounded-full items-center justify-center"
-                            >
-                                {submitting ? (
-                                    <ActivityIndicator
-                                        size="small"
-                                        color={tintColor}
-                                    />
-                                ) : (
-                                    <Check
-                                        size={28}
-                                        color={
-                                            submitting || loading
-                                                ? "#9CA3AF"
-                                                : tintColor
-                                        }
-                                    />
-                                )}
-                            </Pressable>
-                        )}
-                    />
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerClassName="px-4 pt-3 pb-12"
+                >
+                    <Field label="Deal Title *">
+                        <Input
+                            placeholder="Enter deal title"
+                            value={form.title}
+                            onChangeText={(v) => handleUpdateForm("title", v)}
+                        />
+                    </Field>
 
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                        {/* Deal Title */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Deal Title *
-                            </Text>
-                            <TextInput
-                                placeholder="Enter deal title"
-                                value={form.title}
-                                onChangeText={(v) =>
-                                    handleUpdateForm("title", v)
-                                }
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                editable={!submitting}
-                                placeholderTextColor="#9CA3AF"
-                            />
-                        </View>
+                    <Field label="Partner *">
+                        <PartnerPicker
+                            value={form.partnerId}
+                            onChange={(id, name) => {
+                                handleUpdateForm("partnerId", id);
+                                handleUpdateForm("partnerName", name);
+                            }}
+                            placeholder="Select a partner"
+                            disabled={submitting}
+                        />
+                    </Field>
 
-                        {/* Partner Picker */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Partner *
-                            </Text>
-                            <PartnerPicker
-                                value={form.partnerId}
-                                onChange={(id, name) => {
-                                    handleUpdateForm("partnerId", id);
-                                    handleUpdateForm("partnerName", name);
-                                }}
-                                placeholder="Select a partner"
-                                disabled={submitting}
-                            />
-                        </View>
-
-                        {/* Deal Stage */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Stage
-                            </Text>
-                            <View className="flex-row flex-wrap gap-2">
-                                {DEAL_STAGES.map((s) => (
+                    <Field label="Stage">
+                        <View className="flex-row flex-wrap gap-2">
+                            {DEAL_STAGES.map((s) => {
+                                const active = form.stage === s;
+                                return (
                                     <Pressable
                                         key={s}
                                         onPress={() =>
                                             handleUpdateForm("stage", s)
                                         }
-                                        className={`px-3 py-2 rounded-lg border ${
-                                            form.stage === s
-                                                ? "border-blue-500 bg-blue-50"
-                                                : "border-gray-300 bg-white"
+                                        className={`px-3.5 py-2 rounded-full border ${
+                                            active
+                                                ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                : "border-gray-200 bg-white"
                                         }`}
                                     >
                                         <Text
-                                            className={`font-medium text-xs ${
-                                                form.stage === s
-                                                    ? "text-blue-700"
-                                                    : "text-gray-700"
+                                            className={`font-kumbhBold text-xs ${
+                                                active
+                                                    ? "text-white"
+                                                    : "text-[#374151]"
                                             }`}
                                         >
                                             {s}
                                         </Text>
                                     </Pressable>
-                                ))}
-                            </View>
+                                );
+                            })}
                         </View>
+                    </Field>
 
-                        {/* Introduction Type */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Introduction Type
-                            </Text>
-                            <View className="flex-row flex-wrap gap-2">
-                                {INTRODUCTION_TYPES.map((t) => (
+                    <Field label="Introduction Type">
+                        <View className="flex-row flex-wrap gap-2">
+                            {INTRODUCTION_TYPES.map((t) => {
+                                const active = form.introductionType === t;
+                                return (
                                     <Pressable
                                         key={t}
                                         onPress={() =>
@@ -468,98 +454,94 @@ export default function CreateDealScreen() {
                                                 t,
                                             )
                                         }
-                                        className={`px-3 py-2 rounded-lg border ${
-                                            form.introductionType === t
-                                                ? "border-blue-500 bg-blue-50"
-                                                : "border-gray-300 bg-white"
+                                        className={`px-3.5 py-2 rounded-full border ${
+                                            active
+                                                ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                : "border-gray-200 bg-white"
                                         }`}
                                     >
                                         <Text
-                                            className={`font-medium text-xs ${
-                                                form.introductionType === t
-                                                    ? "text-blue-700"
-                                                    : "text-gray-700"
+                                            className={`font-kumbhBold text-xs ${
+                                                active
+                                                    ? "text-white"
+                                                    : "text-[#374151]"
                                             }`}
                                         >
                                             {t}
                                         </Text>
                                     </Pressable>
-                                ))}
-                            </View>
+                                );
+                            })}
                         </View>
+                    </Field>
 
-                        {/* Deal Source */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Deal Source
-                            </Text>
-                            <View className="flex-row gap-2">
-                                {DEAL_SOURCES.map((s) => (
+                    <Field label="Deal Source">
+                        <View className="flex-row gap-2">
+                            {DEAL_SOURCES.map((s) => {
+                                const active = form.dealSource === s;
+                                return (
                                     <Pressable
                                         key={s}
                                         onPress={() =>
                                             handleUpdateForm("dealSource", s)
                                         }
-                                        className={`flex-1 px-2 py-2 rounded-lg border ${
-                                            form.dealSource === s
-                                                ? "border-blue-500 bg-blue-50"
-                                                : "border-gray-300 bg-white"
+                                        className={`flex-1 px-2.5 py-2.5 rounded-2xl border items-center justify-center ${
+                                            active
+                                                ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                : "border-gray-200 bg-white"
                                         }`}
                                     >
                                         <Text
-                                            className={`font-medium text-xs text-center ${
-                                                form.dealSource === s
-                                                    ? "text-blue-700"
-                                                    : "text-gray-700"
+                                            className={`font-kumbhBold text-[11px] text-center ${
+                                                active
+                                                    ? "text-white"
+                                                    : "text-[#374151]"
                                             }`}
                                         >
                                             {s}
                                         </Text>
                                     </Pressable>
-                                ))}
-                            </View>
+                                );
+                            })}
                         </View>
+                    </Field>
 
-                        {/* Agreement Type */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Agreement Type
-                            </Text>
-                            <View className="flex-row flex-wrap gap-2">
-                                {AGREEMENT_TYPES.map((t) => (
+                    <Field label="Agreement Type">
+                        <View className="flex-row flex-wrap gap-2">
+                            {AGREEMENT_TYPES.map((t) => {
+                                const active = form.agreementType === t;
+                                return (
                                     <Pressable
                                         key={t}
                                         onPress={() =>
                                             handleAgreementTypeChange(t)
                                         }
-                                        className={`px-3 py-2 rounded-lg border ${
-                                            form.agreementType === t
-                                                ? "border-blue-500 bg-blue-50"
-                                                : "border-gray-300 bg-white"
+                                        className={`px-3.5 py-2 rounded-full border ${
+                                            active
+                                                ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                : "border-gray-200 bg-white"
                                         }`}
                                     >
                                         <Text
-                                            className={`font-medium text-xs ${
-                                                form.agreementType === t
-                                                    ? "text-blue-700"
-                                                    : "text-gray-700"
+                                            className={`font-kumbhBold text-xs ${
+                                                active
+                                                    ? "text-white"
+                                                    : "text-[#374151]"
                                             }`}
                                         >
                                             {t}
                                         </Text>
                                     </Pressable>
-                                ))}
-                            </View>
+                                );
+                            })}
                         </View>
+                    </Field>
 
-                        {form.agreementType !== "Revenue Share" ? (
-                            <View className="mb-6">
-                                <Text className="text-gray-700 font-semibold mb-2">
-                                    Expected Deal Value
-                                </Text>
-                                <TextInput
+                    {form.agreementType !== "Revenue Share" ? (
+                        <Field label="Expected Deal Value">
+                            <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                                <CustomTextInput
                                     placeholder="Enter value in numbers"
-                                    placeholderTextColor="#9CA3AF"
                                     value={expectedDealValueInput}
                                     onChangeText={(value) =>
                                         handleAmountInputChange(
@@ -569,43 +551,40 @@ export default function CreateDealScreen() {
                                         )
                                     }
                                     keyboardType="decimal-pad"
-                                    className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                     editable={!submitting}
                                 />
                             </View>
-                        ) : null}
+                        </Field>
+                    ) : null}
 
-                        {/* Agreed Percentage/Amount */}
-                        {(form.agreementType === "Percentage Commission" ||
-                            form.agreementType === "Revenue Share") && (
-                            <View className="mb-6">
-                                <Text className="text-gray-700 font-semibold mb-2">
-                                    {form.agreementType === "Revenue Share"
-                                        ? "Revenue Share Percentage (%)"
-                                        : "Agreed Percentage (%)"}
-                                </Text>
-                                <TextInput
+                    {(form.agreementType === "Percentage Commission" ||
+                        form.agreementType === "Revenue Share") && (
+                        <Field
+                            label={
+                                form.agreementType === "Revenue Share"
+                                    ? "Revenue Share Percentage (%)"
+                                    : "Agreed Percentage (%)"
+                            }
+                        >
+                            <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                                <CustomTextInput
                                     placeholder="Enter percentage"
-                                    placeholderTextColor="#9CA3AF"
                                     value={agreedPercentageInput}
                                     onChangeText={
                                         handleAgreedPercentageInputChange
                                     }
                                     keyboardType="decimal-pad"
-                                    className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                     editable={!submitting}
                                 />
                             </View>
-                        )}
+                        </Field>
+                    )}
 
-                        {form.agreementType === "Fixed Fee" && (
-                            <View className="mb-6">
-                                <Text className="text-gray-700 font-semibold mb-2">
-                                    Fixed Amount
-                                </Text>
-                                <TextInput
+                    {form.agreementType === "Fixed Fee" && (
+                        <Field label="Fixed Amount">
+                            <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                                <CustomTextInput
                                     placeholder="Enter fixed amount"
-                                    placeholderTextColor="#9CA3AF"
                                     value={agreedFixedAmountInput}
                                     onChangeText={(value) =>
                                         handleAmountInputChange(
@@ -615,44 +594,39 @@ export default function CreateDealScreen() {
                                         )
                                     }
                                     keyboardType="decimal-pad"
-                                    className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                     editable={!submitting}
                                 />
                             </View>
-                        )}
+                        </Field>
+                    )}
 
-                        {form.agreementType !== "Revenue Share" ? (
-                            <View className="mb-6">
-                                <Text className="text-gray-700 font-semibold mb-2">
-                                    Partner Return
-                                </Text>
-                                <TextInput
+                    {form.agreementType !== "Revenue Share" ? (
+                        <Field label="Partner Return">
+                            <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4">
+                                <CustomTextInput
                                     placeholder="Calculated from agreement terms"
-                                    placeholderTextColor="#9CA3AF"
                                     value={formatAmountForInput(partnerReturn)}
-                                    className="border border-gray-300 rounded-lg px-4 py-2 text-base"
                                     editable={false}
                                 />
                             </View>
-                        ) : (
-                            <View className="mb-6 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
-                                <Text className="text-sm font-semibold text-blue-700">
-                                    Revenue Share deal
-                                </Text>
-                                <Text className="mt-1 text-xs text-blue-700/80">
-                                    Add investor revenue entries in Deal Details
-                                    - Financials.
-                                </Text>
-                            </View>
-                        )}
-
-                        {/* Recurring Revenue */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Recurring Revenue
+                        </Field>
+                    ) : (
+                        <View className="mb-4 rounded-2xl border border-primary/20 bg-[#EEF2FF] px-4 py-3.5">
+                            <Text className="text-sm font-kumbhBold text-[#4C5FAB]">
+                                Revenue Share deal
                             </Text>
-                            <View className="flex-row gap-2">
-                                {[true, false].map((value) => (
+                            <Text className="mt-1 text-xs font-kumbh text-[#4C5FAB]/80">
+                                Add investor revenue entries in Deal Details -
+                                Financials.
+                            </Text>
+                        </View>
+                    )}
+
+                    <Field label="Recurring Revenue">
+                        <View className="flex-row gap-2.5">
+                            {[true, false].map((value) => {
+                                const active = form.recurringRevenue === value;
+                                return (
                                     <Pressable
                                         key={String(value)}
                                         onPress={() =>
@@ -661,40 +635,40 @@ export default function CreateDealScreen() {
                                                 value,
                                             )
                                         }
-                                        className={`flex-1 px-3 py-2 rounded-lg border ${
-                                            form.recurringRevenue === value
-                                                ? "border-blue-500 bg-blue-50"
-                                                : "border-gray-300 bg-white"
+                                        className={`flex-1 h-12 rounded-2xl border items-center justify-center ${
+                                            active
+                                                ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                : "border-gray-200 bg-white"
                                         }`}
                                     >
                                         <Text
-                                            className={`text-center font-medium ${
-                                                form.recurringRevenue === value
-                                                    ? "text-blue-700"
-                                                    : "text-gray-700"
+                                            className={`font-kumbhBold text-sm ${
+                                                active
+                                                    ? "text-white"
+                                                    : "text-[#374151]"
                                             }`}
                                         >
                                             {value ? "Yes" : "No"}
                                         </Text>
                                     </Pressable>
-                                ))}
-                            </View>
+                                );
+                            })}
                         </View>
+                    </Field>
 
-                        {form.recurringRevenue && (
-                            <View className="mb-6">
-                                <Text className="text-gray-700 font-semibold mb-2">
-                                    Recurring Frequency
-                                </Text>
-                                <View className="flex-row gap-2">
-                                    {(
-                                        [
-                                            "monthly",
-                                            "quarterly",
-                                            "yearly",
-                                            "as needed",
-                                        ] as const
-                                    ).map((f) => (
+                    {form.recurringRevenue && (
+                        <Field label="Recurring Frequency">
+                            <View className="flex-row flex-wrap gap-2">
+                                {(
+                                    [
+                                        "monthly",
+                                        "quarterly",
+                                        "yearly",
+                                        "as needed",
+                                    ] as const
+                                ).map((f) => {
+                                    const active = form.recurringFrequency === f;
+                                    return (
                                         <Pressable
                                             key={f}
                                             onPress={() =>
@@ -703,97 +677,109 @@ export default function CreateDealScreen() {
                                                     f,
                                                 )
                                             }
-                                            className={`flex-1 p-2 rounded-lg border ${
-                                                form.recurringFrequency === f
-                                                    ? "border-blue-500 bg-blue-50"
-                                                    : "border-gray-300 bg-white"
+                                            className={`flex-1 min-w-[22%] h-11 rounded-2xl border items-center justify-center px-2 ${
+                                                active
+                                                    ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                    : "border-gray-200 bg-white"
                                             }`}
                                         >
                                             <Text
-                                                className={`text-center font-medium text-sm ${
-                                                    form.recurringFrequency ===
-                                                    f
-                                                        ? "text-blue-700"
-                                                        : "text-gray-700"
+                                                className={`font-kumbhBold text-xs text-center ${
+                                                    active
+                                                        ? "text-white"
+                                                        : "text-[#374151]"
                                                 }`}
                                             >
                                                 {f.charAt(0).toUpperCase() +
                                                     f.slice(1)}
                                             </Text>
                                         </Pressable>
-                                    ))}
-                                </View>
+                                    );
+                                })}
                             </View>
-                        )}
+                        </Field>
+                    )}
 
-                        {/* Description */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Description / Notes
-                            </Text>
-                            <TextInput
-                                placeholder="Enter deal description"
-                                placeholderTextColor="#9CA3AF"
-                                value={form.description}
-                                onChangeText={(v) =>
-                                    handleUpdateForm("description", v)
-                                }
-                                multiline
-                                numberOfLines={4}
-                                className="border border-gray-300 rounded-lg px-4 py-2 text-base"
-                                textAlignVertical="top"
-                                editable={!submitting}
-                            />
-                        </View>
+                    <Field label="Description / Notes">
+                        <Input
+                            placeholder="Enter deal description"
+                            value={form.description}
+                            onChangeText={(v) =>
+                                handleUpdateForm("description", v)
+                            }
+                            multiline
+                        />
+                    </Field>
 
-                        {/* Tags */}
-                        <View className="mb-6">
-                            <Text className="text-gray-700 font-semibold mb-2">
-                                Tags / Categories
-                            </Text>
-                            <View className="flex-row mb-2 gap-2">
-                                <TextInput
+                    <Field label="Tags / Categories" className="mb-6">
+                        <View className="flex-row mb-2.5 gap-2">
+                            <View className="flex-1 h-12 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                                <CustomTextInput
                                     placeholder="Add tags..."
-                                    placeholderTextColor="#9CA3AF"
                                     value={tagInput}
                                     onChangeText={setTagInput}
-                                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-base"
                                     editable={!submitting}
                                 />
-                                <Pressable
-                                    onPress={handleAddTag}
-                                    disabled={!tagInput.trim() || submitting}
-                                    className="px-4 py-2 bg-blue-500 rounded-lg justify-center"
+                            </View>
+                            <Pressable
+                                onPress={handleAddTag}
+                                disabled={!tagInput.trim() || submitting}
+                                className={`h-12 px-5 rounded-2xl items-center justify-center ${
+                                    !tagInput.trim() || submitting
+                                        ? "bg-gray-200"
+                                        : "bg-[#4C5FAB]"
+                                }`}
+                            >
+                                <Text
+                                    className={`font-kumbhBold text-lg ${
+                                        !tagInput.trim() || submitting
+                                            ? "text-gray-400"
+                                            : "text-white"
+                                    }`}
                                 >
-                                    <Text className="text-white font-semibold">
-                                        +
-                                    </Text>
-                                </Pressable>
-                            </View>
-                            <View className="flex-row flex-wrap gap-2">
-                                {(form.tags || []).map((tag) => (
-                                    <View
-                                        key={tag}
-                                        className="bg-blue-100 rounded-full px-3 py-1 flex-row items-center gap-1"
-                                    >
-                                        <Text className="text-blue-800 text-sm font-medium">
-                                            {tag}
-                                        </Text>
-                                        <Pressable
-                                            onPress={() => handleRemoveTag(tag)}
-                                        >
-                                            <Text className="text-blue-800 font-bold">
-                                                ×
-                                            </Text>
-                                        </Pressable>
-                                    </View>
-                                ))}
-                            </View>
+                                    +
+                                </Text>
+                            </Pressable>
                         </View>
+                        <View className="flex-row flex-wrap gap-2">
+                            {(form.tags || []).map((tag) => (
+                                <View
+                                    key={tag}
+                                    className="bg-[#EEF2FF] rounded-full px-3 py-1.5 flex-row items-center gap-1.5"
+                                >
+                                    <Text className="text-[#4C5FAB] text-xs font-kumbhBold">
+                                        {tag}
+                                    </Text>
+                                    <Pressable
+                                        onPress={() => handleRemoveTag(tag)}
+                                    >
+                                        <Text className="text-[#4C5FAB] font-kumbhBold">
+                                            ×
+                                        </Text>
+                                    </Pressable>
+                                </View>
+                            ))}
+                        </View>
+                    </Field>
 
-                        <View className="mb-10" />
-                    </ScrollView>
-                </View>
+                    <Pressable
+                        onPress={handleSubmit}
+                        disabled={submitting || loading}
+                        className={`h-14 rounded-2xl items-center justify-center ${
+                            submitting || loading
+                                ? "bg-primary/50"
+                                : "bg-primary"
+                        }`}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                            <Text className="font-kumbhBold text-[15px] text-white">
+                                {dealId ? "Update Deal" : "Save Deal"}
+                            </Text>
+                        )}
+                    </Pressable>
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

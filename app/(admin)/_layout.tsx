@@ -54,7 +54,7 @@ export default function AdminLayout() {
                     <Stack
                         screenOptions={{
                             headerShown: false,
-                            contentStyle: { backgroundColor: "#F3F4F6" }, // tailwind background
+                            contentStyle: { backgroundColor: "#F5F7FB" }, // tailwind surface
                             animation: "ios_from_right",
                         }}
                     />

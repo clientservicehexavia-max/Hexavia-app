@@ -44,18 +44,12 @@ export default function ResourceCard({
         <Pressable
             onPress={onPress}
             className={clsx(
-                "rounded-2xl p-3 mb-3 mr-0",
-                selected ? "bg-indigo-50" : "bg-white border border-gray-200",
+                "rounded-[22px] p-3 mb-3 mr-0 border",
+                selected
+                    ? "bg-[#EEF2FF] border-primary/30"
+                    : "bg-white border-gray-100",
                 className,
             )}
-            style={
-                {
-                    shadowColor: "#000",
-                    shadowOpacity: 0.04,
-                    shadowRadius: 8,
-                    shadowOffset: { width: 0, height: 2 },
-                } as ViewStyle
-            }
         >
             {/* top row */}
             <View className="flex-row items-center justify-between mb-2.5">
@@ -96,11 +90,11 @@ export default function ResourceCard({
             {/* caption */}
             <Text
                 numberOfLines={1}
-                className="mt-1 text-gray-900 font-kumbh text-sm"
+                className="mt-2.5 text-[#111827] font-kumbhBold text-[13px]"
             >
                 {item.name || "Untitled"}
             </Text>
-            <Text className="mt-1 text-[11px] text-gray-500 font-kumbh">
+            <Text className="mt-0.5 text-[11px] text-[#6B7280] font-kumbh">
                 {formatCreatedAt((item as any).createdAt)}
             </Text>
         </Pressable>

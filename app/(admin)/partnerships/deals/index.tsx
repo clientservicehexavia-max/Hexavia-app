@@ -1,6 +1,7 @@
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { Filter, Handshake, Plus, Wallet, X } from "lucide-react-native";
+import { Filter, Handshake, Plus, Search, Wallet, X } from "lucide-react-native";
 import React, {
     useCallback,
     useEffect,
@@ -19,7 +20,6 @@ import {
     RefreshControl,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -161,15 +161,15 @@ function InfoItem({
     icon?: React.ReactNode;
 }) {
     return (
-        <View className="flex-1 min-w-[46%] rounded-lg bg-gray-50 px-3 py-2">
+        <View className="flex-1 min-w-[46%] rounded-2xl bg-[#F5F7FB] px-3.5 py-2.5">
             <View className="flex-row items-center mb-1">
                 {icon}
-                <Text className="text-[11px] text-gray-500 font-medium ml-1">
+                <Text className="text-[11px] text-[#6B7280] font-kumbh ml-1.5">
                     {label}
                 </Text>
             </View>
             <Text
-                className="text-sm text-gray-900 font-semibold"
+                className="text-[14px] text-[#111827] font-kumbhBold"
                 numberOfLines={1}
             >
                 {value || "—"}
@@ -199,15 +199,15 @@ function Pill({
     return (
         <Pressable
             onPress={onPress}
-            className={`px-3 h-8 justify-center items-center rounded-full border ${
+            className={`px-3.5 h-8 justify-center items-center rounded-full border ${
                 active
-                    ? "bg-blue-500 border-blue-500"
+                    ? "bg-[#4C5FAB] border-[#4C5FAB]"
                     : "bg-white border-gray-200"
             }`}
         >
             <Text
-                className={`text-sm font-medium ${
-                    active ? "text-white" : "text-gray-700"
+                className={`text-xs font-kumbhBold ${
+                    active ? "text-white" : "text-[#4B5563]"
                 }`}
             >
                 {label}
@@ -225,7 +225,7 @@ function FilterSection({
 }) {
     return (
         <View className="mb-5">
-            <Text className="text-sm font-semibold text-gray-900 mb-2">
+            <Text className="text-[12px] font-kumbhBold uppercase tracking-wider text-[#6B7280] mb-2.5">
                 {title}
             </Text>
             {children}
@@ -246,15 +246,15 @@ function ChoiceGroup({
         <View className="flex-row flex-wrap gap-2">
             <Pressable
                 onPress={() => onChange(undefined)}
-                className={`px-3 py-2 rounded-full border ${
+                className={`px-3.5 py-2 rounded-full border ${
                     !value
-                        ? "bg-blue-500 border-blue-500"
+                        ? "bg-[#4C5FAB] border-[#4C5FAB]"
                         : "bg-white border-gray-200"
                 }`}
             >
                 <Text
-                    className={`text-xs font-semibold ${
-                        !value ? "text-white" : "text-gray-700"
+                    className={`text-xs font-kumbhBold ${
+                        !value ? "text-white" : "text-[#374151]"
                     }`}
                 >
                     Any
@@ -268,15 +268,15 @@ function ChoiceGroup({
                         onPress={() =>
                             onChange(active ? undefined : option.value)
                         }
-                        className={`px-3 py-2 rounded-full border ${
+                        className={`px-3.5 py-2 rounded-full border ${
                             active
-                                ? "bg-blue-500 border-blue-500"
+                                ? "bg-[#4C5FAB] border-[#4C5FAB]"
                                 : "bg-white border-gray-200"
                         }`}
                     >
                         <Text
-                            className={`text-xs font-semibold capitalize ${
-                                active ? "text-white" : "text-gray-700"
+                            className={`text-xs font-kumbhBold capitalize ${
+                                active ? "text-white" : "text-[#374151]"
                             }`}
                         >
                             {option.label}
@@ -631,69 +631,69 @@ export default function DealsList() {
                 onPress={() =>
                     router.push(`/(admin)/partnerships/deals/${item._id}`)
                 }
-                className="bg-white p-3 mb-3 rounded-xl border border-gray-200"
+                className="bg-white p-4 mb-3 rounded-[24px] border border-gray-100 active:opacity-85"
             >
-                <View className="flex-row items-start justify-between">
+                <View className="flex-row items-start justify-between gap-2">
                     <Text
-                        className="text-lg font-semibold text-gray-900"
+                        className="flex-1 text-[16px] font-kumbhBold text-[#111827]"
                         numberOfLines={2}
                     >
                         {item.title}
                     </Text>
 
                     <View className={`px-2.5 py-1 rounded-full border ${tone}`}>
-                        <Text className={`text-xs font-semibold ${tone}`}>
+                        <Text className={`text-[11px] font-kumbhBold ${tone}`}>
                             {item.stage}
                         </Text>
                     </View>
                 </View>
-                <View className="flex-1 pr-3">
+                <View className="mt-1">
                     <Text
-                        className="text-sm text-gray-500 mt-1"
+                        className="text-[13px] font-kumbh text-[#6B7280]"
                         numberOfLines={1}
                     >
                         Partner: {partnerName}
                     </Text>
                     <Text
-                        className="text-sm text-gray-500 mt-0.5"
+                        className="text-[12px] font-kumbh text-[#9CA3AF] mt-0.5"
                         numberOfLines={1}
                     >
                         {item.introductionType || "No introduction type set"}
                     </Text>
                 </View>
 
-                <View className="flex-row flex-wrap gap-2 mt-2">
+                <View className="flex-row flex-wrap gap-2.5 mt-3">
                     <InfoItem
                         label="Deal value"
                         value={formatAmount(item.expectedDealValue)}
-                        icon={<Wallet size={13} color="#6B7280" />}
+                        icon={<Wallet size={13} color="#4C5FAB" />}
                     />
                     <InfoItem
                         label="Partner return"
                         value={formatAmount(partnerReturn)}
-                        icon={<Handshake size={13} color="#6B7280" />}
+                        icon={<Handshake size={13} color="#4C5FAB" />}
                     />
                 </View>
 
                 <View className="mt-3 flex-row flex-wrap gap-2">
                     {commission.outstanding > 0 ? (
-                        <View className="px-2 py-1 rounded-full bg-rose-50">
-                            <Text className="text-xs text-rose-700 font-medium">
+                        <View className="px-2.5 py-1 rounded-full bg-rose-50">
+                            <Text className="text-[11px] text-rose-700 font-kumbhBold">
                                 Outstanding:{" "}
                                 {formatAmount(commission.outstanding)}
                             </Text>
                         </View>
                     ) : null}
                     <View
-                        className={`px-2 py-1 rounded-full ${
-                            isFullyPaid ? "bg-emerald-50" : "bg-blue-50"
+                        className={`px-2.5 py-1 rounded-full ${
+                            isFullyPaid ? "bg-emerald-50" : "bg-[#EEF2FF]"
                         }`}
                     >
                         <Text
-                            className={`text-xs font-medium ${
+                            className={`text-[11px] font-kumbhBold ${
                                 isFullyPaid
                                     ? "text-emerald-700"
-                                    : "text-blue-700"
+                                    : "text-[#4C5FAB]"
                             }`}
                         >
                             Payment: {paymentStatus}
@@ -702,19 +702,19 @@ export default function DealsList() {
                 </View>
 
                 {item.tags && item.tags.length > 0 && (
-                    <View className="flex-row flex-wrap gap-2 mt-3">
+                    <View className="flex-row flex-wrap gap-1.5 mt-2.5">
                         {item.tags.slice(0, 3).map((t: string) => (
                             <View
                                 key={t}
-                                className="bg-blue-100 rounded-full px-2 py-1"
+                                className="bg-[#EEF2FF] rounded-full px-2.5 py-1"
                             >
-                                <Text className="text-xs text-blue-800">
+                                <Text className="text-[11px] font-kumbhBold text-[#4C5FAB]">
                                     {t}
                                 </Text>
                             </View>
                         ))}
                         {item.tags.length > 3 ? (
-                            <Text className="text-xs text-gray-500 pt-1">
+                            <Text className="text-xs font-kumbh text-[#6B7280] pt-1">
                                 +{item.tags.length - 3}
                             </Text>
                         ) : null}
@@ -726,52 +726,54 @@ export default function DealsList() {
 
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
         >
             <PlatformAdaptiveHeader
                 title="Deals / Opportunities"
-                headerRight={({ tintColor }) => (
+                backgroundColor="#F5F7FB"
+                headerRight={() => (
                     <Pressable
                         onPress={() =>
                             router.push("/(admin)/partnerships/deals/create")
                         }
-                        className="w-10 h-10 rounded-full items-center justify-center"
+                        className="w-10 h-10 rounded-full items-center justify-center bg-[#4C5FAB] ios:mr-3"
                         hitSlop={8}
                     >
-                        <Plus size={28} color={tintColor} />
+                        <Plus size={20} color="#FFFFFF" />
                     </Pressable>
                 )}
             />
 
-            <View className="pt-1 flex-1">
+            <View className="pt-2 flex-1">
                 <View className="px-4">
-                    <View className="bg-gray-50 rounded-lg px-3 py-2 mb-3 flex-row items-center">
-                        <TextInput
+                    <View className="h-14 bg-white border border-gray-200 rounded-2xl px-3.5 mb-3 flex-row items-center">
+                        <Search size={17} color="#6B7280" />
+                        <CustomTextInput
                             placeholder="Search deals..."
                             value={query}
                             onChangeText={setQuery}
-                            className="flex-1 ml-2 text-base"
-                            placeholderTextColor="#999"
+                            className="flex-1 h-full ml-2.5"
+                            returnKeyType="search"
                         />
                         <Pressable
                             onPress={() => setShowFilters(true)}
-                            className={`ml-2 h-9 px-3 rounded-full flex-row items-center justify-center ${
+                            className={`ml-2 h-9 px-3 rounded-full flex-row items-center justify-center border ${
                                 activeFilterCount
-                                    ? "bg-blue-500"
-                                    : "bg-white border border-gray-200"
+                                    ? "bg-[#4C5FAB] border-[#4C5FAB]"
+                                    : "bg-[#F5F7FB] border-gray-200"
                             }`}
                         >
                             <Filter
-                                size={16}
+                                size={15}
                                 color={
                                     activeFilterCount ? "#FFFFFF" : "#374151"
                                 }
                             />
                             {activeFilterCount ? (
-                                <Text className="ml-1 text-xs font-semibold text-white">
+                                <Text className="ml-1 text-xs font-kumbhBold text-white">
                                     {activeFilterCount}
                                 </Text>
                             ) : null}
@@ -782,13 +784,13 @@ export default function DealsList() {
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         className="mb-3"
-                        style={{ maxHeight: 36 }}
+                        style={{ maxHeight: 38 }}
                         contentContainerStyle={{
                             alignItems: "center",
                             paddingRight: 16,
                         }}
                     >
-                        <View className="flex-row gap-1.5">
+                        <View className="flex-row gap-2">
                             {STAGES.map((s) => (
                                 <Pill
                                     label={s}
@@ -808,21 +810,27 @@ export default function DealsList() {
                 </View>
 
                 {error && (
-                    <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                        <Text className="text-red-800 text-sm">{error}</Text>
+                    <View className="mx-4 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-3">
+                        <Text className="text-red-700 text-xs font-kumbh">
+                            {error}
+                        </Text>
                     </View>
                 )}
 
                 {loading && !refreshing ? (
                     <View className="flex-1 justify-center items-center mt-8">
-                        <ActivityIndicator size="large" color="#3b82f6" />
+                        <ActivityIndicator size="large" color="#4C5FAB" />
                     </View>
                 ) : (
                     <FlatList
                         data={filtered}
                         keyExtractor={(item) => item._id}
                         renderItem={renderItem}
-                        contentContainerClassName="px-4"
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{
+                            paddingHorizontal: 16,
+                            paddingBottom: 28,
+                        }}
                         refreshControl={
                             <RefreshControl
                                 refreshing={refreshing}
@@ -830,9 +838,15 @@ export default function DealsList() {
                             />
                         }
                         ListEmptyComponent={
-                            <View className="flex-1 justify-center items-center mt-8">
-                                <Text className="text-gray-500 text-base">
+                            <View className="mt-2 rounded-[24px] bg-white border border-gray-100 px-5 py-12 items-center">
+                                <View className="h-12 w-12 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-3">
+                                    <Handshake size={22} color="#4C5FAB" />
+                                </View>
+                                <Text className="text-[#111827] font-kumbhBold text-base">
                                     No deals found
+                                </Text>
+                                <Text className="mt-1 text-center text-[#6B7280] font-kumbh text-sm">
+                                    Try adjusting your search or filter options.
                                 </Text>
                             </View>
                         }
@@ -850,13 +864,14 @@ export default function DealsList() {
                     behavior={Platform.OS === "ios" ? "padding" : undefined}
                     className="flex-1 justify-end bg-black/40"
                 >
-                    <View className="bg-white rounded-t-2xl max-h-[88%]">
-                        <View className="px-4 py-4 border-b border-gray-100 flex-row items-center justify-between">
+                    <View className="bg-white rounded-t-[28px] pt-3 max-h-[88%]">
+                        <View className="w-10 h-1 rounded-full bg-gray-200 self-center mb-3" />
+                        <View className="px-5 pb-3.5 border-b border-gray-100 flex-row items-center justify-between">
                             <View>
-                                <Text className="text-lg font-semibold text-gray-900">
+                                <Text className="text-[18px] font-kumbhBold text-[#111827]">
                                     Filter deals
                                 </Text>
-                                <Text className="text-xs text-gray-500 mt-0.5">
+                                <Text className="text-xs font-kumbh text-[#6B7280] mt-0.5">
                                     {filtered.length} of {deals.length} shown
                                 </Text>
                             </View>
@@ -864,7 +879,7 @@ export default function DealsList() {
                                 onPress={() => setShowFilters(false)}
                                 className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center"
                             >
-                                <X size={18} color="#374151" />
+                                <X size={17} color="#374151" />
                             </Pressable>
                         </View>
 
@@ -1124,20 +1139,20 @@ export default function DealsList() {
                             </FilterSection>
                         </ScrollView>
 
-                        <View className="px-4 py-4 border-t border-gray-100 flex-row gap-3">
+                        <View className="px-5 py-4 border-t border-gray-100 flex-row gap-3">
                             <Pressable
                                 onPress={resetFilters}
-                                className="flex-1 py-3 rounded-lg bg-gray-100 items-center"
+                                className="flex-1 h-12 rounded-2xl bg-gray-100 items-center justify-center"
                             >
-                                <Text className="text-sm font-semibold text-gray-700">
+                                <Text className="text-sm font-kumbhBold text-[#374151]">
                                     Reset
                                 </Text>
                             </Pressable>
                             <Pressable
                                 onPress={() => setShowFilters(false)}
-                                className="flex-1 py-3 rounded-lg bg-blue-500 items-center"
+                                className="flex-1 h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center"
                             >
-                                <Text className="text-sm font-semibold text-white">
+                                <Text className="text-sm font-kumbhBold text-white">
                                     Apply filters
                                 </Text>
                             </Pressable>

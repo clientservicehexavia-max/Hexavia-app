@@ -66,7 +66,7 @@ function ChannelCard({
       onPress={handlePress}
       android_ripple={{ color: "#eee" }}
       style={{ backgroundColor: colorOverride }}
-      className="mx-4 mt-4 rounded-2xl p-6 overflow-hidden"
+      className="mx-4 mt-4 rounded-[24px] p-6 overflow-hidden"
     >
       {isStaff && isMember && channelForEdit ? (
         <Pressable

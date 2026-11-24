@@ -1,6 +1,7 @@
 import DatePickerModal from "@/components/admin/DatePickerModal";
 import OptionSheet from "@/components/common/OptionSheet";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import CustomTextInput from "@/components/ui/CustomInput";
 import { selectSelectedRecruitment } from "@/redux/recruitment/recruitment.selectors";
 import {
     addRecruitmentCandidateDocument,
@@ -26,20 +27,25 @@ import {
     Calendar,
     ChevronDown,
     ChevronUp,
+    Clock,
     Download,
+    Mail,
+    MapPin,
     Pencil,
+    Phone,
     Trash2,
     Upload,
+    UserRound,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
     Linking,
     Platform,
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -435,6 +441,16 @@ export default function CandidateDetailScreen() {
         value: option,
     }));
 
+    const candidateInitials = useMemo(() => {
+        const parts = (candidate?.fullName || "")
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+        if (parts.length === 0) return "?";
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }, [candidate?.fullName]);
+
     if (!candidate) {
         return (
             <SafeAreaView
@@ -443,11 +459,21 @@ export default function CandidateDetailScreen() {
                         ? ["left", "right"]
                         : ["top", "left", "right", "bottom"]
                 }
-                className="flex-1 bg-white"
+                className="flex-1 bg-[#F5F7FB]"
             >
-                <PlatformAdaptiveHeader title="Candidate Details" />
-                <View className="flex-1 items-center justify-center px-4">
-                    <Text className="text-gray-600">Candidate not found</Text>
+                <PlatformAdaptiveHeader
+                    title="Candidate Details"
+                    backgroundColor="#F5F7FB"
+                />
+                <View className="flex-1 items-center justify-center px-6">
+                    <View className="w-full items-center rounded-[24px] border border-gray-100 bg-white p-8">
+                        <View className="mb-3 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                            <UserRound size={22} color="#4C5FAB" />
+                        </View>
+                        <Text className="text-base font-kumbhBold text-[#111827]">
+                            Candidate not found
+                        </Text>
+                    </View>
                 </View>
             </SafeAreaView>
         );
@@ -458,11 +484,12 @@ export default function CandidateDetailScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <PlatformAdaptiveHeader
                 title="Candidate Details"
-                headerRight={({ tintColor }) =>
+                backgroundColor="#F5F7FB"
+                headerRight={() =>
                     canAddCandidate(role) ? (
                         <Pressable
                             onPress={() =>
@@ -475,10 +502,10 @@ export default function CandidateDetailScreen() {
                                     },
                                 })
                             }
-                            className="h-10 w-10 items-center justify-center rounded-full"
+                            className="h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white"
                             hitSlop={8}
                         >
-                            <Pencil size={22} color={tintColor} />
+                            <Pencil size={18} color="#4C5FAB" />
                         </Pressable>
                     ) : null
                 }
@@ -495,70 +522,154 @@ export default function CandidateDetailScreen() {
                 }}
                 onSelect={handleStatusSelect}
             />
-            <ScrollView className="flex-1 px-3 pb-8 mt-3">
-                <View className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3 gap-2">
-                    <Text className="text-xl font-kumbhBold text-gray-900">
-                        {candidate.fullName}
-                    </Text>
-                    <View className="gap-1.5">
-                        <Text className="text-gray-600">
-                            Email: {candidate.email || "No email"}
-                        </Text>
-                        <Text className="text-gray-600">
-                            Phone: {candidate.phone || "—"}
-                        </Text>
-                        <Text className="text-gray-600">
-                            Location: {candidate.location || "—"}
-                        </Text>
-                        <Text className="text-gray-600">
-                            Age: {candidate.age || "—"}
-                        </Text>
-                        <Text className="text-gray-600">
-                            Years of Experience:{" "}
-                            {candidate.yearsExperience || "—"}
-                        </Text>
+            <ScrollView
+                className="flex-1"
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingTop: 12,
+                    paddingBottom: 36,
+                }}
+                showsVerticalScrollIndicator={false}
+            >
+                <View className="mb-4 rounded-[28px] border border-gray-100 bg-white p-5">
+                    <View className="flex-row items-center justify-between gap-3">
+                        <View className="flex-1 flex-row items-center">
+                            <View className="mr-3.5 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                                <Text className="text-base font-kumbhBold text-[#4C5FAB]">
+                                    {candidateInitials}
+                                </Text>
+                            </View>
+                            <View className="flex-1">
+                                <Text
+                                    className="text-xl font-kumbhBold text-[#111827]"
+                                    numberOfLines={2}
+                                >
+                                    {candidate.fullName}
+                                </Text>
+                                {candidate.recruiter ? (
+                                    <Text className="mt-0.5 text-xs font-kumbh text-[#6B7280]">
+                                        Recruiter: {candidate.recruiter}
+                                    </Text>
+                                ) : null}
+                            </View>
+                        </View>
+                        <View className="rounded-full bg-[#EEF2FF] px-3 py-1.5">
+                            <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
+                                {workflowStage}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View className="mt-4 gap-2.5 rounded-2xl bg-[#F5F7FB] p-4">
+                        <View className="flex-row items-center justify-between gap-3">
+                            <View className="flex-row items-center gap-2">
+                                <Mail size={14} color="#6B7280" />
+                                <Text className="text-xs font-kumbh text-[#6B7280]">
+                                    Email
+                                </Text>
+                            </View>
+                            <Text
+                                className="flex-1 text-right text-xs font-kumbhBold text-[#111827]"
+                                numberOfLines={1}
+                            >
+                                {candidate.email || "No email"}
+                            </Text>
+                        </View>
+
+                        <View className="flex-row items-center justify-between gap-3">
+                            <View className="flex-row items-center gap-2">
+                                <Phone size={14} color="#6B7280" />
+                                <Text className="text-xs font-kumbh text-[#6B7280]">
+                                    Phone
+                                </Text>
+                            </View>
+                            <Text className="text-xs font-kumbhBold text-[#111827]">
+                                {candidate.phone || "—"}
+                            </Text>
+                        </View>
+
+                        <View className="flex-row items-center justify-between gap-3">
+                            <View className="flex-row items-center gap-2">
+                                <MapPin size={14} color="#6B7280" />
+                                <Text className="text-xs font-kumbh text-[#6B7280]">
+                                    Location
+                                </Text>
+                            </View>
+                            <Text className="text-xs font-kumbhBold text-[#111827]">
+                                {candidate.location || "—"}
+                            </Text>
+                        </View>
+
+                        <View className="flex-row items-center justify-between gap-3">
+                            <View className="flex-row items-center gap-2">
+                                <UserRound size={14} color="#6B7280" />
+                                <Text className="text-xs font-kumbh text-[#6B7280]">
+                                    Age
+                                </Text>
+                            </View>
+                            <Text className="text-xs font-kumbhBold text-[#111827]">
+                                {candidate.age || "—"}
+                            </Text>
+                        </View>
+
+                        <View className="flex-row items-center justify-between gap-3">
+                            <View className="flex-row items-center gap-2">
+                                <Clock size={14} color="#6B7280" />
+                                <Text className="text-xs font-kumbh text-[#6B7280]">
+                                    Experience
+                                </Text>
+                            </View>
+                            <Text className="text-xs font-kumbhBold text-[#111827]">
+                                {candidate.yearsExperience
+                                    ? `${candidate.yearsExperience} yrs`
+                                    : "—"}
+                            </Text>
+                        </View>
                     </View>
                 </View>
 
-                <View className="mb-4 rounded-xl border border-gray-200 p-3">
-                    <Text className="text-lg font-kumbhBold text-gray-900">
+                <View className="mb-4 rounded-[24px] border border-gray-100 bg-white p-4">
+                    <Text className="text-base font-kumbhBold text-[#111827]">
                         Current Stage
                     </Text>
-                    <Text className="mb-3 mt-1 text-sm text-gray-600">
+                    <Text className="mb-3 mt-1 text-xs font-kumbh text-[#6B7280]">
                         Choose the candidate's overall stage in the hiring
                         pipeline. This is the main status shown in the
                         candidates list.
                     </Text>
                     <View className="flex-row flex-wrap gap-2">
-                        {overallStageOptions.map((status) => (
-                            <Pressable
-                                key={status}
-                                onPress={() => setWorkflowStage(status)}
-                                className={`rounded-full px-3 py-1.5 ${
-                                    workflowStage === status
-                                        ? "bg-[#4C5FAB]"
-                                        : "bg-gray-100"
-                                }`}
-                            >
-                                <Text
-                                    className={`text-sm ${
-                                        workflowStage === status
-                                            ? "text-white"
-                                            : "text-gray-700"
+                        {overallStageOptions.map((status) => {
+                            const active = workflowStage === status;
+                            return (
+                                <Pressable
+                                    key={status}
+                                    onPress={() => setWorkflowStage(status)}
+                                    className={`rounded-full border px-3.5 py-2 ${
+                                        active
+                                            ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                            : "border-gray-200 bg-[#F5F7FB]"
                                     }`}
                                 >
-                                    {status}
-                                </Text>
-                            </Pressable>
-                        ))}
+                                    <Text
+                                        className={`text-xs font-kumbhBold ${
+                                            active
+                                                ? "text-white"
+                                                : "text-[#374151]"
+                                        }`}
+                                    >
+                                        {status}
+                                    </Text>
+                                </Pressable>
+                            );
+                        })}
                     </View>
                 </View>
 
-                <View className="mb-4 rounded-xl border border-gray-200 p-3">
-                    <Text className="text-lg font-kumbhBold text-gray-900">
+                <View className="mb-4 rounded-[24px] border border-gray-100 bg-white p-4">
+                    <Text className="text-base font-kumbhBold text-[#111827]">
                         Recruitment Workflow
                     </Text>
-                    <Text className="mb-3 mt-1 text-sm text-gray-600">
+                    <Text className="mb-3 mt-1 text-xs font-kumbh text-[#6B7280]">
                         Track the candidate through each hiring step. Open a
                         section to log updates, dates, responses, or notes for
                         that stage. Changes are only saved when you tap Save
@@ -569,19 +680,19 @@ export default function CandidateDetailScreen() {
                         return (
                             <View
                                 key={section}
-                                className="mb-2 overflow-hidden rounded-lg border border-gray-100"
+                                className="mb-2.5 overflow-hidden rounded-2xl border border-gray-200 bg-white"
                             >
                                 <Pressable
                                     onPress={() =>
                                         setOpenSection(isOpen ? null : section)
                                     }
-                                    className="flex-row items-center justify-between bg-gray-50 px-3 py-3"
+                                    className="flex-row items-center justify-between bg-[#F5F7FB] px-4 py-3.5"
                                 >
-                                    <Text className="font-kumbhBold text-gray-800">
+                                    <Text className="text-sm font-kumbhBold text-[#111827]">
                                         {section}
                                     </Text>
                                     {isOpen ? (
-                                        <ChevronUp size={16} color="#6B7280" />
+                                        <ChevronUp size={16} color="#4C5FAB" />
                                     ) : (
                                         <ChevronDown
                                             size={16}
@@ -590,10 +701,10 @@ export default function CandidateDetailScreen() {
                                     )}
                                 </Pressable>
                                 {isOpen ? (
-                                    <View className="bg-white px-3 py-3">
+                                    <View className="border-t border-gray-100 bg-white p-4">
                                         {section === "Initial Contact" ? (
                                             <>
-                                                <Text className="mb-2 text-xs text-gray-500">
+                                                <Text className="mb-2 text-xs font-kumbhBold text-[#6B7280]">
                                                     Status
                                                 </Text>
                                                 <Pressable
@@ -603,10 +714,10 @@ export default function CandidateDetailScreen() {
                                                             initialContactStatusOptions,
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.contactStatus ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.contactStatus ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.contactStatus ||
                                                             "Select status"}
@@ -616,32 +727,36 @@ export default function CandidateDetailScreen() {
                                                         color="#6B7280"
                                                     />
                                                 </Pressable>
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Notes
                                                 </Text>
-                                                <TextInput
-                                                    className="min-h-[80px] rounded-lg bg-gray-100 px-3 py-2"
-                                                    multiline
-                                                    value={
-                                                        workflowDraft.contactNotes ||
-                                                        ""
-                                                    }
-                                                    onChangeText={(text) =>
-                                                        setWorkflowDraft(
-                                                            (prev) => ({
-                                                                ...prev,
-                                                                contactNotes:
-                                                                    text,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
+                                                <View className="min-h-[88px] rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4 py-3">
+                                                    <CustomTextInput
+                                                        className="font-kumbh text-sm text-[#111827]"
+                                                        multiline
+                                                        textAlignVertical="top"
+                                                        placeholder="Initial contact notes"
+                                                        value={
+                                                            workflowDraft.contactNotes ||
+                                                            ""
+                                                        }
+                                                        onChangeText={(text) =>
+                                                            setWorkflowDraft(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    contactNotes:
+                                                                        text,
+                                                                }),
+                                                            )
+                                                        }
+                                                    />
+                                                </View>
                                             </>
                                         ) : null}
 
                                         {section === "Virtual Interview 1" ? (
                                             <>
-                                                <Text className="mb-2 text-xs text-gray-500">
+                                                <Text className="mb-2 text-xs font-kumbhBold text-[#6B7280]">
                                                     Invitation Date
                                                 </Text>
                                                 <Pressable
@@ -650,10 +765,10 @@ export default function CandidateDetailScreen() {
                                                             "interview1InviteDate",
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.interview1InviteDate ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.interview1InviteDate ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.interview1InviteDate ||
                                                             "Select date"}
@@ -663,7 +778,7 @@ export default function CandidateDetailScreen() {
                                                         color="#4C5FAB"
                                                     />
                                                 </Pressable>
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Candidate Response
                                                 </Text>
                                                 <Pressable
@@ -673,10 +788,10 @@ export default function CandidateDetailScreen() {
                                                             interviewResponseOptions,
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.interview1Response ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.interview1Response ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.interview1Response ||
                                                             "Select status"}
@@ -686,7 +801,7 @@ export default function CandidateDetailScreen() {
                                                         color="#6B7280"
                                                     />
                                                 </Pressable>
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Interview Status
                                                 </Text>
                                                 <Pressable
@@ -696,10 +811,10 @@ export default function CandidateDetailScreen() {
                                                             interviewStatusOptions,
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.interview1Status ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.interview1Status ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.interview1Status ||
                                                             "Select status"}
@@ -714,7 +829,7 @@ export default function CandidateDetailScreen() {
 
                                         {section === "Virtual Interview 2" ? (
                                             <>
-                                                <Text className="mb-2 text-xs text-gray-500">
+                                                <Text className="mb-2 text-xs font-kumbhBold text-[#6B7280]">
                                                     Invitation Date
                                                 </Text>
                                                 <Pressable
@@ -723,10 +838,10 @@ export default function CandidateDetailScreen() {
                                                             "interview2InviteDate",
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.interview2InviteDate ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.interview2InviteDate ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.interview2InviteDate ||
                                                             "Select date"}
@@ -736,7 +851,7 @@ export default function CandidateDetailScreen() {
                                                         color="#4C5FAB"
                                                     />
                                                 </Pressable>
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Candidate Response
                                                 </Text>
                                                 <Pressable
@@ -746,10 +861,10 @@ export default function CandidateDetailScreen() {
                                                             interviewResponseOptions,
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.interview2Response ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.interview2Response ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.interview2Response ||
                                                             "Select status"}
@@ -759,7 +874,7 @@ export default function CandidateDetailScreen() {
                                                         color="#6B7280"
                                                     />
                                                 </Pressable>
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Interview Status
                                                 </Text>
                                                 <Pressable
@@ -769,10 +884,10 @@ export default function CandidateDetailScreen() {
                                                             interviewStatusOptions,
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.interview2Status ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.interview2Status ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.interview2Status ||
                                                             "Select status"}
@@ -787,7 +902,7 @@ export default function CandidateDetailScreen() {
 
                                         {section === "Physical Interview" ? (
                                             <>
-                                                <Text className="mb-2 text-xs text-gray-500">
+                                                <Text className="mb-2 text-xs font-kumbhBold text-[#6B7280]">
                                                     Interview Date
                                                 </Text>
                                                 <Pressable
@@ -796,10 +911,10 @@ export default function CandidateDetailScreen() {
                                                             "physicalInterviewDate",
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.physicalInterviewDate ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.physicalInterviewDate ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.physicalInterviewDate ||
                                                             "Select date"}
@@ -809,7 +924,7 @@ export default function CandidateDetailScreen() {
                                                         color="#4C5FAB"
                                                     />
                                                 </Pressable>
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Candidate Response
                                                 </Text>
                                                 <Pressable
@@ -819,10 +934,10 @@ export default function CandidateDetailScreen() {
                                                             interviewResponseOptions,
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.physicalInterviewResponse ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.physicalInterviewResponse ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.physicalInterviewResponse ||
                                                             "Select status"}
@@ -832,7 +947,7 @@ export default function CandidateDetailScreen() {
                                                         color="#6B7280"
                                                     />
                                                 </Pressable>
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Interview Status
                                                 </Text>
                                                 <Pressable
@@ -842,10 +957,10 @@ export default function CandidateDetailScreen() {
                                                             interviewStatusOptions,
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.physicalInterviewStatus ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.physicalInterviewStatus ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.physicalInterviewStatus ||
                                                             "Select status"}
@@ -860,64 +975,73 @@ export default function CandidateDetailScreen() {
 
                                         {section === "Salary Negotiation" ? (
                                             <>
-                                                <Text className="mb-2 text-xs text-gray-500">
+                                                <Text className="mb-2 text-xs font-kumbhBold text-[#6B7280]">
                                                     Candidate Salary Expectation
                                                 </Text>
-                                                <TextInput
-                                                    className="rounded-lg bg-gray-100 px-3 py-2"
-                                                    value={
-                                                        workflowDraft.salaryExpectation ||
-                                                        ""
-                                                    }
-                                                    onChangeText={(text) =>
-                                                        setWorkflowDraft(
-                                                            (prev) => ({
-                                                                ...prev,
-                                                                salaryExpectation:
-                                                                    text,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <View className="h-12 justify-center rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4">
+                                                    <CustomTextInput
+                                                        className="font-kumbh text-sm text-[#111827]"
+                                                        placeholder="Expected salary"
+                                                        value={
+                                                            workflowDraft.salaryExpectation ||
+                                                            ""
+                                                        }
+                                                        onChangeText={(text) =>
+                                                            setWorkflowDraft(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    salaryExpectation:
+                                                                        text,
+                                                                }),
+                                                            )
+                                                        }
+                                                    />
+                                                </View>
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Company Offer
                                                 </Text>
-                                                <TextInput
-                                                    className="rounded-lg bg-gray-100 px-3 py-2"
-                                                    value={
-                                                        workflowDraft.companyOffer ||
-                                                        ""
-                                                    }
-                                                    onChangeText={(text) =>
-                                                        setWorkflowDraft(
-                                                            (prev) => ({
-                                                                ...prev,
-                                                                companyOffer:
-                                                                    text,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <View className="h-12 justify-center rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4">
+                                                    <CustomTextInput
+                                                        className="font-kumbh text-sm text-[#111827]"
+                                                        placeholder="Offered amount"
+                                                        value={
+                                                            workflowDraft.companyOffer ||
+                                                            ""
+                                                        }
+                                                        onChangeText={(text) =>
+                                                            setWorkflowDraft(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    companyOffer:
+                                                                        text,
+                                                                }),
+                                                            )
+                                                        }
+                                                    />
+                                                </View>
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Final Agreed Salary
                                                 </Text>
-                                                <TextInput
-                                                    className="rounded-lg bg-gray-100 px-3 py-2"
-                                                    value={
-                                                        workflowDraft.agreedSalary ||
-                                                        ""
-                                                    }
-                                                    onChangeText={(text) =>
-                                                        setWorkflowDraft(
-                                                            (prev) => ({
-                                                                ...prev,
-                                                                agreedSalary:
-                                                                    text,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <View className="h-12 justify-center rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4">
+                                                    <CustomTextInput
+                                                        className="font-kumbh text-sm text-[#111827]"
+                                                        placeholder="Agreed salary"
+                                                        value={
+                                                            workflowDraft.agreedSalary ||
+                                                            ""
+                                                        }
+                                                        onChangeText={(text) =>
+                                                            setWorkflowDraft(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    agreedSalary:
+                                                                        text,
+                                                                }),
+                                                            )
+                                                        }
+                                                    />
+                                                </View>
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Status
                                                 </Text>
                                                 <Pressable
@@ -927,10 +1051,10 @@ export default function CandidateDetailScreen() {
                                                             salaryStatusOptions,
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.salaryStatus ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.salaryStatus ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.salaryStatus ||
                                                             "Select status"}
@@ -945,7 +1069,7 @@ export default function CandidateDetailScreen() {
 
                                         {section === "Employment" ? (
                                             <>
-                                                <Text className="mb-2 text-xs text-gray-500">
+                                                <Text className="mb-2 text-xs font-kumbhBold text-[#6B7280]">
                                                     Employment Status
                                                 </Text>
                                                 <Pressable
@@ -955,10 +1079,10 @@ export default function CandidateDetailScreen() {
                                                             employmentStatusOptions,
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.employmentStatus ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.employmentStatus ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.employmentStatus ||
                                                             "Select status"}
@@ -968,7 +1092,7 @@ export default function CandidateDetailScreen() {
                                                         color="#6B7280"
                                                     />
                                                 </Pressable>
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Start Date
                                                 </Text>
                                                 <Pressable
@@ -977,10 +1101,10 @@ export default function CandidateDetailScreen() {
                                                             "employmentStartDate",
                                                         )
                                                     }
-                                                    className="flex-row items-center justify-between rounded-lg bg-gray-100 px-3 py-3"
+                                                    className="h-12 flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4"
                                                 >
                                                     <Text
-                                                        className={`text-sm ${workflowDraft.employmentStartDate ? "text-gray-900" : "text-gray-400"}`}
+                                                        className={`text-sm font-kumbh ${workflowDraft.employmentStartDate ? "text-[#111827]" : "text-[#9CA3AF]"}`}
                                                     >
                                                         {workflowDraft.employmentStartDate ||
                                                             "Select date"}
@@ -990,26 +1114,30 @@ export default function CandidateDetailScreen() {
                                                         color="#4C5FAB"
                                                     />
                                                 </Pressable>
-                                                <Text className="mb-2 mt-3 text-xs text-gray-500">
+                                                <Text className="mb-2 mt-3 text-xs font-kumbhBold text-[#6B7280]">
                                                     Notes
                                                 </Text>
-                                                <TextInput
-                                                    className="min-h-[80px] rounded-lg bg-gray-100 px-3 py-2"
-                                                    multiline
-                                                    value={
-                                                        workflowDraft.employmentNotes ||
-                                                        ""
-                                                    }
-                                                    onChangeText={(text) =>
-                                                        setWorkflowDraft(
-                                                            (prev) => ({
-                                                                ...prev,
-                                                                employmentNotes:
-                                                                    text,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
+                                                <View className="min-h-[88px] rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4 py-3">
+                                                    <CustomTextInput
+                                                        className="font-kumbh text-sm text-[#111827]"
+                                                        multiline
+                                                        textAlignVertical="top"
+                                                        placeholder="Employment notes"
+                                                        value={
+                                                            workflowDraft.employmentNotes ||
+                                                            ""
+                                                        }
+                                                        onChangeText={(text) =>
+                                                            setWorkflowDraft(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    employmentNotes:
+                                                                        text,
+                                                                }),
+                                                            )
+                                                        }
+                                                    />
+                                                </View>
                                             </>
                                         ) : null}
                                     </View>
@@ -1021,54 +1149,68 @@ export default function CandidateDetailScreen() {
                         <Pressable
                             onPress={onSaveWorkflow}
                             disabled={!hasWorkflowChanges || isSavingWorkflow}
-                            className={`mt-2 rounded-lg p-3 ${
+                            className={`mt-2 h-12 flex-row items-center justify-center rounded-2xl ${
                                 !hasWorkflowChanges || isSavingWorkflow
-                                    ? "bg-gray-300"
+                                    ? "bg-gray-200"
                                     : "bg-[#4C5FAB]"
                             }`}
                         >
-                            <Text className="text-center font-kumbhBold text-white">
-                                {isSavingWorkflow
-                                    ? "Saving Workflow..."
-                                    : "Save Workflow"}
-                            </Text>
+                            {isSavingWorkflow ? (
+                                <ActivityIndicator
+                                    size="small"
+                                    color="#FFFFFF"
+                                />
+                            ) : (
+                                <Text
+                                    className={`font-kumbhBold ${
+                                        !hasWorkflowChanges
+                                            ? "text-[#6B7280]"
+                                            : "text-white"
+                                    }`}
+                                >
+                                    Save Workflow
+                                </Text>
+                            )}
                         </Pressable>
                     ) : null}
                 </View>
 
-                <View className="mb-4 rounded-xl border border-gray-200 px-3 py-2">
-                    <Text className="mb-1 text-lg font-kumbhBold text-gray-900">
+                <View className="mb-4 rounded-[24px] border border-gray-100 bg-white p-4">
+                    <Text className="mb-3 text-base font-kumbhBold text-[#111827]">
                         Notes
                     </Text>
                     {canAddCandidateNotes(role) ? (
                         <>
-                            <TextInput
-                                className="min-h-[90px] rounded-lg bg-gray-100 px-3 py-2"
-                                multiline
-                                value={note}
-                                onChangeText={setNote}
-                                placeholder="Add note"
-                            />
+                            <View className="min-h-[96px] rounded-2xl border border-gray-200 bg-[#F5F7FB] px-4 py-3">
+                                <CustomTextInput
+                                    className="font-kumbh text-sm text-[#111827]"
+                                    multiline
+                                    textAlignVertical="top"
+                                    value={note}
+                                    onChangeText={setNote}
+                                    placeholder="Add a note about this candidate..."
+                                />
+                            </View>
                             <Pressable
                                 onPress={onAddNote}
-                                className="mt-3 rounded-lg bg-[#4C5FAB] p-3"
+                                className="mt-3 h-12 items-center justify-center rounded-2xl bg-[#4C5FAB]"
                             >
-                                <Text className="text-center font-kumbhBold text-white">
+                                <Text className="font-kumbhBold text-white">
                                     Add Note
                                 </Text>
                             </Pressable>
                         </>
                     ) : null}
-                    <View className="mt-3 gap-2">
+                    <View className="mt-3 gap-2.5">
                         {(candidate.notes || []).map((entry) => (
                             <View
                                 key={
                                     entry._id ||
                                     `${entry.createdAt}-${entry.note}`
                                 }
-                                className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                                className="rounded-2xl border border-gray-100 bg-[#F5F7FB] p-3.5"
                             >
-                                <Text className="text-xs text-gray-500">
+                                <Text className="text-[11px] font-kumbh text-[#6B7280]">
                                     {entry.createdBy || "Unknown"} •{" "}
                                     {entry.createdAt
                                         ? new Date(
@@ -1076,7 +1218,7 @@ export default function CandidateDetailScreen() {
                                           ).toLocaleString()
                                         : ""}
                                 </Text>
-                                <Text className="mt-1 text-sm text-gray-800">
+                                <Text className="mt-1.5 text-sm font-kumbh text-[#111827]">
                                     {entry.note}
                                 </Text>
                             </View>
@@ -1084,8 +1226,8 @@ export default function CandidateDetailScreen() {
                     </View>
                 </View>
 
-                <View className="mb-4 rounded-xl border border-gray-200 p-3">
-                    <Text className="mb-3 text-lg font-kumbhBold text-gray-900">
+                <View className="mb-4 rounded-[24px] border border-gray-100 bg-white p-4">
+                    <Text className="mb-3 text-base font-kumbhBold text-[#111827]">
                         Documents
                     </Text>
                     <View className="mb-3 flex-row flex-wrap gap-2">
@@ -1093,36 +1235,36 @@ export default function CandidateDetailScreen() {
                             <Pressable
                                 key={type}
                                 onPress={() => onUploadDocument(type)}
-                                className="flex-row items-center rounded-full bg-gray-100 px-3 py-2"
+                                className="flex-row items-center rounded-full border border-[#4C5FAB]/20 bg-[#EEF2FF] px-3.5 py-2"
                             >
                                 <Upload size={14} color="#4C5FAB" />
-                                <Text className="ml-1 text-xs text-gray-700">
+                                <Text className="ml-1.5 text-xs font-kumbhBold text-[#4C5FAB]">
                                     Upload {type}
                                 </Text>
                             </Pressable>
                         ))}
                     </View>
-                    <View className="gap-2">
+                    <View className="gap-2.5">
                         {(candidate.documents || []).map((doc) => (
                             <View
                                 key={
                                     doc._id ||
                                     `${doc.fileUrl}-${doc.uploadedAt}`
                                 }
-                                className="rounded-xl border border-gray-100 bg-gray-50 p-3"
+                                className="rounded-2xl border border-gray-100 bg-[#F5F7FB] p-3.5"
                             >
                                 <View className="flex-row items-start justify-between gap-2">
                                     <View className="flex-1">
-                                        <Text className="text-sm font-kumbhBold text-gray-900">
+                                        <Text className="text-sm font-kumbhBold text-[#111827]">
                                             {doc.type || "Document"}
                                         </Text>
                                         <Text
-                                            className="mt-1 text-xs text-blue-700"
+                                            className="mt-1 text-xs font-kumbh text-[#4C5FAB]"
                                             numberOfLines={1}
                                         >
                                             {doc.fileUrl}
                                         </Text>
-                                        <Text className="mt-1 text-xs text-gray-500">
+                                        <Text className="mt-1 text-[11px] font-kumbh text-[#6B7280]">
                                             {doc.uploadedBy || "Unknown"} •{" "}
                                             {doc.uploadedAt
                                                 ? new Date(
@@ -1136,11 +1278,11 @@ export default function CandidateDetailScreen() {
                                             onPress={() =>
                                                 onDownloadDocument(doc)
                                             }
-                                            className="rounded-lg bg-blue-50 p-2"
+                                            className="h-9 w-9 items-center justify-center rounded-xl bg-[#EEF2FF]"
                                         >
                                             <Download
                                                 size={16}
-                                                color="#1D4ED8"
+                                                color="#4C5FAB"
                                             />
                                         </Pressable>
                                         {canUploadCandidateDocuments(role) ? (
@@ -1148,7 +1290,7 @@ export default function CandidateDetailScreen() {
                                                 onPress={() =>
                                                     onDeleteDocument(doc)
                                                 }
-                                                className="rounded-lg bg-red-50 p-2"
+                                                className="h-9 w-9 items-center justify-center rounded-xl bg-red-50"
                                             >
                                                 <Trash2
                                                     size={16}
@@ -1163,11 +1305,11 @@ export default function CandidateDetailScreen() {
                     </View>
                 </View>
 
-                <View className="mb-8 rounded-xl border border-gray-200 p-3">
-                    <Text className="mb-1 text-lg font-kumbhBold text-gray-900">
+                <View className="mb-4 rounded-[24px] border border-gray-100 bg-white p-4">
+                    <Text className="mb-3 text-base font-kumbhBold text-[#111827]">
                         Activity Log
                     </Text>
-                    <View className="gap-2">
+                    <View className="gap-2.5">
                         {(candidate.activityLog || []).map((entry, index) => {
                             const { timestampLabel, message } =
                                 formatActivityLogEntry(entry);
@@ -1175,13 +1317,13 @@ export default function CandidateDetailScreen() {
                             return (
                                 <View
                                     key={`${entry}-${index}`}
-                                    className="rounded-lg bg-gray-50 p-3"
+                                    className="rounded-2xl border border-gray-100 bg-[#F5F7FB] p-3.5"
                                 >
-                                    <Text className="text-xs font-medium text-gray-500">
+                                    <Text className="text-[11px] font-kumbhBold text-[#6B7280]">
                                         {timestampLabel}
                                     </Text>
                                     {message ? (
-                                        <Text className="mt-1 text-sm text-gray-700">
+                                        <Text className="mt-1 text-sm font-kumbh text-[#111827]">
                                             {message}
                                         </Text>
                                     ) : null}
@@ -1189,7 +1331,7 @@ export default function CandidateDetailScreen() {
                             );
                         })}
                         {!candidate.activityLog?.length ? (
-                            <Text className="text-sm text-gray-500">
+                            <Text className="text-sm font-kumbh text-[#6B7280]">
                                 No activity yet
                             </Text>
                         ) : null}

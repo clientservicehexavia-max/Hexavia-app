@@ -9,7 +9,6 @@ import {
     ScrollView,
     Switch,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +17,7 @@ import Dropdown from "@/components/admin/Dropdown";
 import Field from "@/components/admin/Field";
 import Menu from "@/components/admin/Menu";
 import MenuItem from "@/components/admin/MenuItem";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 
 import { showError, showSuccess } from "@/components/ui/toast";
 import { selectSanctionById } from "@/redux/sanctions/sanctions.slice";
@@ -93,18 +93,26 @@ export default function EditSanction() {
   // console.log(getToken())
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <View className="px-5 pt-6 pb-2 flex-row items-center gap-4">
-        <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
-          <ArrowLeft size={24} color="#111827" />
+    <SafeAreaView className="flex-1 bg-[#F5F7FB]">
+      <View className="px-5 pt-4 pb-3 flex-row items-center justify-between">
+        <Pressable
+          onPress={() => router.back()}
+          className="h-10 w-10 rounded-full bg-white border border-gray-100 items-center justify-center"
+        >
+          <ArrowLeft size={20} color="#111827" />
         </Pressable>
-        <Text className="text-3xl font-kumbh text-text">Edit Sanction</Text>
+        <Text className="text-2xl font-kumbhBold text-[#111827]">
+          Edit Sanction
+        </Text>
+        <View className="w-10" />
       </View>
 
       {loadingBootstrap ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator />
-          <Text className="mt-2 text-gray-500 font-kumbh">Loading sanction…</Text>
+          <ActivityIndicator color="#4C5FAB" />
+          <Text className="mt-2 text-[#6B7280] font-kumbh">
+            Loading sanction…
+          </Text>
         </View>
       ) : (
         <KeyboardAvoidingView
@@ -113,33 +121,42 @@ export default function EditSanction() {
         >
           <ScrollView
             className="flex-1"
-            contentContainerClassName="px-5 pb-10"
+            contentContainerClassName="px-5 pb-10 pt-2"
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
             {/* Read-only recipient */}
             <Field label="Recipient">
-              <Text className="text-base text-text font-kumbh rounded-2xl px-4 py-4 bg-gray-100">
-                {sanction?.user?.username ||
-                  sanction?.user?.fullname ||
-                  sanction?.user?.email ||
-                  "—"}
-              </Text>
+              <View className="h-14 rounded-2xl border border-gray-200 bg-white px-4 justify-center">
+                <Text className="text-[15px] text-[#111827] font-kumbhBold">
+                  {sanction?.user?.username ||
+                    sanction?.user?.fullname ||
+                    sanction?.user?.email ||
+                    "—"}
+                </Text>
+              </View>
             </Field>
 
             <Field label="Reason">
-              <TextInput
-                placeholder="Enter reason"
-                placeholderTextColor="#9CA3AF"
-                value={reason}
-                onChangeText={setReason}
-                multiline
-                className="bg-gray-200 rounded-2xl px-4 py-4 min-h-[88px] font-kumbh text-text"
-              />
+              <View className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                <CustomTextInput
+                  placeholder="Enter reason"
+                  value={reason}
+                  onChangeText={setReason}
+                  multiline
+                  textAlignVertical="top"
+                  style={{ minHeight: 112 }}
+                />
+              </View>
             </Field>
 
             <Field label="Type">
               <View>
-                <Dropdown value={type} open={showTypeMenu} onToggle={() => setShowTypeMenu((s) => !s)} />
+                <Dropdown
+                  value={type}
+                  open={showTypeMenu}
+                  onToggle={() => setShowTypeMenu((s) => !s)}
+                />
                 {showTypeMenu && (
                   <Menu>
                     {(["warning"] as const).map((opt) => (
@@ -160,18 +177,24 @@ export default function EditSanction() {
             </Field>
 
             <Field label="Active">
-              <View className="flex-row items-center justify-between bg-gray-200 rounded-2xl px-4 py-4">
-                <Text className="font-kumbh">Is Active</Text>
-                <Switch value={isActive} onValueChange={setIsActive} />
+              <View className="h-14 flex-row items-center justify-between bg-white border border-gray-200 rounded-2xl px-4">
+                <Text className="font-kumbhBold text-[#111827]">
+                  Is Active
+                </Text>
+                <Switch
+                  value={isActive}
+                  onValueChange={setIsActive}
+                  trackColor={{ true: "#4C5FAB", false: "#D1D5DB" }}
+                />
               </View>
             </Field>
 
             <Pressable
               onPress={handleSave}
               disabled={saving}
-              className="mt-6 rounded-2xl bg-primary-500 py-4 items-center active:opacity-90"
+              className="mt-4 h-14 rounded-2xl bg-primary items-center justify-center active:opacity-90"
             >
-              <Text className="text-white font-kumbhBold">
+              <Text className="text-white font-kumbhBold text-[15px]">
                 {saving ? "Saving…" : "Save Changes"}
               </Text>
             </Pressable>

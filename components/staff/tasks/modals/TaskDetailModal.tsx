@@ -1,5 +1,6 @@
 import { api } from "@/api/axios";
 import OptionSheet from "@/components/common/OptionSheet";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { showError } from "@/components/ui/toast";
 import { fromApiStatus, toApiStatus } from "@/features/client/statusMap";
 import { StatusKey, TAB_ORDER, Task } from "@/features/staff/types";
@@ -28,7 +29,6 @@ import {
     Platform,
     Pressable,
     Text,
-    TextInput,
     View,
 } from "react-native";
 
@@ -454,43 +454,49 @@ export default function TaskDetailModal({
                 >
                     <Pressable
                         onPress={(e) => e.stopPropagation()}
-                        className="bg-white rounded-t-3xl px-4 py-8"
+                        className="bg-white rounded-t-[28px] px-5 py-7"
                     >
+                        <View className="w-10 h-1 bg-gray-200 rounded-full self-center mb-4" />
                         <Text className="font-kumbhBold text-[20px] text-[#111827]">
                             Task Details
                         </Text>
 
-                        <Text className="font-kumbh text-[#6B7280] mt-2">
-                            {isPersonal
-                                ? "Type: Personal"
-                                : `Channel: ${task.channelCode}`}
-                        </Text>
+                        <View className="mt-2 self-start px-3 py-1 rounded-full bg-[#EEF2FF]">
+                            <Text className="font-kumbhBold text-[12px] text-primary">
+                                {isPersonal
+                                    ? "Personal Task"
+                                    : `Channel: ${task.channelCode}`}
+                            </Text>
+                        </View>
 
-                        <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                        <Text className="font-kumbhBold text-[13px] text-[#374151] mt-4 mb-2">
                             Name
                         </Text>
-                        <TextInput
-                            value={name}
-                            onChangeText={setName}
-                            placeholder="Enter task name"
-                            className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
-                        />
+                        <View className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-2.5">
+                            <CustomTextInput
+                                value={name}
+                                onChangeText={setName}
+                                placeholder="Enter task name"
+                                className="py-1"
+                            />
+                        </View>
 
-                        <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                        <Text className="font-kumbhBold text-[13px] text-[#374151] mt-4 mb-2">
                             Description
                         </Text>
-                        <TextInput
-                            value={desc}
-                            onChangeText={setDesc}
-                            multiline
-                            numberOfLines={4}
-                            textAlignVertical="top"
-                            placeholder="Add a short description"
-                            className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
-                            style={{ minHeight: 120 }}
-                        />
+                        <View className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3">
+                            <CustomTextInput
+                                value={desc}
+                                onChangeText={setDesc}
+                                multiline
+                                numberOfLines={4}
+                                textAlignVertical="top"
+                                placeholder="Add a short description"
+                                style={{ minHeight: 110 }}
+                            />
+                        </View>
 
-                        <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                        <Text className="font-kumbhBold text-[13px] text-[#374151] mt-4 mb-2">
                             Change Status
                         </Text>
                         <View className="flex-row flex-wrap" style={{ gap: 8 }}>
@@ -500,20 +506,18 @@ export default function TaskDetailModal({
                                     <Pressable
                                         key={s}
                                         onPress={() => setPending(s)}
-                                        className="rounded-full py-[6px]"
-                                        style={{
-                                            backgroundColor: selected
-                                                ? "#111827"
-                                                : "#E5E7EB",
-                                        }}
+                                        className={`rounded-full px-3.5 py-2 border ${
+                                            selected
+                                                ? "bg-primary border-primary"
+                                                : "bg-[#F9FAFB] border-gray-200"
+                                        }`}
                                     >
                                         <Text
-                                            className="font-kumbh text-[12px] capitalize px-3"
-                                            style={{
-                                                color: selected
-                                                    ? "#fff"
-                                                    : "#111827",
-                                            }}
+                                            className={`font-kumbhBold text-[12px] capitalize ${
+                                                selected
+                                                    ? "text-white"
+                                                    : "text-[#374151]"
+                                            }`}
                                         >
                                             {s.replace("-", " ")}
                                         </Text>
@@ -524,13 +528,13 @@ export default function TaskDetailModal({
 
                         {canManageAssignments ? (
                             <View className="mt-4">
-                                <Text className="font-kumbh text-[#6B7280] mb-2">
+                                <Text className="font-kumbhBold text-[13px] text-[#374151] mb-2">
                                     Assigned member
                                 </Text>
                                 {assignedMember ? (
-                                    <View className="flex-row items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2">
+                                    <View className="flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3">
                                         <View className="flex-1 mr-2">
-                                            <Text className="font-kumbh text-[#111827]">
+                                            <Text className="font-kumbhBold text-[14px] text-[#111827]">
                                                 {assignedMember.name ||
                                                     assignedMember.email ||
                                                     assignedMember.id}
@@ -548,9 +552,8 @@ export default function TaskDetailModal({
                                                 )
                                             }
                                             disabled={!!unassigningId}
-                                            className="rounded-lg px-3 py-1"
+                                            className="rounded-full px-3 py-1.5 bg-[#FEE2E2]"
                                             style={{
-                                                backgroundColor: "#FEE2E2",
                                                 opacity:
                                                     unassigningId ===
                                                     assignedMember.id
@@ -558,7 +561,7 @@ export default function TaskDetailModal({
                                                         : 1,
                                             }}
                                         >
-                                            <Text className="font-kumbh text-[12px] text-[#B91C1C]">
+                                            <Text className="font-kumbhBold text-[12px] text-[#B91C1C]">
                                                 {unassigningId ===
                                                 assignedMember.id
                                                     ? "Removing…"
@@ -583,10 +586,10 @@ export default function TaskDetailModal({
                                             }
                                             setShowMemberPicker(true);
                                         }}
-                                        className="mt-3 rounded-xl border border-[#E5E7EB] px-4 py-3"
+                                        className="mt-3 rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3.5"
                                     >
                                         <View className="flex-row items-center justify-between">
-                                            <Text className="font-kumbh text-[#111827]">
+                                            <Text className="font-kumbh text-[14px] text-[#374151]">
                                                 Assign member
                                             </Text>
                                             {membersLoading ? (
@@ -608,14 +611,15 @@ export default function TaskDetailModal({
 
                         <View
                             className="flex-row justify-end items-center mt-6"
-                            style={{ gap: 12 }}
+                            style={{ gap: 10 }}
                         >
                             {!isPersonal ? (
                                 <Pressable
                                     disabled={saving || deleting}
                                     onPress={handleDeleteTask}
+                                    className="mr-auto px-3 py-2.5 rounded-xl bg-red-50"
                                 >
-                                    <Text className="font-kumbh text-[#B91C1C]">
+                                    <Text className="font-kumbhBold text-[#B91C1C]">
                                         {deleting ? "Deleting..." : "Delete"}
                                     </Text>
                                 </Pressable>
@@ -623,15 +627,16 @@ export default function TaskDetailModal({
                             <Pressable
                                 disabled={saving || deleting}
                                 onPress={onClose}
+                                className="px-4 py-3 rounded-2xl border border-gray-200 bg-white"
                             >
-                                <Text className="font-kumbh text-[#6B7280]">
+                                <Text className="font-kumbhBold text-[#374151]">
                                     Close
                                 </Text>
                             </Pressable>
                             <Pressable
                                 onPress={save}
                                 disabled={!canSave || saving || deleting}
-                                className="rounded-xl px-5 py-3"
+                                className="rounded-2xl px-6 py-3"
                                 style={{
                                     backgroundColor:
                                         !canSave || saving || deleting
@@ -640,7 +645,7 @@ export default function TaskDetailModal({
                                     opacity: saving ? 0.8 : 1,
                                 }}
                             >
-                                <Text className="font-kumbh text-white">
+                                <Text className="font-kumbhBold text-white">
                                     {saving ? "Saving…" : "Save"}
                                 </Text>
                             </Pressable>

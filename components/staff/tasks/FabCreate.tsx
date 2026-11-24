@@ -10,13 +10,13 @@ export default function FabCreate({ onPress }: Props) {
       <Pressable
         onPress={onPress}
         android_ripple={{ color: "#ffffff30" }}
-        className="flex-row items-center rounded-full border bg-primary px-5 py-4"
-        style={{ borderColor: "#233066", backgroundColor: "#4C5FAB", gap: 12 }}
+        className="flex-row items-center rounded-full bg-primary px-5 py-3.5"
+        style={{ backgroundColor: "#4C5FAB", gap: 10 }}
       >
         <View className="h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>
           <Ionicons name="add" size={18} color="#FFFFFF" />
         </View>
-        <Text className="font-kumbh text-white text-[16px]">Create Task</Text>
+        <Text className="font-kumbhBold text-white text-[15px]">Create Task</Text>
       </Pressable>
     </View>
   );

@@ -21,24 +21,24 @@ export default function AttachmentTray({
     onPick: (kind: AttachmentKind) => void;
 }) {
     return (
-        <View className="mx-2 mb-1 px-4 pt-4 pb-2 rounded-xl bg-[#E1E4F6]">
+        <View className="mx-3 mb-2 px-4 pt-4 pb-3 rounded-[24px] bg-white border border-gray-100">
             <View className="flex-row items-center justify-between mb-2">
                 {items.map(({ key, label, Icon }) => (
                     <Pressable
                         key={key}
                         onPress={() => onPick(key)}
-                        className="items-center justify-center"
+                        className="items-center justify-center flex-1"
                     >
-                        <View className="h-14 w-14 rounded-2xl bg-white/40 items-center justify-center mb-2">
-                            <Icon size={22} color="#4C5FAB" />
+                        <View className="h-14 w-14 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-1.5">
+                            <Icon size={21} color="#4C5FAB" />
                         </View>
-                        <Text className="text-gray-700 text-[12px]">
+                        <Text className="font-kumbhBold text-[#374151] text-[12px]">
                             {label}
                         </Text>
                     </Pressable>
                 ))}
             </View>
-            <Text className="text-[11px] text-gray-400 mt-2 ml-1 text-center">
+            <Text className="font-kumbh text-[11px] text-[#9CA3AF] mt-1 text-center">
                 Share a photo, video, audio, or file.
             </Text>
         </View>

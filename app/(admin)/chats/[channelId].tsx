@@ -1304,7 +1304,7 @@ export default function ChatScreen() {
 
     return (
         <SafeAreaView
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
             edges={
                 user?.role === "staff" || user?.role === "client"
                     ? isIOS
@@ -1333,7 +1333,7 @@ export default function ChatScreen() {
                     title={title}
                     description={subtitle}
                     multilineTitle
-                    backgroundColor="#F3F4F6"
+                    backgroundColor="#F5F7FB"
                     onTitlePress={() =>
                         router.push({
                             pathname: "/(staff)/channels/[channelId]/members",
@@ -1344,26 +1344,17 @@ export default function ChatScreen() {
                         <View className="flex-row items-center gap-2">
                             <Pressable
                                 onPress={handleOpenTasks}
-                                className="w-10 h-10 rounded-full items-center justify-center"
+                                className="w-10 h-10 rounded-full items-center justify-center bg-primary"
                                 hitSlop={8}
-                                style={{
-                                    backgroundColor: PRIMARY,
-                                }}
                             >
-                                <ClipboardIcon size={22} color="white" />
-                                {/* <Text className="text-sm font-kumbh">
-                                    Tasks
-                                </Text> */}
+                                <ClipboardIcon size={19} color="#FFFFFF" />
                             </Pressable>
                             <Pressable
                                 onPress={handleOpenResources}
-                                className="w-10 h-10 items-center justify-center"
+                                className="w-10 h-10 rounded-full bg-white border border-gray-200 items-center justify-center"
                                 hitSlop={8}
                             >
-                                <Cloud size={25} color={tintColor} />
-                                {/* <Text className="text-sm font-kumbh">
-                                    Resources
-                                </Text> */}
+                                <Cloud size={20} color={tintColor ?? "#111827"} />
                             </Pressable>
                         </View>
                     )}
@@ -1383,8 +1374,8 @@ export default function ChatScreen() {
                         if (item.type === "date") {
                             return (
                                 <View className="px-5 mb-3 items-center">
-                                    <View className="px-3 py-1 rounded-full bg-gray-100">
-                                        <Text className="text-[11px] text-gray-500 font-kumbh">
+                                    <View className="px-3.5 py-1 rounded-full bg-white border border-gray-100">
+                                        <Text className="text-[11px] text-[#6B7280] font-kumbhBold">
                                             {formatDateLabel(item.ts)}
                                         </Text>
                                     </View>
@@ -1395,7 +1386,7 @@ export default function ChatScreen() {
                         if (item.message.id === "typing") {
                             return (
                                 <View className="px-5 mb-3">
-                                    <View className="h-4 w-12 rounded-full bg-gray-2 00" />
+                                    <View className="h-4 w-12 rounded-full bg-gray-200" />
                                 </View>
                             );
                         }
@@ -1442,9 +1433,9 @@ export default function ChatScreen() {
                 >
                     <Pressable
                         onPressIn={scrollToBottom}
-                        className="rounded-full bg-gray-200 w-11 h-11 items-center justify-center"
+                        className="rounded-full bg-white border border-gray-200 w-10 h-10 items-center justify-center"
                     >
-                        <ChevronDown color="black" size={30} />
+                        <ChevronDown color="#111827" size={22} />
                     </Pressable>
                 </View>
                 <BottomStack
@@ -1508,8 +1499,8 @@ export default function ChatScreen() {
                                     disabled={sendingPreviewUpload}
                                     className={`px-5 h-10 rounded-full items-center justify-center ${
                                         sendingPreviewUpload
-                                            ? "bg-blue-300"
-                                            : "bg-blue-600"
+                                            ? "bg-primary/60"
+                                            : "bg-primary"
                                     }`}
                                 >
                                     {sendingPreviewUpload ? (
@@ -1518,7 +1509,7 @@ export default function ChatScreen() {
                                             color="white"
                                         />
                                     ) : (
-                                        <Text className="text-white font-semibold">
+                                        <Text className="text-white font-kumbhBold">
                                             Send
                                         </Text>
                                     )}
@@ -1531,9 +1522,9 @@ export default function ChatScreen() {
                                 style={{ width: "100%", height: "100%" }}
                             />
 
-                            <View className="absolute bottom-10 left-4 right-4 rounded-xl bg-black/45 px-4 py-3">
+                            <View className="absolute bottom-10 left-4 right-4 rounded-2xl bg-black/55 px-4 py-3">
                                 <Text
-                                    className="text-white font-semibold"
+                                    className="text-white font-kumbhBold"
                                     numberOfLines={1}
                                 >
                                     {pendingUploadPreview.name}
@@ -1542,19 +1533,20 @@ export default function ChatScreen() {
                         </View>
                     ) : (
                         <View className="flex-1 bg-black/40 justify-end">
-                            <View className="bg-white rounded-t-3xl px-5 pt-5 pb-8">
-                                <Text className="text-lg font-bold text-gray-900 mb-3">
+                            <View className="bg-white rounded-t-[28px] px-5 pt-4 pb-8">
+                                <View className="w-10 h-1 bg-gray-200 rounded-full self-center mb-4" />
+                                <Text className="text-lg font-kumbhBold text-[#111827] mb-3">
                                     Preview Upload
                                 </Text>
 
-                                <View className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4">
+                                <View className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-4">
                                     <Text
-                                        className="text-base font-semibold text-gray-900"
+                                        className="text-base font-kumbhBold text-[#111827]"
                                         numberOfLines={2}
                                     >
                                         {pendingUploadPreview?.name}
                                     </Text>
-                                    <Text className="text-sm text-gray-500 mt-1">
+                                    <Text className="text-sm font-kumbh text-[#6B7280] mt-1">
                                         {pendingUploadPreview?.mimeType ||
                                             "Document"}
                                     </Text>
@@ -1568,10 +1560,10 @@ export default function ChatScreen() {
                                                 disabled={
                                                     !previewAudioStatus.isLoaded
                                                 }
-                                                className={`h-10 rounded-lg items-center justify-center ${
+                                                className={`h-11 rounded-2xl items-center justify-center ${
                                                     !previewAudioStatus.isLoaded
                                                         ? "bg-gray-300"
-                                                        : "bg-blue-600"
+                                                        : "bg-primary"
                                                 }`}
                                             >
                                                 {!previewAudioStatus.isLoaded ? (
@@ -1580,7 +1572,7 @@ export default function ChatScreen() {
                                                         color="white"
                                                     />
                                                 ) : (
-                                                    <Text className="text-white font-semibold">
+                                                    <Text className="text-white font-kumbhBold">
                                                         {previewAudioStatus.playing
                                                             ? "Pause Preview"
                                                             : "Play Preview"}
@@ -1597,19 +1589,19 @@ export default function ChatScreen() {
                                             setPendingUploadPreview(null)
                                         }
                                         disabled={sendingPreviewUpload}
-                                        className="flex-1 h-11 rounded-lg border border-gray-300 items-center justify-center"
+                                        className="flex-1 h-12 rounded-2xl border border-gray-200 bg-white items-center justify-center"
                                     >
-                                        <Text className="text-gray-800 font-semibold">
+                                        <Text className="text-[#374151] font-kumbhBold">
                                             Cancel
                                         </Text>
                                     </Pressable>
                                     <Pressable
                                         onPress={handleConfirmPreviewUpload}
                                         disabled={sendingPreviewUpload}
-                                        className={`flex-1 h-11 rounded-lg items-center justify-center ${
+                                        className={`flex-1 h-12 rounded-2xl items-center justify-center ${
                                             sendingPreviewUpload
-                                                ? "bg-blue-300"
-                                                : "bg-blue-600"
+                                                ? "bg-primary/60"
+                                                : "bg-primary"
                                         }`}
                                     >
                                         {sendingPreviewUpload ? (
@@ -1618,7 +1610,7 @@ export default function ChatScreen() {
                                                 color="white"
                                             />
                                         ) : (
-                                            <Text className="text-white font-semibold">
+                                            <Text className="text-white font-kumbhBold">
                                                 Send
                                             </Text>
                                         )}

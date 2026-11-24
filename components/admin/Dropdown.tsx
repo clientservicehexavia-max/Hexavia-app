@@ -15,11 +15,11 @@ export default function Dropdown({
     <Pressable
       onPress={onToggle}
       className={clsx(
-        "flex-row items-center justify-between rounded-2xl px-4 py-4 bg-gray-200"
+        "flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3.5"
       )}
     >
-      <Text className="text-gray-700 font-kumbh">{value}</Text>
-      <ChevronDown size={18} color="#111827" />
+      <Text className="font-kumbh text-[15px] text-[#111827]">{value}</Text>
+      <ChevronDown size={18} color="#6B7280" />
     </Pressable>
   );
 }

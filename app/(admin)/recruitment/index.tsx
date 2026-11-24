@@ -1,4 +1,3 @@
-import Tile from "@/components/admin/Tile";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
 
 import {
@@ -11,7 +10,11 @@ import type { RootState } from "@/store";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { normalizeRole } from "@/utils/roles";
 import { useRouter } from "expo-router";
-import { BriefcaseBusiness, Users } from "lucide-react-native";
+import {
+    BriefcaseBusiness,
+    ChevronRight,
+    Users,
+} from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -257,151 +260,227 @@ export default function RecruitmentHomeScreen() {
         }
     };
 
+    const summaryCards = [
+        {
+            label: "Active Recruitments",
+            value: summary.active,
+            dotClass: "bg-[#4C5FAB]",
+            onPress: () =>
+                router.push({
+                    pathname: "/(admin)/recruitment/list",
+                    params: { status: "Active" },
+                }),
+        },
+        {
+            label: "Total Candidates",
+            value: summary.totalCandidates,
+            dotClass: "bg-violet-500",
+            onPress: () => router.push("/(admin)/recruitment/candidates"),
+        },
+        {
+            label: "Interview 1",
+            value: summary.interview1,
+            dotClass: "bg-amber-500",
+            onPress: () =>
+                router.push({
+                    pathname: "/(admin)/recruitment/candidates",
+                    params: { status: "Interview 1" },
+                }),
+        },
+        {
+            label: "Interview 2",
+            value: summary.interview2,
+            dotClass: "bg-emerald-500",
+            onPress: () =>
+                router.push({
+                    pathname: "/(admin)/recruitment/candidates",
+                    params: { status: "Interview 2" },
+                }),
+        },
+        {
+            label: "Physical Interview",
+            value: summary.physical,
+            dotClass: "bg-slate-500",
+            onPress: () =>
+                router.push({
+                    pathname: "/(admin)/recruitment/candidates",
+                    params: { status: "Physical Interview" },
+                }),
+        },
+        {
+            label: "Offers",
+            value: summary.offers,
+            dotClass: "bg-rose-500",
+            onPress: () =>
+                router.push({
+                    pathname: "/(admin)/recruitment/candidates",
+                    params: { status: "Offered" },
+                }),
+        },
+        {
+            label: "Employed",
+            value: summary.employed,
+            dotClass: "bg-green-600",
+            onPress: () =>
+                router.push({
+                    pathname: "/(admin)/recruitment/candidates",
+                    params: { status: "Employed" },
+                }),
+        },
+    ];
+
+    const operationCards = [
+        {
+            label: "Upcoming This Week",
+            value: interviewOperations.upcomingThisWeek,
+            dotClass: "bg-[#4C5FAB]",
+        },
+        {
+            label: "Pending Scheduling",
+            value: interviewOperations.pendingScheduling,
+            dotClass: "bg-amber-500",
+        },
+        {
+            label: "Offers Pending Response",
+            value: interviewOperations.offersPendingResponse,
+            dotClass: "bg-rose-500",
+        },
+    ];
+
     return (
         <SafeAreaView
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
-            <PlatformAdaptiveHeader title="Recruitment Dashboard" />
+            <PlatformAdaptiveHeader
+                title="Recruitment Dashboard"
+                backgroundColor="#F5F7FB"
+            />
             <ScrollView
-                className="flex-1 px-4 pb-8 mt-3"
+                className="flex-1"
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingTop: 12,
+                    paddingBottom: 32,
+                }}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
+                        tintColor="#4C5FAB"
                     />
                 }
             >
                 {error ? (
-                    <Text className="mb-3 text-sm text-red-500">{error}</Text>
+                    <View className="mb-4 rounded-2xl border border-red-100 bg-red-50 p-3.5">
+                        <Text className="text-sm font-kumbh text-red-700">
+                            {error}
+                        </Text>
+                    </View>
                 ) : null}
 
-                <View className="mb-6 flex-row gap-2">
-                    <Tile
-                        title="Campaigns"
-                        icon={<BriefcaseBusiness size={20} color="white" />}
-                        onPress={() =>
-                            router.push("/(admin)/recruitment/list")
-                        }
-                    />
-                    <Tile
-                        title="Candidates"
-                        icon={<Users size={20} color="white" />}
+                <View className="mb-6 flex-row gap-3">
+                    <Pressable
+                        onPress={() => router.push("/(admin)/recruitment/list")}
+                        className="flex-1 rounded-[24px] border border-gray-100 bg-white p-4 active:opacity-90"
+                    >
+                        <View className="mb-3 flex-row items-center justify-between">
+                            <View className="h-11 w-11 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                                <BriefcaseBusiness size={20} color="#4C5FAB" />
+                            </View>
+                            <ChevronRight size={16} color="#9CA3AF" />
+                        </View>
+                        <Text className="text-[15px] font-kumbhBold text-[#111827]">
+                            Campaigns
+                        </Text>
+                        <Text className="mt-0.5 text-xs font-kumbh text-[#6B7280]">
+                            Open & closed roles
+                        </Text>
+                    </Pressable>
+
+                    <Pressable
                         onPress={() =>
                             router.push("/(admin)/recruitment/candidates")
                         }
-                    />
+                        className="flex-1 rounded-[24px] border border-gray-100 bg-white p-4 active:opacity-90"
+                    >
+                        <View className="mb-3 flex-row items-center justify-between">
+                            <View className="h-11 w-11 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                                <Users size={20} color="#4C5FAB" />
+                            </View>
+                            <ChevronRight size={16} color="#9CA3AF" />
+                        </View>
+                        <Text className="text-[15px] font-kumbhBold text-[#111827]">
+                            Candidates
+                        </Text>
+                        <Text className="mt-0.5 text-xs font-kumbh text-[#6B7280]">
+                            Pipeline & reviews
+                        </Text>
+                    </Pressable>
                 </View>
 
-                <Section title="Summary">
-                    <View className="flex-row flex-wrap gap-2">
-                        <SummaryCard
-                            label="Active Recruitments"
-                            value={String(summary.active)}
-                            tone="border-blue-100 bg-blue-50"
-                            onPress={() =>
-                                router.push({
-                                    pathname: "/(admin)/recruitment/list",
-                                    params: { status: "Active" },
-                                })
-                            }
-                        />
-                        <SummaryCard
-                            label="Total Candidates"
-                            value={String(summary.totalCandidates)}
-                            tone="border-violet-100 bg-violet-50"
-                            onPress={() =>
-                                router.push("/(admin)/recruitment/candidates")
-                            }
-                        />
-                        <SummaryCard
-                            label="Interview 1"
-                            value={String(summary.interview1)}
-                            tone="border-amber-100 bg-amber-50"
-                            onPress={() =>
-                                router.push({
-                                    pathname:
-                                        "/(admin)/recruitment/candidates",
-                                    params: { status: "Interview 1" },
-                                })
-                            }
-                        />
-                        <SummaryCard
-                            label="Interview 2"
-                            value={String(summary.interview2)}
-                            tone="border-emerald-100 bg-emerald-50"
-                            onPress={() =>
-                                router.push({
-                                    pathname:
-                                        "/(admin)/recruitment/candidates",
-                                    params: { status: "Interview 2" },
-                                })
-                            }
-                        />
-                        <SummaryCard
-                            label="Physical Interview"
-                            value={String(summary.physical)}
-                            tone="border-slate-200 bg-slate-50"
-                            onPress={() =>
-                                router.push({
-                                    pathname:
-                                        "/(admin)/recruitment/candidates",
-                                    params: {
-                                        status: "Physical Interview",
-                                    },
-                                })
-                            }
-                        />
-                        <SummaryCard
-                            label="Offers"
-                            value={String(summary.offers)}
-                            tone="border-rose-100 bg-rose-50"
-                            onPress={() =>
-                                router.push({
-                                    pathname:
-                                        "/(admin)/recruitment/candidates",
-                                    params: { status: "Offered" },
-                                })
-                            }
-                        />
-                        <SummaryCard
-                            label="Employed"
-                            value={String(summary.employed)}
-                            tone="border-green-100 bg-green-50"
-                            onPress={() =>
-                                router.push({
-                                    pathname:
-                                        "/(admin)/recruitment/candidates",
-                                    params: { status: "Employed" },
-                                })
-                            }
-                        />
+                <View className="mb-6">
+                    <Text className="mb-3 text-base font-kumbhBold text-[#111827]">
+                        Summary
+                    </Text>
+                    <View className="flex-row flex-wrap justify-between gap-y-3">
+                        {summaryCards.map((card) => (
+                            <Pressable
+                                key={card.label}
+                                onPress={card.onPress}
+                                style={{ width: "48.5%" }}
+                                className="rounded-[22px] border border-gray-100 bg-white p-4 active:opacity-90"
+                            >
+                                <View className="mb-2 flex-row items-center justify-between">
+                                    <View
+                                        className={`h-2.5 w-2.5 rounded-full ${card.dotClass}`}
+                                    />
+                                    <ChevronRight size={14} color="#9CA3AF" />
+                                </View>
+                                <Text className="text-2xl font-kumbhBold text-[#111827]">
+                                    {card.value}
+                                </Text>
+                                <Text
+                                    className="mt-1 text-xs font-kumbh text-[#6B7280]"
+                                    numberOfLines={1}
+                                >
+                                    {card.label}
+                                </Text>
+                            </Pressable>
+                        ))}
                     </View>
-                </Section>
+                </View>
 
-                <Section title="Interview Operations">
-                    <View className="flex-row flex-wrap gap-2">
-                        <SummaryCard
-                            label="Upcoming This Week"
-                            value={String(interviewOperations.upcomingThisWeek)}
-                            tone="border-indigo-100 bg-indigo-50"
-                        />
-                        <SummaryCard
-                            label="Pending Scheduling"
-                            value={String(interviewOperations.pendingScheduling)}
-                            tone="border-amber-100 bg-amber-50"
-                        />
-                        <SummaryCard
-                            label="Offers Pending Response"
-                            value={String(
-                                interviewOperations.offersPendingResponse,
-                            )}
-                            tone="border-rose-100 bg-rose-50"
-                        />
+                <View className="mb-4">
+                    <Text className="mb-3 text-base font-kumbhBold text-[#111827]">
+                        Interview Operations
+                    </Text>
+                    <View className="flex-row flex-wrap justify-between gap-y-3">
+                        {operationCards.map((card) => (
+                            <View
+                                key={card.label}
+                                style={{ width: "48.5%" }}
+                                className="rounded-[22px] border border-gray-100 bg-white p-4"
+                            >
+                                <View
+                                    className={`mb-2 h-2.5 w-2.5 rounded-full ${card.dotClass}`}
+                                />
+                                <Text className="text-2xl font-kumbhBold text-[#111827]">
+                                    {card.value}
+                                </Text>
+                                <Text
+                                    className="mt-1 text-xs font-kumbh text-[#6B7280]"
+                                    numberOfLines={2}
+                                >
+                                    {card.label}
+                                </Text>
+                            </View>
+                        ))}
                     </View>
-                </Section>
+                </View>
 
                 {loading ? (
                     <View className="mt-6 items-center">

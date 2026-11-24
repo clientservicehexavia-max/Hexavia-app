@@ -34,7 +34,7 @@ export default function ClientSanctionsIndex() {
   const clientChannelId = urlChannelId || channelIdFromCode || fallbackChannelId || null;
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-[#F5F7FB]">
       <StatusBar style="dark" />
       <BackHeader title="Sanctions" />
 

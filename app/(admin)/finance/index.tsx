@@ -6,11 +6,16 @@ import { useRouter } from "expo-router";
 import {
   ArrowDown,
   ArrowUp,
+  Check,
   Eye,
+  EyeOff,
   Filter,
+  Lock,
   Plus,
+  Receipt,
   Search,
   Upload,
+  X,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -46,6 +51,7 @@ import { fetchFinance } from "@/redux/finance/finance.thunks";
 
 /* ───────── Clients (for Receivables) ───────── */
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { SwipeableTabView } from "@/components/ui/SwipeableTabView";
 import { fetchClients } from "@/redux/client/client.thunks";
 
@@ -797,10 +803,14 @@ export default function FinanceIndex() {
 
   const isIOS = Platform.OS === "ios";
 
+  const hasActiveFilter =
+    groupingMode !== "monthly" ||
+    (tab === "Receivables" && selectedReceivableSource !== "All");
+
   return (
     <SafeAreaView
       edges={isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]}
-      className="flex-1 bg-white"
+      className="flex-1 bg-[#F5F7FB]"
     >
       {isPasswordCheckInitialized && (
         <Modal
@@ -810,35 +820,36 @@ export default function FinanceIndex() {
           statusBarTranslucent
           onRequestClose={() => {}}
         >
-          <View className="flex-1 bg-black/70 px-5 justify-center">
-            <View className="bg-white rounded-3xl p-6 shadow-lg shadow-black/30">
+          <View className="flex-1 bg-black/60 px-5 justify-center">
+            <View className="bg-white rounded-[28px] p-6 border border-gray-100">
+              <View className="h-12 w-12 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-4">
+                <Lock size={22} color="#4C5FAB" />
+              </View>
               <Text className="text-xl font-kumbhBold text-[#111827] mb-1">
                 Finance Access
               </Text>
-              <Text className="text-sm text-gray-500 font-kumbh mb-4">
-                Enter the secret admin pin to continue.
+              <Text className="text-sm text-[#6B7280] font-kumbh mb-4">
+                Enter the admin PIN to view financial records.
               </Text>
 
-              <View className="rounded-2xl border border-gray-200 ios:px-4 android:px-2 ios:py-3 mb-2">
-                <TextInput
+              <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 mb-2">
+                <CustomTextInput
                   value={pinInput}
                   onChangeText={(text) => setPinInput(text.replace(/\s+/g, ""))}
-                  placeholder="Enter Pin"
-                  placeholderTextColor="#9CA3AF"
+                  placeholder="Enter 7-digit PIN"
                   keyboardType="number-pad"
                   maxLength={7}
                   secureTextEntry
-                  className="font-kumbh text-base text-[#111827]"
                   autoFocus
                 />
               </View>
               {pinError ? (
-                <Text className="text-sm text-red-500 font-kumbh mb-3">
+                <Text className="text-xs text-red-600 font-kumbhBold mb-3">
                   {pinError}
                 </Text>
               ) : (
-                <Text className="text-xs text-gray-400 font-kumbh mb-3">
-                  Pin is 7 digits long.
+                <Text className="text-xs text-[#9CA3AF] font-kumbh mb-4">
+                  PIN is 7 digits long.
                 </Text>
               )}
 
@@ -847,19 +858,26 @@ export default function FinanceIndex() {
                 disabled={!pinInput}
                 className={clsx(
                   "h-12 rounded-2xl items-center justify-center",
-                  pinInput ? "bg-[#4C5FAB] active:opacity-90" : "bg-gray-300",
+                  pinInput ? "bg-[#4C5FAB] active:opacity-90" : "bg-gray-200",
                 )}
               >
-                <Text className="text-white font-kumbhBold">
+                <Text
+                  className={clsx(
+                    "font-kumbhBold text-[15px]",
+                    pinInput ? "text-white" : "text-gray-400",
+                  )}
+                >
                   Unlock Finance
                 </Text>
               </Pressable>
 
               <Pressable
                 onPress={() => router.back()}
-                className="h-12 rounded-2xl items-center justify-center mt-3 border border-gray-200 active:opacity-90"
+                className="h-12 rounded-2xl items-center justify-center mt-2.5 bg-gray-100 active:opacity-90"
               >
-                <Text className="text-[#111827] font-kumbh">Go Back</Text>
+                <Text className="text-[#374151] font-kumbhBold text-[14px]">
+                  Go Back
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -869,24 +887,40 @@ export default function FinanceIndex() {
       {/* Header */}
       <PlatformAdaptiveHeader
         title="Finance"
-        headerRight={({ tintColor }) => (
-          <View className="flex-row items-center" style={{ gap: 6 }}>
+        backgroundColor="#F5F7FB"
+        headerRight={() => (
+          <View className="flex-row items-center gap-2">
             <Pressable
               onPress={() => setShowFilterModal(true)}
-              className="w-10 h-10 rounded-full items-center justify-center"
+              className={clsx(
+                "w-9 h-9 rounded-full items-center justify-center border",
+                hasActiveFilter
+                  ? "bg-[#EEF2FF] border-primary/20"
+                  : "bg-white border-gray-200",
+              )}
+              accessibilityRole="button"
+              accessibilityLabel="Open finance filters"
             >
-              <Filter size={21} color={tintColor} />
+              <Filter
+                size={17}
+                color={hasActiveFilter ? "#4C5FAB" : "#111827"}
+              />
             </Pressable>
 
             <Pressable
               onPress={() => setShowFinanceSearch((current) => !current)}
-              className="w-10 h-10 rounded-full items-center justify-center"
+              className={clsx(
+                "w-9 h-9 rounded-full items-center justify-center border",
+                showFinanceSearch
+                  ? "bg-[#EEF2FF] border-primary/20"
+                  : "bg-white border-gray-200",
+              )}
               accessibilityRole="button"
               accessibilityLabel="Toggle finance search"
             >
               <Search
-                size={21}
-                color={showFinanceSearch ? "#4C5FAB" : (tintColor ?? "#111827")}
+                size={17}
+                color={showFinanceSearch ? "#4C5FAB" : "#111827"}
               />
             </Pressable>
           </View>
@@ -894,36 +928,62 @@ export default function FinanceIndex() {
       />
 
       {/* Total card */}
-      <View className="px-5 mt-2">
-        <View className="rounded-[28px] bg-primary-500 px-6 py-7">
-          <View className="flex-row items-center justify-center gap-2">
-            <Text className="text-white/90 font-kumbh">Total Amount</Text>
+      <View className="px-4 mt-2">
+        <View className="rounded-[28px] bg-[#4C5FAB] px-5 py-5">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <View className="rounded-full bg-white/15 px-3 py-1">
+                <Text className="text-white text-[11px] font-kumbhBold uppercase tracking-wider">
+                  {tab}
+                </Text>
+              </View>
+              {hasActiveFilter ? (
+                <View className="rounded-full bg-white/15 px-2.5 py-1">
+                  <Text className="text-white/90 text-[11px] font-kumbh">
+                    {tab === "Receivables" &&
+                    selectedReceivableSource !== "All"
+                      ? selectedReceivableSource
+                      : groupingMode === "daily"
+                        ? "Daily"
+                        : "Monthly"}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
             <Pressable
               onPress={() => setHidden((s) => !s)}
-              className="opacity-90"
+              hitSlop={8}
+              className="h-9 w-9 rounded-full bg-white/15 items-center justify-center"
+              accessibilityLabel={hidden ? "Show total" : "Hide total"}
             >
-              <Eye size={18} color="white" />
+              {hidden ? (
+                <EyeOff size={17} color="#ffffff" />
+              ) : (
+                <Eye size={17} color="#ffffff" />
+              )}
             </Pressable>
           </View>
-          <Text className="mt-3 text-white text-4xl font-kumbhBold text-center tracking-wide">
+
+          <Text className="mt-3.5 text-white text-[30px] font-kumbhBold tracking-tight">
             {hidden ? "••••••••" : NGN(total).replace("NGN", "₦")}
           </Text>
-          <Text className="mt-2 text-white/90 font-kumbh text-center">
-            {tab.toUpperCase()}
+          <Text className="mt-1 text-white/75 text-[12px] font-kumbh">
+            {groupingMode === "monthly"
+              ? "Grouped by month"
+              : "Grouped by day"}
+            {tab === "Receivables" && selectedReceivableSource !== "All"
+              ? ` • ${selectedReceivableSource}`
+              : ""}
           </Text>
         </View>
       </View>
 
-      {/* Tabs with content */}
+      {/* Search bar */}
       {showFinanceSearch ? (
-        <View className="px-5 mt-3">
-          <View
-            className="rounded-xl border border-gray-200 px-3"
-            style={{
-              paddingVertical: Platform.OS === "android" ? 1 : 12,
-            }}
-          >
-            <TextInput
+        <View className="px-4 mt-3">
+          <View className="h-12 flex-row items-center rounded-2xl border border-gray-200 bg-white px-3.5">
+            <Search size={16} color="#9CA3AF" />
+            <CustomTextInput
               value={financeSearch}
               onChangeText={setFinanceSearch}
               placeholder={
@@ -931,9 +991,17 @@ export default function FinanceIndex() {
                   ? "Search by company, client, or source"
                   : "Search expenses by description, notes, or date"
               }
-              placeholderTextColor="#9CA3AF"
-              className="font-kumbh text-[#111827]"
+              className="flex-1 h-full ml-2.5"
             />
+            {financeSearch ? (
+              <Pressable
+                onPress={() => setFinanceSearch("")}
+                hitSlop={8}
+                className="h-7 w-7 rounded-full bg-gray-100 items-center justify-center"
+              >
+                <X size={14} color="#6B7280" />
+              </Pressable>
+            ) : null}
           </View>
         </View>
       ) : null}
@@ -952,14 +1020,15 @@ export default function FinanceIndex() {
         renderScene={() =>
           isInitialExpensesLoading ? (
             <View className="flex-1 justify-center items-center">
-              <ActivityIndicator size="large" color="#3b82f6" />
+              <ActivityIndicator size="large" color="#4C5FAB" />
             </View>
           ) : (
-            <View className="flex-1 pt-2">
+            <View className="flex-1">
               <SectionList<Txn, TxnSection>
                 sections={sections}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={{ paddingBottom: 24 }}
+                contentContainerStyle={{ paddingBottom: 165, paddingTop: 4 }}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                   <RefreshControl
                     refreshing={refreshing}
@@ -970,19 +1039,16 @@ export default function FinanceIndex() {
                 onEndReachedThreshold={0.2}
                 onEndReached={loadMore}
                 renderSectionHeader={({ section }) => (
-                  <View className="bg-white">
-                    <View className="px-5 py-4 flex-row items-center justify-between">
-                      <Text className="text-gray-500 font-kumbhBold">
-                        {section.title}
-                      </Text>
-                      <Text className="text-[#111827] font-kumbhBold">
+                  <View className="bg-[#F5F7FB] px-4 pt-4 pb-2 flex-row items-center justify-between">
+                    <Text className="text-[12px] text-[#6B7280] font-kumbhBold uppercase tracking-wider">
+                      {section.title}
+                    </Text>
+                    <View className="rounded-full bg-white border border-gray-100 px-3 py-1">
+                      <Text className="text-[12px] text-[#111827] font-kumbhBold">
                         {NGN(section.bucketTotal)}
                       </Text>
                     </View>
                   </View>
-                )}
-                ItemSeparatorComponent={() => (
-                  <View className="h-[1px] bg-gray-200 ml-[76px]" />
                 )}
                 renderItem={({ item }) => (
                   <TxnRow
@@ -999,14 +1065,33 @@ export default function FinanceIndex() {
                     }
                   />
                 )}
+                ListEmptyComponent={
+                  <View className="mx-4 mt-4 rounded-[28px] bg-white border border-gray-100 px-6 py-12 items-center">
+                    <View className="h-14 w-14 rounded-2xl bg-[#EEF2FF] items-center justify-center mb-3.5">
+                      <Receipt size={24} color="#4C5FAB" />
+                    </View>
+                    <Text className="text-[#111827] font-kumbhBold text-[16px]">
+                      {tab === "Receivables"
+                        ? "No receivables found"
+                        : "No expenses found"}
+                    </Text>
+                    <Text className="text-[#6B7280] font-kumbh text-[13px] mt-1 text-center">
+                      {financeSearch.trim()
+                        ? "Try clearing your search or switching filters."
+                        : tab === "Receivables"
+                          ? "Recorded client receivables will appear here."
+                          : "Recorded company expenses will appear here."}
+                    </Text>
+                  </View>
+                }
                 ListFooterComponent={
                   isLoadingMoreExpenses || isLoadingMoreReceivables ? (
                     <View className="py-4 items-center">
-                      <ActivityIndicator size="small" color="#3b82f6" />
+                      <ActivityIndicator size="small" color="#4C5FAB" />
                     </View>
                   ) : null
                 }
-                stickySectionHeadersEnabled
+                stickySectionHeadersEnabled={false}
               />
             </View>
           )
@@ -1014,25 +1099,37 @@ export default function FinanceIndex() {
         tabBarProps={{
           activeColor: "#4C5FAB",
           inactiveColor: "#6B7280",
+          style: {
+            backgroundColor: "#F5F7FB",
+            borderBottomWidth: 1,
+            borderBottomColor: "#E5E7EB",
+            marginTop: 6,
+          },
+          renderTabLabel: ({ route, focused, color }) => (
+            <Text
+              style={{
+                color,
+                fontFamily: focused ? "KumbhSans-Bold" : "KumbhSans-Regular",
+                fontSize: 14,
+              }}
+            >
+              {route.title}
+            </Text>
+          ),
         }}
       />
 
       {/* Floating Statement Import Button */}
       <Pressable
         onPress={() => router.push("/(admin)/finance/import-statement")}
-        className="absolute right-5 h-14 w-14 items-center justify-center rounded-full bg-white border border-gray-200"
+        className="absolute right-5 h-12 w-12 items-center justify-center rounded-full bg-white border border-gray-200 shadow-md"
         style={{
-          bottom: (isIOS ? 34 : 24) + 68,
-          shadowColor: "#000",
-          shadowOpacity: 0.15,
-          shadowOffset: { width: 0, height: 4 },
-          shadowRadius: 8,
-          elevation: 6,
+          bottom: (isIOS ? 34 : 24) + 66,
         }}
         accessibilityRole="button"
         accessibilityLabel="Import Bank Statement"
       >
-        <Upload size={22} color="#4C5FAB" />
+        <Upload size={20} color="#4C5FAB" />
       </Pressable>
 
       <Pressable
@@ -1043,14 +1140,9 @@ export default function FinanceIndex() {
             router.push("/(admin)/finance/form");
           }
         }}
-        className="absolute right-5 h-14 w-14 items-center justify-center rounded-full bg-[#4C5FAB]"
+        className="absolute right-5 h-14 w-14 items-center justify-center rounded-full bg-[#4C5FAB] shadow-lg"
         style={{
           bottom: isIOS ? 34 : 24,
-          shadowColor: "#000",
-          shadowOpacity: 0.2,
-          shadowOffset: { width: 0, height: 6 },
-          shadowRadius: 12,
-          elevation: 8,
         }}
         accessibilityRole="button"
         accessibilityLabel={
@@ -1067,15 +1159,19 @@ export default function FinanceIndex() {
         onRequestClose={() => setShowFilterModal(false)}
       >
         <Pressable
-          className="flex-1 bg-black/30 justify-end"
+          className="flex-1 bg-black/40 justify-end"
           onPress={() => setShowFilterModal(false)}
         >
-          <Pressable className="bg-white rounded-t-3xl px-5 pt-5 pb-8">
-            <Text className="text-lg font-kumbhBold text-[#111827] mb-4">
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            className="bg-white rounded-t-[28px] px-5 pt-3 pb-8"
+          >
+            <View className="w-10 h-1 rounded-full bg-gray-200 self-center mb-4" />
+            <Text className="text-[18px] font-kumbhBold text-[#111827] mb-4">
               Filters
             </Text>
 
-            <Text className="text-sm font-kumbhBold text-gray-500 mb-2">
+            <Text className="text-[12px] font-kumbhBold uppercase tracking-wider text-[#6B7280] mb-2">
               Sectioning
             </Text>
             {(
@@ -1093,31 +1189,31 @@ export default function FinanceIndex() {
                     setShowFilterModal(false);
                   }}
                   className={clsx(
-                    "h-12 rounded-xl px-4 mb-2 flex-row items-center justify-between",
-                    active ? "bg-[#EEF1FF]" : "bg-gray-100",
+                    "h-12 rounded-2xl px-4 mb-2 flex-row items-center justify-between border",
+                    active
+                      ? "bg-[#EEF2FF] border-primary/20"
+                      : "bg-[#F9FAFB] border-gray-200",
                   )}
                 >
                   <Text
                     className={clsx(
-                      "font-kumbhBold",
+                      "font-kumbhBold text-[14px]",
                       active ? "text-[#4C5FAB]" : "text-[#111827]",
                     )}
                   >
                     {label}
                   </Text>
-                  {active ? (
-                    <View className="w-2.5 h-2.5 rounded-full bg-[#4C5FAB]" />
-                  ) : null}
+                  {active ? <Check size={16} color="#4C5FAB" /> : null}
                 </Pressable>
               );
             })}
 
             {tab === "Receivables" ? (
               <View className="mt-4">
-                <Text className="text-sm font-kumbhBold text-gray-500 mb-2">
+                <Text className="text-[12px] font-kumbhBold uppercase tracking-wider text-[#6B7280] mb-2.5">
                   Receivable Source
                 </Text>
-                <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+                <View className="flex-row flex-wrap gap-2">
                   {RECEIVABLE_SOURCE_FILTER_OPTIONS.map((option) => {
                     const active = selectedReceivableSource === option;
                     return (
@@ -1128,16 +1224,16 @@ export default function FinanceIndex() {
                           setShowFilterModal(false);
                         }}
                         className={clsx(
-                          "px-3 py-2 rounded-full border",
+                          "px-3.5 py-2 rounded-full border",
                           active
-                            ? "bg-[#EEF1FF] border-[#4C5FAB]"
-                            : "bg-white border-gray-200",
+                            ? "bg-[#4C5FAB] border-[#4C5FAB]"
+                            : "bg-[#F9FAFB] border-gray-200",
                         )}
                       >
                         <Text
                           className={clsx(
-                            "font-kumbh text-sm",
-                            active ? "text-[#4C5FAB]" : "text-[#111827]",
+                            "font-kumbhBold text-[12px]",
+                            active ? "text-white" : "text-[#374151]",
                           )}
                         >
                           {option}
@@ -1160,17 +1256,17 @@ export default function FinanceIndex() {
         onRequestClose={() => setShowClientPicker(false)}
       >
         <View className="flex-1 bg-black/40 justify-end">
-          <View className="bg-white rounded-t-3xl px-5 pt-5 pb-6">
-            <View className="items-center mb-3">
-              <View className="w-16 h-1.5 rounded-full bg-gray-300" />
+          <View className="bg-white rounded-t-[28px] px-5 pt-3 pb-7">
+            <View className="items-center mb-4">
+              <View className="w-10 h-1 rounded-full bg-gray-200" />
             </View>
 
             <Text className="text-xl font-kumbhBold text-[#111827] mb-1">
               Record Receivable
             </Text>
-            <Text className="text-gray-500 font-kumbh mb-4">
-              Select the client to create/install an installment plan for, or
-              add a manual receivable.
+            <Text className="text-[13px] text-[#6B7280] font-kumbh mb-4">
+              Select the client to create an installment plan for, or add a
+              manual receivable.
             </Text>
 
             <Pressable
@@ -1178,26 +1274,26 @@ export default function FinanceIndex() {
                 setShowClientPicker(false);
                 router.push("/(admin)/finance/receivable");
               }}
-              className="h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center mb-4"
+              className="h-12 rounded-2xl bg-[#4C5FAB] items-center justify-center mb-4 active:opacity-90"
             >
-              <Text className="text-white font-kumbhBold">
+              <Text className="text-white font-kumbhBold text-[14px]">
                 Add Manual Receivable
               </Text>
             </Pressable>
 
             {/* Search */}
-            <View className="rounded-2xl border border-gray-200 px-4 py-3 mb-3">
-              <TextInput
+            <View className="h-12 flex-row items-center rounded-2xl border border-gray-200 bg-[#F9FAFB] px-3.5 mb-3">
+              <Search size={16} color="#9CA3AF" />
+              <CustomTextInput
                 placeholder="Search clients by name…"
-                placeholderTextColor="#9CA3AF"
                 value={clientSearch}
                 onChangeText={setClientSearch}
-                className="font-kumbh text-[#111827]"
+                className="flex-1 h-full ml-2"
               />
             </View>
 
             {/* Client list */}
-            <View className="max-h-[50vh]">
+            <View className="max-h-[45vh]">
               <FlatList
                 data={allReceivablesClients.filter((c: any) =>
                   String(c?.name || "")
@@ -1230,14 +1326,14 @@ export default function FinanceIndex() {
                       >
                         <Text
                           className={clsx(
-                            "font-kumbh text-[16px]",
+                            "font-kumbhBold text-[15px]",
                             isSelected ? "text-[#4C5FAB]" : "text-[#111827]",
                           )}
                           numberOfLines={1}
                         >
                           {c?.name || "Unnamed client"}
                         </Text>
-                        <Text className="font-kumbh text-[12px] text-gray-500 mt-1">
+                        <Text className="font-kumbh text-[12px] text-[#6B7280] mt-0.5">
                           Receivable:{" "}
                           {new Intl.NumberFormat("en-NG", {
                             style: "currency",
@@ -1265,12 +1361,12 @@ export default function FinanceIndex() {
             </View>
 
             {/* Actions */}
-            <View className="flex-row mt-5" style={{ gap: 12 }}>
+            <View className="flex-row mt-5 gap-3">
               <Pressable
                 onPress={() => setShowClientPicker(false)}
-                className="flex-1 h-12 rounded-2xl border border-gray-300 items-center justify-center active:opacity-90"
+                className="flex-1 h-12 rounded-2xl bg-gray-100 items-center justify-center active:opacity-90"
               >
-                <Text className="font-kumbh text-[#111827]">Cancel</Text>
+                <Text className="font-kumbhBold text-[#374151]">Cancel</Text>
               </Pressable>
 
               <Pressable
@@ -1285,10 +1381,17 @@ export default function FinanceIndex() {
                 }}
                 className={clsx(
                   "flex-1 h-12 rounded-2xl items-center justify-center active:opacity-90",
-                  selectedClientId ? "bg-[#4C5FAB]" : "bg-gray-300",
+                  selectedClientId ? "bg-[#4C5FAB]" : "bg-gray-200",
                 )}
               >
-                <Text className="text-white font-kumbhBold">Continue</Text>
+                <Text
+                  className={clsx(
+                    "font-kumbhBold",
+                    selectedClientId ? "text-white" : "text-gray-400",
+                  )}
+                >
+                  Continue
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -1303,17 +1406,20 @@ export default function FinanceIndex() {
 function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
   const iconBg =
     item.kind === "expense"
-      ? "bg-emerald-500"
+      ? "bg-rose-500"
       : item.engagement
         ? getEngagementBadge(item.engagement)
-        : "bg-blue-500";
+        : "bg-[#4C5FAB]";
   const isPending = item.status === "Pending";
 
   return (
-    <Pressable onPress={onPress} className="px-5 py-3 flex-row items-center">
+    <Pressable
+      onPress={onPress}
+      className="mx-4 mb-2.5 rounded-[22px] bg-white border border-gray-100 px-4 py-3.5 flex-row items-center active:opacity-85"
+    >
       <View
         className={clsx(
-          "w-11 h-11 rounded-full items-center justify-center mr-4",
+          "w-11 h-11 rounded-2xl items-center justify-center mr-3.5",
           iconBg,
         )}
       >
@@ -1327,45 +1433,27 @@ function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
       <View className="flex-1 mr-3">
         <Text
           className={clsx(
-            "text-base font-kumbhBold",
+            "text-[14px] font-kumbhBold",
             item.engagement
               ? getEngagementTextColor(item.engagement)
-              : "text-text",
+              : "text-[#111827]",
           )}
           numberOfLines={1}
         >
           {item.title}
         </Text>
-        {item.isExternal && item.engagement ? (
+        {item.projectName && item.clientName ? (
           <View>
             <Text
-              className="text-sm font-kumbh text-gray-600"
+              className="text-[13px] font-kumbh text-[#4B5563] mt-0.5"
               numberOfLines={1}
             >
               {item.projectName}
             </Text>
             <Text
               className={clsx(
-                "text-sm font-kumbh",
-                isPending ? "text-yellow-600" : "text-green-600",
-              )}
-              numberOfLines={1}
-            >
-              {item.clientName}
-            </Text>
-          </View>
-        ) : item.projectName && item.clientName ? (
-          <View>
-            <Text
-              className="text-sm font-kumbh text-gray-600"
-              numberOfLines={1}
-            >
-              {item.projectName}
-            </Text>
-            <Text
-              className={clsx(
-                "text-sm font-kumbh",
-                isPending ? "text-yellow-600" : "text-green-600",
+                "text-[12px] font-kumbh mt-0.5",
+                isPending ? "text-amber-600" : "text-emerald-600",
               )}
               numberOfLines={1}
             >
@@ -1374,29 +1462,26 @@ function TxnRow({ item, onPress }: { item: Txn; onPress: () => void }) {
           </View>
         ) : (
           <Text
-            className={clsx(
-              "text-sm font-kumbh",
-              isPending ? "text-yellow-600" : "text-green-600",
-            )}
+            className="text-[13px] font-kumbh text-[#6B7280] mt-0.5"
             numberOfLines={1}
           >
-            {item.description}
+            {item.description || "Expense"}
           </Text>
         )}
       </View>
 
-      <View className="items-end shrink-0 min-w-[85px]">
+      <View className="items-end shrink-0 min-w-[90px]">
         <Text
           className={clsx(
-            "text-base font-kumbhBold",
-            item.isFullyPaid ? "text-green-600" : "text-text",
+            "text-[14px] font-kumbhBold",
+            item.isFullyPaid ? "text-emerald-600" : "text-[#111827]",
           )}
           numberOfLines={1}
         >
           {NGN(item.amount)}
         </Text>
         <Text
-          className="text-sm text-gray-500 font-kumbh mt-1 pr-1.5"
+          className="text-[11px] text-[#6B7280] font-kumbh mt-1"
           numberOfLines={1}
           style={{ includeFontPadding: false }}
         >

@@ -1,5 +1,6 @@
 import { api } from "@/api/axios";
 import OptionSheet from "@/components/common/OptionSheet";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { showError, showSuccess } from "@/components/ui/toast";
 import { toApiStatus } from "@/features/client/statusMap";
 import { StatusKey, TAB_ORDER } from "@/features/staff/types";
@@ -32,7 +33,6 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     TouchableWithoutFeedback,
     View,
 } from "react-native";
@@ -417,12 +417,13 @@ export default function CreateTaskModal({
                     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                         <View className="flex-1 bg-black/40 justify-end">
                             <View
-                                className="bg-white rounded-t-3xl py-8 px-5"
+                                className="bg-white rounded-t-[28px] py-7 px-5"
                                 style={{
-                                    maxHeight: isKeyboardOpen ? "100%" : "80%",
+                                    maxHeight: isKeyboardOpen ? "100%" : "82%",
                                     height: isKeyboardOpen ? "100%" : undefined,
                                 }}
                             >
+                                <View className="w-10 h-1 bg-gray-200 rounded-full self-center mb-4" />
                                 <ScrollView
                                     keyboardShouldPersistTaps="handled"
                                     contentContainerStyle={{
@@ -449,21 +450,18 @@ export default function CreateTaskModal({
                                                         onPress={() =>
                                                             setMode(m)
                                                         }
-                                                        className="rounded-full px-4 py-2"
-                                                        style={{
-                                                            backgroundColor:
-                                                                selected
-                                                                    ? "#111827"
-                                                                    : "#E5E7EB",
-                                                        }}
+                                                        className={`rounded-full px-4 py-2 border ${
+                                                            selected
+                                                                ? "bg-primary border-primary"
+                                                                : "bg-[#F9FAFB] border-gray-200"
+                                                        }`}
                                                     >
                                                         <Text
-                                                            className="font-kumbh text-[12px]"
-                                                            style={{
-                                                                color: selected
-                                                                    ? "#FFFFFF"
-                                                                    : "#111827",
-                                                            }}
+                                                            className={`font-kumbhBold text-[12px] ${
+                                                                selected
+                                                                    ? "text-white"
+                                                                    : "text-[#111827]"
+                                                            }`}
                                                         >
                                                             {m === "channel"
                                                                 ? "Assign to Channel"
@@ -482,37 +480,38 @@ export default function CreateTaskModal({
                                         </Text>
                                     )}
 
-                                    <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                                    <Text className="font-kumbhBold text-[13px] text-[#374151] mt-4 mb-2">
                                         Name
                                     </Text>
-                                    <TextInput
-                                        value={title}
-                                        onChangeText={setTitle}
-                                        placeholder="Enter task name"
-                                        placeholderTextColor="#9CA3AF"
-                                        className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
-                                    />
+                                    <View className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 h-12 justify-center">
+                                        <CustomTextInput
+                                            value={title}
+                                            onChangeText={setTitle}
+                                            placeholder="Enter task name"
+                                            className="py-3"
+                                        />
+                                    </View>
 
-                                    <Text className="font-kumbh text-[#6B7280] mt-4 mb-2">
+                                    <Text className="font-kumbhBold text-[13px] text-[#374151] mt-4 mb-2">
                                         Description
                                     </Text>
-                                    <TextInput
-                                        value={desc}
-                                        onChangeText={setDesc}
-                                        placeholder="Add a short description"
-                                        placeholderTextColor="#9CA3AF"
-                                        className="font-kumbh text-[#111827] border border-[#E5E7EB] rounded-xl px-4 py-3"
-                                        multiline
-                                        numberOfLines={4}
-                                        textAlignVertical="top"
-                                        style={{ minHeight: 120 }}
-                                    />
+                                    <View className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3">
+                                        <CustomTextInput
+                                            value={desc}
+                                            onChangeText={setDesc}
+                                            placeholder="Add a short description"
+                                            multiline
+                                            numberOfLines={4}
+                                            textAlignVertical="top"
+                                            style={{ minHeight: 110 }}
+                                        />
+                                    </View>
 
                                     {!hideProjectSelector &&
                                         mode === "channel" &&
                                         !forcePersonalForUserId && (
                                             <View className="mt-4">
-                                                <Text className="font-kumbh text-[#6B7280] mb-2">
+                                                <Text className="font-kumbhBold text-[13px] text-[#374151] mb-2">
                                                     Project Code
                                                 </Text>
                                                 <Pressable
@@ -521,17 +520,17 @@ export default function CreateTaskModal({
                                                             true,
                                                         )
                                                     }
-                                                    className="rounded-xl border border-gray-200 bg-[#F3F4F6] px-4 py-3"
+                                                    className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3.5"
                                                 >
                                                     <Text
-                                                        className="font-kumbh text-[#111827]"
+                                                        className="font-kumbhBold text-[14px] text-[#111827]"
                                                         numberOfLines={1}
                                                         ellipsizeMode="tail"
                                                     >
                                                         {selectedChannel?.name ??
                                                             "Select project"}
                                                     </Text>
-                                                    <Text className="font-kumbh text-[12px] text-[#6B7280]">
+                                                    <Text className="font-kumbh text-[12px] text-[#6B7280] mt-0.5">
                                                         {selectedChannel?.code ??
                                                             channelCode ??
                                                             "#—"}
@@ -543,13 +542,13 @@ export default function CreateTaskModal({
                                     {mode === "channel" &&
                                         !forcePersonalForUserId && (
                                             <View className="mt-4">
-                                                <Text className="font-kumbh text-[#6B7280] mb-2">
+                                                <Text className="font-kumbhBold text-[13px] text-[#374151] mb-2">
                                                     Assigned member
                                                 </Text>
                                                 {selectedMember ? (
-                                                    <View className="flex-row items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-2">
+                                                    <View className="flex-row items-center justify-between rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3">
                                                         <View className="flex-1 mr-2">
-                                                            <Text className="font-kumbh text-[#111827]">
+                                                            <Text className="font-kumbhBold text-[14px] text-[#111827]">
                                                                 {selectedMember.name ||
                                                                     selectedMember.email ||
                                                                     selectedMember.id}
@@ -566,13 +565,9 @@ export default function CreateTaskModal({
                                                                     null,
                                                                 )
                                                             }
-                                                            className="rounded-lg px-3 py-1"
-                                                            style={{
-                                                                backgroundColor:
-                                                                    "#FEE2E2",
-                                                            }}
+                                                            className="rounded-full px-3 py-1.5 bg-[#FEE2E2]"
                                                         >
-                                                            <Text className="font-kumbh text-[12px] text-[#B91C1C]">
+                                                            <Text className="font-kumbhBold text-[12px] text-[#B91C1C]">
                                                                 Remove
                                                             </Text>
                                                         </Pressable>
@@ -584,9 +579,9 @@ export default function CreateTaskModal({
                                                                 true,
                                                             )
                                                         }
-                                                        className="rounded-xl border border-[#E5E7EB] px-4 py-3"
+                                                        className="rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4 py-3.5"
                                                     >
-                                                        <Text className="font-kumbh text-[#111827]">
+                                                        <Text className="font-kumbh text-[14px] text-[#374151]">
                                                             Assign member
                                                         </Text>
                                                     </Pressable>
@@ -596,7 +591,7 @@ export default function CreateTaskModal({
 
                                     {/* Status */}
                                     <View className="mt-4">
-                                        <Text className="font-kumbh text-[#6B7280] mb-2">
+                                        <Text className="font-kumbhBold text-[13px] text-[#374151] mb-2">
                                             Change Status
                                         </Text>
                                         <View
@@ -611,21 +606,18 @@ export default function CreateTaskModal({
                                                         onPress={() =>
                                                             setStatus(s)
                                                         }
-                                                        className="rounded-full px-3 py-2"
-                                                        style={{
-                                                            backgroundColor:
-                                                                selected
-                                                                    ? "#111827"
-                                                                    : "#E5E7EB",
-                                                        }}
+                                                        className={`rounded-full px-3.5 py-2 border ${
+                                                            selected
+                                                                ? "bg-primary border-primary"
+                                                                : "bg-[#F9FAFB] border-gray-200"
+                                                        }`}
                                                     >
                                                         <Text
-                                                            className="font-kumbh text-[12px] capitalize"
-                                                            style={{
-                                                                color: selected
-                                                                    ? "#FFFFFF"
-                                                                    : "#111827",
-                                                            }}
+                                                            className={`font-kumbhBold text-[12px] capitalize ${
+                                                                selected
+                                                                    ? "text-white"
+                                                                    : "text-[#374151]"
+                                                            }`}
                                                         >
                                                             {s.replace(
                                                                 "-",
@@ -642,22 +634,25 @@ export default function CreateTaskModal({
                                         className="flex-row justify-end items-center mt-6"
                                         style={{ gap: 12 }}
                                     >
-                                        <Pressable onPress={closeAll}>
-                                            <Text className="font-kumbh text-[#6B7280]">
+                                        <Pressable
+                                            onPress={closeAll}
+                                            className="px-4 py-3 rounded-2xl border border-gray-200 bg-white"
+                                        >
+                                            <Text className="font-kumbhBold text-[#374151]">
                                                 Cancel
                                             </Text>
                                         </Pressable>
                                         <Pressable
                                             disabled={creatingTask}
                                             onPress={create}
-                                            className="rounded-xl px-5 py-3"
+                                            className="rounded-2xl px-6 py-3"
                                             style={{
                                                 backgroundColor: creatingTask
                                                     ? "#4C5FAB99"
                                                     : "#4C5FAB",
                                             }}
                                         >
-                                            <Text className="font-kumbh text-white">
+                                            <Text className="font-kumbhBold text-white">
                                                 {creatingTask
                                                     ? "Creating..."
                                                     : "Create"}

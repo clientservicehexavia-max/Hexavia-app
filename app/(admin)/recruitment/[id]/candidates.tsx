@@ -10,7 +10,7 @@ import type { RootState } from "@/store";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { canAddCandidate } from "@/utils/recruitmentPermissions";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Plus } from "lucide-react-native";
+import { Plus, Users } from "lucide-react-native";
 import React, { useEffect } from "react";
 import {
     ActivityIndicator,
@@ -43,11 +43,12 @@ export default function RecruitmentCandidatesScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <PlatformAdaptiveHeader
                 title="Candidates"
-                headerRight={({ tintColor }) =>
+                backgroundColor="#F5F7FB"
+                headerRight={() =>
                     canAddCandidate(role) ? (
                         <Pressable
                             onPress={() =>
@@ -57,28 +58,69 @@ export default function RecruitmentCandidatesScreen() {
                                     params: { id: recruitmentId },
                                 })
                             }
-                            className="h-10 w-10 items-center justify-center rounded-full"
+                            className="h-10 w-10 items-center justify-center rounded-full bg-[#4C5FAB]"
                             hitSlop={8}
                         >
-                            <Plus size={28} color={tintColor} />
+                            <Plus size={20} color="#FFFFFF" />
                         </Pressable>
                     ) : null
                 }
             />
 
-            <ScrollView className="flex-1 px-4 pb-8 mt-3">
+            <ScrollView
+                className="flex-1"
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingTop: 12,
+                    paddingBottom: 32,
+                }}
+                showsVerticalScrollIndicator={false}
+            >
+                {recruitment ? (
+                    <View className="mb-4 flex-row items-center justify-between rounded-[24px] border border-gray-100 bg-white p-4">
+                        <View className="flex-1 flex-row items-center pr-3">
+                            <View className="mr-3 h-10 w-10 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                                <Users size={18} color="#4C5FAB" />
+                            </View>
+                            <View className="flex-1">
+                                <Text
+                                    className="text-sm font-kumbhBold text-[#111827]"
+                                    numberOfLines={1}
+                                >
+                                    {recruitment.position}
+                                </Text>
+                                <Text
+                                    className="mt-0.5 text-xs font-kumbh text-[#6B7280]"
+                                    numberOfLines={1}
+                                >
+                                    {recruitment.clientName || "Campaign"}
+                                </Text>
+                            </View>
+                        </View>
+                        <View className="rounded-full bg-[#EEF2FF] px-3 py-1">
+                            <Text className="text-xs font-kumbhBold text-[#4C5FAB]">
+                                {recruitment.candidates?.length || 0}
+                            </Text>
+                        </View>
+                    </View>
+                ) : null}
+
                 {loading && !recruitment ? (
-                    <View className="py-8">
+                    <View className="py-10 items-center">
                         <ActivityIndicator color="#4C5FAB" />
                     </View>
                 ) : null}
 
                 {error ? (
-                    <Text className="mb-3 text-sm text-red-500">{error}</Text>
+                    <View className="mb-3 rounded-2xl border border-red-100 bg-red-50 p-3.5">
+                        <Text className="text-sm font-kumbh text-red-700">
+                            {error}
+                        </Text>
+                    </View>
                 ) : null}
 
                 {recruitment?.candidates?.length ? (
-                    <View className="gap-2">
+                    <View>
                         {recruitment.candidates.map((candidate, index) => (
                             <CandidateCard
                                 key={
@@ -110,11 +152,20 @@ export default function RecruitmentCandidatesScreen() {
                             />
                         ))}
                     </View>
-                ) : (
-                    <Text className="py-3 text-sm text-gray-500">
-                        No candidates added yet
-                    </Text>
-                )}
+                ) : !loading ? (
+                    <View className="items-center rounded-[24px] border border-gray-100 bg-white px-6 py-10">
+                        <View className="mb-3 h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF2FF]">
+                            <Users size={22} color="#4C5FAB" />
+                        </View>
+                        <Text className="text-base font-kumbhBold text-[#111827]">
+                            No candidates yet
+                        </Text>
+                        <Text className="mt-1 text-center text-sm font-kumbh text-[#6B7280]">
+                            Add candidates to track their progress through this
+                            hiring pipeline.
+                        </Text>
+                    </View>
+                ) : null}
             </ScrollView>
         </SafeAreaView>
     );

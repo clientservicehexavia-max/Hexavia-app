@@ -11,10 +11,10 @@ export default function ProgressRow({
   const pct = Math.max(0, Math.min(100, percent));
   return (
     <View>
-      <Text className="text-sm text-text mb-1 font-kumbh">{label}</Text>
-      <View className="h-3 rounded-full bg-primary-100 overflow-hidden">
+      <Text className="mb-1.5 font-kumbh text-sm text-[#111827]">{label}</Text>
+      <View className="h-2.5 overflow-hidden rounded-full bg-[#EEF2FF]">
         <View
-          className="h-3 bg-primary-500 rounded-full"
+          className="h-2.5 rounded-full bg-primary"
           style={{ width: `${pct}%` }}
         />
       </View>

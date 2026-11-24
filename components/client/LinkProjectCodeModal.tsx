@@ -1,3 +1,4 @@
+import CustomTextInput from "@/components/ui/CustomInput";
 import { showError } from "@/components/ui/toast";
 import { fetchChannels } from "@/redux/channels/channels.thunks";
 import { fetchProfile, linkProjectCode } from "@/redux/user/user.thunks";
@@ -9,7 +10,6 @@ import {
     Platform,
     Pressable,
     Text,
-    TextInput,
     View,
 } from "react-native";
 
@@ -70,45 +70,50 @@ export default function LinkProjectCodeModal({
             animationType="fade"
             onRequestClose={handleClose}
         >
-            <View className="flex-1 bg-black/50 px-5 justify-center">
-                <View className="bg-white rounded-3xl p-5">
-                    <Text className="text-xl text-[#111827] font-kumbhBold">
+            <View className="flex-1 justify-center bg-black/45 px-5">
+                <View className="rounded-[28px] border border-gray-100 bg-white p-6">
+                    <Text className="font-kumbhBold text-xl text-[#111827]">
                         Link Your Project
                     </Text>
-                    <Text className="text-sm text-gray-500 font-kumbh mt-2">
+                    <Text className="mt-2 font-kumbh text-sm leading-5 text-gray-500">
                         Enter your project code to connect your account to your
                         project chat.
                     </Text>
 
-                    <View className="mt-4 rounded-2xl border border-gray-200 px-4 py-3 flex-row items-center">
-                        <Text className="text-base text-[#6B7280] font-kumbh">
+                    <View className="mt-4 h-14 flex-row items-center rounded-2xl border border-gray-200 bg-[#F9FAFB] px-4">
+                        <Text className="font-kumbhBold text-base text-[#6B7280]">
                             #
                         </Text>
-                        <TextInput
+                        <CustomTextInput
                             value={normalized}
                             onChangeText={setCode}
                             placeholder="e.g. 5839"
-                            placeholderTextColor="#9CA3AF"
                             autoCapitalize="characters"
                             autoCorrect={false}
                             editable={!submitting}
-                            className="flex-1 ml-2 text-base text-[#111827] font-kumbh"
+                            className="ml-2 h-full flex-1 text-base"
                         />
                     </View>
 
                     <Pressable
                         onPress={handleLink}
                         disabled={submitting || !normalized}
-                        className={`mt-4 h-12 rounded-2xl items-center justify-center ${
+                        className={`mt-5 h-12 items-center justify-center rounded-2xl ${
                             submitting || !normalized
-                                ? "bg-gray-300"
-                                : "bg-[#4C5FAB]"
+                                ? "bg-gray-200"
+                                : "bg-primary"
                         }`}
                     >
                         {submitting ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text className="text-white font-kumbhBold">
+                            <Text
+                                className={`font-kumbhBold ${
+                                    submitting || !normalized
+                                        ? "text-gray-400"
+                                        : "text-white"
+                                }`}
+                            >
                                 Link Project
                             </Text>
                         )}

@@ -106,7 +106,7 @@ export default function SanctionsScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white px-4"
+            className="flex-1 bg-[#F5F7FB] px-4"
         >
             <PlatformAdaptiveHeader title="Sanctions" />
             <StatusBar style="dark" />
@@ -124,7 +124,7 @@ export default function SanctionsScreen() {
                     >
                         <Text
                             className={`text-sm font-kumbhBold ${
-                                filter === tab ? "text-white" : "text-gray-700"
+                                filter === tab ? "text-white" : "text-[#374151]"
                             }`}
                         >
                             {tab}
@@ -135,8 +135,8 @@ export default function SanctionsScreen() {
 
             {loading && userSanctions.length === 0 ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator color="#7C3AED" />
-                    <Text className="mt-2 text-gray-500 font-kumbh">
+                    <ActivityIndicator color="#4C5FAB" />
+                    <Text className="mt-2 text-[#6B7280] font-kumbh">
                         Loading sanctions…
                     </Text>
                 </View>
@@ -156,8 +156,8 @@ export default function SanctionsScreen() {
                         <Card>
                             <View className="flex-row items-center justify-between">
                                 <ShieldBadge status={item.status} />
-                                <View className="px-2 py-1 rounded-full bg-indigo-50">
-                                    <Text className="font-kumbhBold text-[11px] text-indigo-700">
+                                <View className="px-2.5 py-1 rounded-full bg-[#EEF2FF]">
+                                    <Text className="font-kumbhBold text-[11px] text-primary">
                                         {item.type}
                                     </Text>
                                 </View>
@@ -165,13 +165,13 @@ export default function SanctionsScreen() {
 
                             <Divider />
 
-                            <Row icon={<Calendar size={16} color="#6366F1" />}>
+                            <Row icon={<Calendar size={16} color="#4C5FAB" />}>
                                 <Label>Date</Label>
                                 <Value>{item.date}</Value>
                             </Row>
 
                             <Row
-                                icon={<ShieldAlert size={16} color="#6366F1" />}
+                                icon={<ShieldAlert size={16} color="#4C5FAB" />}
                             >
                                 <Label>Reason</Label>
                                 <Value>{item.reason}</Value>
@@ -179,8 +179,8 @@ export default function SanctionsScreen() {
                         </Card>
                     )}
                     ListEmptyComponent={
-                        <View className="px-5 py-12">
-                            <Text className="text-center text-gray-500 font-kumbh">
+                        <View className="mt-4 rounded-[24px] bg-white border border-gray-100 px-5 py-12">
+                            <Text className="text-center text-[#6B7280] font-kumbh">
                                 {error
                                     ? `Error: ${error}`
                                     : "No sanctions found."}
@@ -195,7 +195,7 @@ export default function SanctionsScreen() {
 
 function Card({ children }: { children: React.ReactNode }) {
     return (
-        <View className="rounded-2xl bg-white border border-gray-200 p-4 shadow-sm">
+        <View className="rounded-[24px] bg-white border border-gray-100 p-4">
             {children}
         </View>
     );

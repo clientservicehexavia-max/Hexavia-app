@@ -35,5 +35,67 @@ export default function ClientProjectFiles() {
         finally { setUploading(false); }
     };
     const resources = channel?.resources || [];
-    return <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}><ScrollView className="px-5" contentContainerStyle={{ paddingBottom: 32 }}><Pressable onPress={() => router.back()} className="mt-4"><Text className="text-[#4C5FAB] font-kumbhBold">← Project</Text></Pressable><View className="mt-5 flex-row items-center justify-between"><Text className="text-3xl text-gray-900 font-kumbh">Files</Text><Pressable onPress={upload} className="rounded-xl bg-[#4C5FAB] px-3 py-2"><Text className="text-white font-kumbhBold">{uploading ? "Uploading…" : "+ Upload"}</Text></Pressable></View><Text className="mt-2 text-gray-500 font-kumbh">Shared project files and deliverables.</Text>{resources.length ? resources.map((resource) => <Pressable key={resource._id} onPress={() => resource.resourceUpload && Linking.openURL(resource.resourceUpload)} className="mt-4 rounded-2xl border border-gray-200 p-4"><Text className="text-gray-900 font-kumbhBold">{resource.name}</Text><Text className="mt-1 text-gray-500 font-kumbh">{resource.description || ""}</Text><Text className="mt-3 text-sm text-[#4C5FAB] font-kumbhBold">Open file →</Text></Pressable>) : <View className="mt-5 rounded-2xl bg-[#F8FAFF] p-5"><Text className="text-gray-500 font-kumbh">No client-visible files yet.</Text></View>}</ScrollView></SafeAreaView>;
+    return (
+        <SafeAreaView
+            className="flex-1 bg-[#F5F7FB]"
+            edges={["top", "left", "right"]}
+        >
+            <ScrollView
+                className="px-5"
+                contentContainerStyle={{ paddingBottom: 32 }}
+            >
+                <Pressable onPress={() => router.back()} className="mt-4 self-start px-3 py-1.5 rounded-full bg-white border border-gray-100">
+                    <Text className="text-primary font-kumbhBold text-sm">
+                        ← Project
+                    </Text>
+                </Pressable>
+                <View className="mt-5 flex-row items-center justify-between">
+                    <Text className="text-2xl text-[#111827] font-kumbhBold">
+                        Files
+                    </Text>
+                    <Pressable
+                        onPress={upload}
+                        className="rounded-full bg-primary px-4 py-2"
+                    >
+                        <Text className="text-white font-kumbhBold text-sm">
+                            {uploading ? "Uploading…" : "+ Upload"}
+                        </Text>
+                    </Pressable>
+                </View>
+                <Text className="mt-1.5 text-[#6B7280] font-kumbh text-sm">
+                    Shared project files and deliverables.
+                </Text>
+                {resources.length ? (
+                    resources.map((resource) => (
+                        <Pressable
+                            key={resource._id}
+                            onPress={() =>
+                                resource.resourceUpload &&
+                                Linking.openURL(resource.resourceUpload)
+                            }
+                            className="mt-3.5 rounded-[24px] bg-white border border-gray-100 p-4"
+                        >
+                            <Text className="text-[#111827] font-kumbhBold text-[15px]">
+                                {resource.name}
+                            </Text>
+                            {!!resource.description && (
+                                <Text className="mt-1 text-[#6B7280] font-kumbh text-sm">
+                                    {resource.description}
+                                </Text>
+                            )}
+                            <Text className="mt-3 text-xs text-primary font-kumbhBold">
+                                Open file →
+                            </Text>
+                        </Pressable>
+                    ))
+                ) : (
+                    <View className="mt-5 rounded-[24px] bg-white border border-gray-100 p-6 items-center">
+                        <Text className="text-[#6B7280] font-kumbh">
+                            No client-visible files yet.
+                        </Text>
+                    </View>
+                )}
+            </ScrollView>
+        </SafeAreaView>
+    );
 }

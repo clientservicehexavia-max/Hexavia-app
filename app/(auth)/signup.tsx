@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -20,7 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useToast } from "react-native-toast-notifications";
-import { BlurView } from "expo-blur";
+import CustomTextInput from "@/components/ui/CustomInput";
 import HexButton from "@/components/ui/HexButton";
 import {
   Mail,
@@ -118,6 +119,9 @@ export default function SignupScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [search, setSearch] = useState("");
+  const [focusedField, setFocusedField] = useState<
+    "fullname" | "username" | "email" | "phoneNumber" | null
+  >(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -201,53 +205,75 @@ export default function SignupScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View className="flex-1 bg-white">
+      <SafeAreaView
+        edges={["top", "left", "right", "bottom"]}
+        className="flex-1 bg-[#F5F7FB]"
+      >
         <StatusBar style="dark" />
         <KeyboardAwareScrollView
           enableOnAndroid
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: 32,
+          }}
         >
-          <View className="mt-[70px] flex flex-row justify-between gap-2">
-            <View className="flex-1 h-1 bg-primary rounded-xl" />
-            <View className="flex-1 h-1 rounded-xl bg-gray-200" />
-            <View className="flex-1 h-1 rounded-xl bg-gray-200" />
+          <View className="flex-row justify-between gap-2">
+            <View className="h-1.5 flex-1 rounded-full bg-primary" />
+            <View className="h-1.5 flex-1 rounded-full bg-gray-200" />
+            <View className="h-1.5 flex-1 rounded-full bg-gray-200" />
           </View>
           {/* Title + subtitle */}
-          <View className="mt-8">
-            <Text className="text-3xl text-black font-kumbhBold">
+          <View className="mt-6 mb-7">
+            <Text className="font-kumbhBold text-3xl text-[#111827]">
               Create an Account
             </Text>
-            <Text className="text-base text-gray-500 mt-2 font-kumbhLight">
+            <Text className="mt-2 font-kumbh text-[15px] leading-6 text-gray-500">
               Manage projects, oversee finances, and stay connected with your
               team all within Hexavian ERP.
             </Text>
           </View>
 
           {/* Full Name */}
-          <View className="mt-6">
-            <Text className="text-sm text-gray-700 mb-2 font-kumbh">
+          <View>
+            <Text className="mb-2 font-kumbhBold text-sm text-[#374151]">
               Full Name
             </Text>
             <Controller
               control={control}
               name="fullname"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View className="w-full h-14 px-4 rounded-xl bg-gray-100 flex-row items-center">
-                  <User size={18} color="#6B7280" />
-                  <TextInput
-                    placeholder="Enter Full Name"
-                    placeholderTextColor="#9CA3AF"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    className="flex-1 text-black font-kumbh ml-2"
-                  />
-                </View>
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const isFocused = focusedField === "fullname";
+                return (
+                  <View
+                    className={`h-14 w-full flex-row items-center rounded-2xl border bg-white px-4 ${
+                      isFocused ? "border-primary" : "border-gray-200"
+                    }`}
+                  >
+                    <User
+                      size={18}
+                      color={isFocused ? "#4C5FAB" : "#6B7280"}
+                    />
+                    <CustomTextInput
+                      placeholder="Enter Full Name"
+                      onFocus={() => setFocusedField("fullname")}
+                      onBlur={() => {
+                        setFocusedField((cur) =>
+                          cur === "fullname" ? null : cur,
+                        );
+                        onBlur();
+                      }}
+                      onChangeText={onChange}
+                      value={value}
+                      className="ml-3 h-full flex-1"
+                    />
+                  </View>
+                );
+              }}
             />
             {errors.fullname && (
-              <Text className="text-red-500 text-xs mt-1 font-kumbh">
+              <Text className="mt-1.5 font-kumbh text-xs text-red-500">
                 {errors.fullname.message}
               </Text>
             )}
@@ -255,29 +281,44 @@ export default function SignupScreen() {
 
           {/* Username */}
           <View className="mt-4">
-            <Text className="text-sm text-gray-700 mb-2 font-kumbh">
+            <Text className="mb-2 font-kumbhBold text-sm text-[#374151]">
               Username
             </Text>
             <Controller
               control={control}
               name="username"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View className="w-full h-14 px-4 rounded-xl bg-gray-100 flex-row items-center">
-                  <AtSign size={18} color="#6B7280" />
-                  <TextInput
-                    placeholder="Enter Username"
-                    placeholderTextColor="#9CA3AF"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    autoCapitalize="none"
-                    className="flex-1 text-black font-kumbh ml-2"
-                  />
-                </View>
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const isFocused = focusedField === "username";
+                return (
+                  <View
+                    className={`h-14 w-full flex-row items-center rounded-2xl border bg-white px-4 ${
+                      isFocused ? "border-primary" : "border-gray-200"
+                    }`}
+                  >
+                    <AtSign
+                      size={18}
+                      color={isFocused ? "#4C5FAB" : "#6B7280"}
+                    />
+                    <CustomTextInput
+                      placeholder="Enter Username"
+                      onFocus={() => setFocusedField("username")}
+                      onBlur={() => {
+                        setFocusedField((cur) =>
+                          cur === "username" ? null : cur,
+                        );
+                        onBlur();
+                      }}
+                      onChangeText={onChange}
+                      value={value}
+                      autoCapitalize="none"
+                      className="ml-3 h-full flex-1"
+                    />
+                  </View>
+                );
+              }}
             />
             {errors.username && (
-              <Text className="text-red-500 text-xs mt-1 font-kumbh">
+              <Text className="mt-1.5 font-kumbh text-xs text-red-500">
                 {errors.username.message}
               </Text>
             )}
@@ -285,30 +326,45 @@ export default function SignupScreen() {
 
           {/* Email */}
           <View className="mt-4">
-            <Text className="text-sm text-gray-700 mb-2 font-kumbh">
+            <Text className="mb-2 font-kumbhBold text-sm text-[#374151]">
               Email Address
             </Text>
             <Controller
               control={control}
               name="email"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View className="w-full h-14 px-4 rounded-xl bg-gray-100 flex-row items-center">
-                  <Mail size={18} color="#6B7280" />
-                  <TextInput
-                    placeholder="Enter Email Address"
-                    placeholderTextColor="#9CA3AF"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    className="flex-1 text-black font-kumbh ml-2"
-                  />
-                </View>
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const isFocused = focusedField === "email";
+                return (
+                  <View
+                    className={`h-14 w-full flex-row items-center rounded-2xl border bg-white px-4 ${
+                      isFocused ? "border-primary" : "border-gray-200"
+                    }`}
+                  >
+                    <Mail
+                      size={18}
+                      color={isFocused ? "#4C5FAB" : "#6B7280"}
+                    />
+                    <CustomTextInput
+                      placeholder="Enter Email Address"
+                      onFocus={() => setFocusedField("email")}
+                      onBlur={() => {
+                        setFocusedField((cur) =>
+                          cur === "email" ? null : cur,
+                        );
+                        onBlur();
+                      }}
+                      onChangeText={onChange}
+                      value={value}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      className="ml-3 h-full flex-1"
+                    />
+                  </View>
+                );
+              }}
             />
             {errors.email && (
-              <Text className="text-red-500 text-xs mt-1 font-kumbh">
+              <Text className="mt-1.5 font-kumbh text-xs text-red-500">
                 {errors.email.message}
               </Text>
             )}
@@ -316,50 +372,62 @@ export default function SignupScreen() {
 
           {/* Phone Number */}
           <View className="mt-4">
-            <Text className="text-sm text-gray-700 mb-2 font-kumbh">
+            <Text className="mb-2 font-kumbhBold text-sm text-[#374151]">
               Phone Number
             </Text>
             <Controller
               control={control}
               name="phoneNumber"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View className="w-full h-14 px-3 rounded-xl bg-gray-100 flex-row items-center">
-                  {/* Code/flag trigger */}
-                  <Pressable
-                    onPress={() => setPickerOpen(true)}
-                    className="flex-row items-center px-1 py-1 rounded-lg"
+              render={({ field: { onChange, onBlur, value } }) => {
+                const isFocused = focusedField === "phoneNumber";
+                return (
+                  <View
+                    className={`h-14 w-full flex-row items-center rounded-2xl border bg-white px-3 ${
+                      isFocused ? "border-primary" : "border-gray-200"
+                    }`}
                   >
-                    {selectedCountry ? (
-                      <Image
-                        source={{ uri: selectedCountry.flagPng }}
-                        className="w-6 h-6 rounded-sm mr-2"
-                      />
-                    ) : (
-                      <Phone size={18} color="#6B7280" />
-                    )}
-                    <Text className="text-black font-kumbh mr-1">
-                      {selectedCountry?.dialCode ?? ""}
-                    </Text>
-                    <ChevronDown size={16} color="#6B7280" />
-                  </Pressable>
+                    {/* Code/flag trigger */}
+                    <Pressable
+                      onPress={() => setPickerOpen(true)}
+                      className="flex-row items-center rounded-lg px-1 py-1"
+                    >
+                      {selectedCountry ? (
+                        <Image
+                          source={{ uri: selectedCountry.flagPng }}
+                          className="mr-2 h-6 w-6 rounded-sm"
+                        />
+                      ) : (
+                        <Phone size={18} color="#6B7280" />
+                      )}
+                      <Text className="mr-1 font-kumbh text-[#111827]">
+                        {selectedCountry?.dialCode ?? ""}
+                      </Text>
+                      <ChevronDown size={16} color="#6B7280" />
+                    </Pressable>
 
-                  <View className="w-px h-7 bg-gray-300 mx-3" />
+                    <View className="mx-3 h-7 w-px bg-gray-200" />
 
-                  {/* Local phone input */}
-                  <TextInput
-                    placeholder="Enter Phone Number"
-                    placeholderTextColor="#9CA3AF"
-                    onBlur={onBlur}
-                    onChangeText={(t) => onChange(t.replace(/[^\d]/g, ""))}
-                    value={value}
-                    keyboardType="phone-pad"
-                    className="flex-1 text-black font-kumbh"
-                  />
-                </View>
-              )}
+                    {/* Local phone input */}
+                    <CustomTextInput
+                      placeholder="Enter Phone Number"
+                      onFocus={() => setFocusedField("phoneNumber")}
+                      onBlur={() => {
+                        setFocusedField((cur) =>
+                          cur === "phoneNumber" ? null : cur,
+                        );
+                        onBlur();
+                      }}
+                      onChangeText={(t) => onChange(t.replace(/[^\d]/g, ""))}
+                      value={value}
+                      keyboardType="phone-pad"
+                      className="h-full flex-1"
+                    />
+                  </View>
+                );
+              }}
             />
             {errors.phoneNumber && (
-              <Text className="text-red-500 text-xs mt-1 font-kumbh">
+              <Text className="mt-1.5 font-kumbh text-xs text-red-500">
                 {errors.phoneNumber.message}
               </Text>
             )}
@@ -376,11 +444,11 @@ export default function SignupScreen() {
             />
           </View>
 
-          <View className="mt-4 items-center">
-            <Text className="text-gray-600 font-kumbh">
+          <View className="mt-6 items-center">
+            <Text className="font-kumbh text-gray-600">
               Already have an account?{" "}
               <Text
-                className="text-primary font-kumbhBold"
+                className="font-kumbhBold text-primary"
                 onPress={() => router.push("/(auth)/login")}
               >
                 Log in
@@ -388,11 +456,6 @@ export default function SignupScreen() {
             </Text>
           </View>
         </KeyboardAwareScrollView>
-        <BlurView
-          intensity={100}
-          tint="systemChromeMaterial"
-          className="absolute top-0 left-0 right-0 h-12"
-        />
 
         {/* Country Picker Modal */}
         <Modal
@@ -401,10 +464,13 @@ export default function SignupScreen() {
           transparent
           onRequestClose={() => setPickerOpen(false)}
         >
-          <View className="flex-1 bg-black/40 justify-end">
-            <View className="bg-white rounded-t-2xl p-4 max-h-[70%]">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-lg font-kumbhBold">
+          <View className="flex-1 justify-end bg-black/40">
+            <View className="max-h-[75%] rounded-t-[28px] border-t border-gray-100 bg-white p-5">
+              <View className="mb-3 items-center">
+                <View className="h-1.5 w-11 rounded-full bg-gray-200" />
+              </View>
+              <View className="mb-3 flex-row items-center justify-between">
+                <Text className="font-kumbhBold text-lg text-[#111827]">
                   Select your country
                 </Text>
                 <Pressable onPress={() => setPickerOpen(false)} className="p-2">
@@ -413,21 +479,20 @@ export default function SignupScreen() {
               </View>
 
               {/* Search */}
-              <View className="h-12 px-3 rounded-xl bg-gray-100 flex-row items-center mb-3">
+              <View className="mb-3 h-12 flex-row items-center rounded-2xl border border-gray-200 bg-[#F5F7FB] px-3.5">
                 <Search size={18} color="#6B7280" />
-                <TextInput
+                <CustomTextInput
                   placeholder="Search country or code"
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 text-black font-kumbh ml-2"
+                  className="ml-2 h-full flex-1"
                   value={search}
                   onChangeText={setSearch}
                 />
               </View>
 
               {loadingCountries ? (
-                <View className="py-6 items-center">
+                <View className="items-center py-6">
                   <ActivityIndicator />
-                  <Text className="mt-2 text-gray-500 font-kumbh">
+                  <Text className="mt-2 font-kumbh text-gray-500">
                     Loading countries…
                   </Text>
                 </View>
@@ -442,16 +507,16 @@ export default function SignupScreen() {
                         setSelectedCountry(item);
                         setPickerOpen(false);
                       }}
-                      className="flex-row items-center py-2 px-1"
+                      className="flex-row items-center rounded-xl px-2 py-3"
                     >
                       <Image
                         source={{ uri: item.flagPng }}
-                        className="w-6 h-6 rounded-sm mr-3"
+                        className="mr-3 h-6 w-6 rounded-sm"
                       />
-                      <Text className="flex-1 text-black font-kumbh">
+                      <Text className="flex-1 font-kumbh text-[#111827]">
                         {item.name}
                       </Text>
-                      <Text className="text-gray-700 font-kumbh">
+                      <Text className="font-kumbhBold text-gray-600">
                         {item.dialCode}
                       </Text>
                     </Pressable>
@@ -464,7 +529,7 @@ export default function SignupScreen() {
             </View>
           </View>
         </Modal>
-      </View>
+      </SafeAreaView>
     </TouchableWithoutFeedback>
   );
 }

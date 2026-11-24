@@ -13,7 +13,6 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import DatePickerModal from "@/components/admin/DatePickerModal";
 import SectionTitle from "@/components/admin/SectionTitle";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { showError, showSuccess } from "@/components/ui/toast";
 import {
     makeSelectClientById,
@@ -214,12 +214,11 @@ const AmountInput = ({
     const displayValue = formatWithCommas(rawValue);
 
     return (
-        <View
-            className="rounded-xl px-4 py-2 flex-row items-center"
-            style={{ backgroundColor: "#F3F4F6" }}
-        >
-            <Text className="font-kumbh text-[#6B7280] text-base">₦</Text>
-            <TextInput
+        <View className="h-12 rounded-2xl border border-gray-200 bg-[#F9FAFB] px-3.5 flex-row items-center">
+            <Text className="font-kumbhBold text-[#6B7280] text-sm mr-1.5">
+                ₦
+            </Text>
+            <CustomTextInput
                 editable={editable}
                 value={displayValue}
                 onChangeText={(text) => {
@@ -234,15 +233,8 @@ const AmountInput = ({
                     onChange(digits);
                 }}
                 placeholder="5,000"
-                placeholderTextColor="#9CA3AF"
                 keyboardType="numeric"
-                className="font-kumbh text-[#111827]"
-                style={{
-                    flex: 1,
-                    marginLeft: 3,
-                    paddingBottom: displayValue.length === 0 ? 3 : 0,
-                    paddingTop: displayValue.length === 0 ? 0 : 3,
-                }}
+                className="h-full flex-1"
             />
         </View>
     );
@@ -1007,25 +999,26 @@ export default function ClientInstallments() {
                     ? ["left", "right", "bottom"]
                     : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <PlatformAdaptiveHeader
                 title="Installment Payment"
+                backgroundColor="#F5F7FB"
                 onBackPress={onHeaderBackPress}
-                headerRight={({ tintColor }) => (
+                headerRight={() => (
                     <Pressable
                         onPress={handleSave}
                         disabled={headerSaveDisabled}
-                        className="w-10 h-10 rounded-full items-center justify-center"
+                        className={`w-10 h-10 rounded-full items-center justify-center ios:mr-3 ${
+                            headerSaveDisabled ? "bg-gray-200" : "bg-primary"
+                        }`}
                     >
                         {adding || isSaving ? (
-                            <ActivityIndicator size="small" color={tintColor} />
+                            <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
                             <Check
-                                size={28}
-                                color={
-                                    headerSaveDisabled ? "#9CA3AF" : tintColor
-                                }
+                                size={20}
+                                color={headerSaveDisabled ? "#9CA3AF" : "#FFFFFF"}
                             />
                         )}
                     </Pressable>
@@ -1046,54 +1039,50 @@ export default function ClientInstallments() {
                 <ScrollView
                     className="flex-1"
                     keyboardShouldPersistTaps="handled"
-                    contentContainerClassName="px-5 pb-32"
+                    contentContainerClassName="px-5 pt-2 pb-32"
+                    showsVerticalScrollIndicator={false}
                 >
-                    {/* Summary card (Total only visible) */}
-                    <View className="rounded-2xl p-3 bg-[#EEF1FF]">
-                        <View className="gap-2">
-                            <View className="flex-row justify-between items-end">
-                                <View className="flex-1 pr-2">
-                                    <Text className="font-kumbhBold text-[#111827] text-[16px]">
-                                        {loadingClient
-                                            ? "Loading…"
-                                            : project || "—"}
-                                    </Text>
-                                    <Text className="font-kumbh text-[#111827] mt-1">
-                                        {loadingClient ? "" : name || "—"}
-                                    </Text>
-                                </View>
-                                <View
-                                    className={clsx(
-                                        "px-3 py-1 rounded-full",
-                                        getEngagementBadge(engagement),
-                                    )}
-                                >
-                                    <Text className="text-xs font-kumbhBold text-white">
-                                        {engagement || "—"}
-                                    </Text>
-                                </View>
+                    {/* Summary card */}
+                    <View className="rounded-[28px] p-5 bg-primary">
+                        <View className="flex-row justify-between items-start">
+                            <View className="flex-1 pr-2">
+                                <Text className="font-kumbhBold text-white text-[18px]">
+                                    {loadingClient
+                                        ? "Loading…"
+                                        : project || "—"}
+                                </Text>
+                                <Text className="font-kumbh text-white/80 text-sm mt-1">
+                                    {loadingClient ? "" : name || "—"}
+                                </Text>
+                            </View>
+                            <View
+                                className={clsx(
+                                    "px-3 py-1 rounded-full",
+                                    getEngagementBadge(engagement),
+                                )}
+                            >
+                                <Text className="text-xs font-kumbhBold text-white">
+                                    {engagement || "—"}
+                                </Text>
                             </View>
                         </View>
 
-                        <View className="flex-row mt-3" style={{ gap: 12 }}>
-                            {/* Total (keep visible) */}
-                            <View className="flex-1 flex-row items-center justify-between rounded-lg bg-white/80 px-3 py-1">
-                                <View>
-                                    <Text className="text-base text-[#6B7280] font-kumbh">
-                                        Total
-                                    </Text>
-                                    <Text className="font-kumbhBold text-[#111827] text-base">
-                                        {N(totalAmount)}
-                                    </Text>
-                                </View>
-                                <View>
-                                    <Text className="text-base text-[#6B7280] font-kumbh">
-                                        Outstanding
-                                    </Text>
-                                    <Text className="font-kumbhBold text-[#111827] text-base">
-                                        {N(remaining)}
-                                    </Text>
-                                </View>
+                        <View className="flex-row mt-4 gap-3">
+                            <View className="flex-1 rounded-2xl bg-white/15 px-3.5 py-2.5">
+                                <Text className="text-xs text-white/75 font-kumbh">
+                                    Total
+                                </Text>
+                                <Text className="font-kumbhBold text-white text-[16px] mt-0.5">
+                                    {N(totalAmount)}
+                                </Text>
+                            </View>
+                            <View className="flex-1 rounded-2xl bg-white/15 px-3.5 py-2.5">
+                                <Text className="text-xs text-white/75 font-kumbh">
+                                    Outstanding
+                                </Text>
+                                <Text className="font-kumbhBold text-white text-[16px] mt-0.5">
+                                    {N(remaining)}
+                                </Text>
                             </View>
                         </View>
                     </View>
@@ -1105,14 +1094,14 @@ export default function ClientInstallments() {
                         </SectionTitle>
                         <Pressable
                             onPress={addRow}
-                            className="px-3 py-2 rounded-xl bg-[#4C5FAB] active:opacity-90"
+                            className="px-4 py-2 rounded-full bg-primary active:opacity-90"
                         >
                             <View
                                 className="flex-row items-center"
                                 style={{ gap: 6 }}
                             >
-                                <Plus size={16} color="#fff" />
-                                <Text className="text-white font-kumbhBold text-[13px] ios:pt-1">
+                                <Plus size={15} color="#fff" />
+                                <Text className="text-white font-kumbhBold text-[13px]">
                                     Add Row
                                 </Text>
                             </View>
@@ -1127,23 +1116,29 @@ export default function ClientInstallments() {
                         return (
                             <View
                                 key={rowKey}
-                                className="mt-3 rounded-2xl border border-[#EEF0F3] p-3"
+                                className="mt-3 rounded-[24px] bg-white border border-gray-100 p-4"
                             >
                                 <View className="flex-row items-center justify-between">
-                                    <Text className="font-kumbh text-[#6B7280]">
-                                        Row {idx + 1}
+                                    <Text className="font-kumbhBold text-sm text-[#111827]">
+                                        Installment {idx + 1}
                                     </Text>
                                     <View className="flex-row items-center gap-2">
                                         <Pressable
                                             onPress={() => togglePaid(idx)}
                                             className={clsx(
-                                                "px-2 py-1 rounded-full",
+                                                "px-3 py-1 rounded-full border",
                                                 isPaid
-                                                    ? "bg-[#E5F9EE] text-[#0E9F6E]"
-                                                    : "bg-[#FFF7ED] text-[#C2410C]",
+                                                    ? "bg-emerald-50 border-emerald-100"
+                                                    : "bg-amber-50 border-amber-100",
                                             )}
                                         >
-                                            <Text className="text-[12px] font-kumbhBold">
+                                            <Text
+                                                className={`text-[11px] font-kumbhBold ${
+                                                    isPaid
+                                                        ? "text-emerald-700"
+                                                        : "text-amber-700"
+                                                }`}
+                                            >
                                                 {isPaid ? "Paid" : "Not Paid"}
                                             </Text>
                                         </Pressable>
@@ -1152,10 +1147,10 @@ export default function ClientInstallments() {
                                                 onPress={() =>
                                                     onPrintReceipt(row, idx)
                                                 }
-                                                className="w-9 h-9 rounded-xl bg-[#EEF1FF] items-center justify-center"
+                                                className="w-9 h-9 rounded-full bg-[#EEF2FF] items-center justify-center"
                                             >
                                                 <Printer
-                                                    size={18}
+                                                    size={16}
                                                     color="#4C5FAB"
                                                 />
                                             </Pressable>
@@ -1164,11 +1159,11 @@ export default function ClientInstallments() {
                                 </View>
 
                                 <View
-                                    className="flex-row items-end mt-3"
+                                    className="flex-row items-end mt-3.5"
                                     style={{ gap: 8 }}
                                 >
                                     <View style={{ flex: 1 }}>
-                                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                                        <Text className="mb-1.5 text-xs text-[#6B7280] font-kumbhBold">
                                             Receivable Amount
                                         </Text>
                                         <AmountInput
@@ -1181,7 +1176,7 @@ export default function ClientInstallments() {
                                     </View>
 
                                     <View>
-                                        <Text className="mb-2 text-[13px] text-gray-700 font-kumbh">
+                                        <Text className="mb-1.5 text-xs text-[#6B7280] font-kumbhBold">
                                             Date due
                                         </Text>
                                         <Pressable
@@ -1190,13 +1185,10 @@ export default function ClientInstallments() {
                                                 setDateIdx(idx);
                                                 setPickerDate(parseDueDate(row.due));
                                             }}
-                                            className={clsx(
-                                                "rounded-xl px-3 android:py-2.5 ios:py-3",
-                                                "bg-[#F3F4F6]",
-                                            )}
+                                            className="h-12 rounded-2xl border border-gray-200 bg-[#F9FAFB] px-3.5 justify-center"
                                             style={{ minWidth: 112 }}
                                         >
-                                            <Text className="font-kumbh text-[#111827] text-center">
+                                            <Text className="font-kumbh text-[13px] text-[#111827] text-center">
                                                 {row.due || "DD/MM/YYYY"}
                                             </Text>
                                         </Pressable>
@@ -1206,9 +1198,9 @@ export default function ClientInstallments() {
                                         onPress={() =>
                                             deleteRow(idx, row.paymentId)
                                         }
-                                        className="w-10 h-10 rounded-xl bg-red-50 items-center justify-center"
+                                        className="w-12 h-12 rounded-2xl bg-red-50 items-center justify-center"
                                     >
-                                        <Trash2 size={20} color="#B91C1C" />
+                                        <Trash2 size={18} color="#B91C1C" />
                                     </Pressable>
                                 </View>
                             </View>

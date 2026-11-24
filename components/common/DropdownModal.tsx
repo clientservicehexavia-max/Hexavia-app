@@ -30,9 +30,9 @@ export default function DropdownModal<T extends string = string>({
             animationType="fade"
             onRequestClose={onClose}
         >
-            <Pressable onPress={onClose} className="flex-1 bg-black/30">
-                <View className="absolute left-5 right-5 bottom-8 rounded-2xl bg-white p-4">
-                    <Text className="font-kumbhBold text-[#111827] mb-2">
+            <Pressable onPress={onClose} className="flex-1 bg-black/40">
+                <View className="absolute left-5 right-5 bottom-8 rounded-[24px] border border-gray-100 bg-white p-5">
+                    <Text className="mb-3 font-kumbhBold text-base text-[#111827]">
                         {title}
                     </Text>
 
@@ -40,12 +40,7 @@ export default function DropdownModal<T extends string = string>({
                         data={options}
                         keyExtractor={(item) => item.value}
                         ItemSeparatorComponent={() => (
-                            <View
-                                style={{
-                                    height: 1,
-                                    backgroundColor: "#EEF0F3",
-                                }}
-                            />
+                            <View className="h-px bg-gray-100" />
                         )}
                         renderItem={({ item }) => {
                             const active = item.value === selectedValue;
@@ -55,15 +50,16 @@ export default function DropdownModal<T extends string = string>({
                                         onSelect(item.value);
                                         onClose();
                                     }}
-                                    className="py-3 flex-row items-center justify-between"
+                                    className={`my-0.5 flex-row items-center justify-between rounded-xl px-3 py-3 ${
+                                        active ? "bg-[#EEF2FF]" : ""
+                                    }`}
                                 >
                                     <Text
-                                        className="font-kumbh"
-                                        style={{
-                                            color: active
-                                                ? "#4C5FAB"
-                                                : "#111827",
-                                        }}
+                                        className={
+                                            active
+                                                ? "font-kumbhBold text-primary"
+                                                : "font-kumbh text-[#111827]"
+                                        }
                                     >
                                         {item.label}
                                     </Text>

@@ -1,4 +1,7 @@
+import Field from "@/components/admin/Field";
+import Input from "@/components/admin/Input";
 import PlatformAdaptiveHeader from "@/components/common/PlatformAdaptiveHeader";
+import CustomTextInput from "@/components/ui/CustomInput";
 import {
     addRecruitmentCandidate,
     fetchRecruitmentById,
@@ -19,7 +22,7 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
+    TouchableOpacity,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -163,21 +166,22 @@ export default function AddCandidateScreen() {
             edges={
                 isIOS ? ["left", "right"] : ["top", "left", "right", "bottom"]
             }
-            className="flex-1 bg-white"
+            className="flex-1 bg-[#F5F7FB]"
         >
             <PlatformAdaptiveHeader
                 title={isEditMode ? "Edit Candidate" : "Add Candidate"}
-                headerRight={({ tintColor }) => (
+                backgroundColor="#F5F7FB"
+                headerRight={() => (
                     <Pressable
                         onPress={handleSave}
                         disabled={isSaving}
-                        className="w-10 h-10 rounded-full items-center justify-center"
+                        className="h-10 w-10 items-center justify-center rounded-full bg-[#4C5FAB]"
                         hitSlop={8}
                     >
                         {isSaving ? (
-                            <ActivityIndicator size="small" color={tintColor} />
+                            <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                            <Check size={28} color={tintColor} />
+                            <Check size={20} color="#FFFFFF" />
                         )}
                     </Pressable>
                 )}
@@ -189,120 +193,140 @@ export default function AddCandidateScreen() {
                 keyboardVerticalOffset={isIOS ? 120 : 0}
             >
                 <ScrollView
-                    className="flex-1 px-4 pb-8 mt-3"
+                    className="flex-1"
+                    contentContainerStyle={{
+                        paddingHorizontal: 16,
+                        paddingTop: 12,
+                        paddingBottom: 36,
+                    }}
                     keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
                 >
                     <View className="gap-4">
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Full Name
-                            </Text>
-                            <TextInput
-                                className="rounded-xl bg-gray-100 px-4 py-3"
+                        <Field label="Full Name">
+                            <Input
                                 value={fullName}
                                 onChangeText={setFullName}
                                 placeholder="Candidate full name"
                             />
-                        </View>
+                        </Field>
 
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Email
-                            </Text>
-                            <TextInput
-                                className="rounded-xl bg-gray-100 px-4 py-3"
-                                value={email}
-                                onChangeText={setEmail}
-                                placeholder="candidate@email.com"
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                            />
-                        </View>
+                        <Field label="Email">
+                            <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                                <CustomTextInput
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    placeholder="candidate@email.com"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    className="font-kumbh text-base text-[#111827]"
+                                />
+                            </View>
+                        </Field>
 
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Phone Number
-                            </Text>
-                            <TextInput
-                                className="rounded-xl bg-gray-100 px-4 py-3"
-                                value={phone}
-                                onChangeText={setPhone}
-                                placeholder="Phone number"
-                                keyboardType="phone-pad"
-                            />
-                        </View>
+                        <Field label="Phone Number">
+                            <View className="h-14 justify-center rounded-2xl border border-gray-200 bg-white px-4">
+                                <CustomTextInput
+                                    value={phone}
+                                    onChangeText={setPhone}
+                                    placeholder="Phone number"
+                                    keyboardType="phone-pad"
+                                    className="font-kumbh text-base text-[#111827]"
+                                />
+                            </View>
+                        </Field>
 
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Location
-                            </Text>
-                            <TextInput
-                                className="rounded-xl bg-gray-100 px-4 py-3"
+                        <Field label="Location">
+                            <Input
                                 value={location}
                                 onChangeText={setLocation}
                                 placeholder="Candidate location"
                             />
-                        </View>
+                        </Field>
 
                         <View className="flex-row gap-3">
                             <View className="flex-1">
-                                <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                    Age
-                                </Text>
-                                <TextInput
-                                    className="rounded-xl bg-gray-100 px-4 py-3"
-                                    value={age}
-                                    onChangeText={setAge}
-                                    placeholder="Age"
-                                    keyboardType="numeric"
-                                />
+                                <Field label="Age">
+                                    <Input
+                                        value={age}
+                                        onChangeText={setAge}
+                                        placeholder="Age"
+                                        keyboardType="numeric"
+                                    />
+                                </Field>
                             </View>
                             <View className="flex-1">
-                                <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                    Years of Experience
-                                </Text>
-                                <TextInput
-                                    className="rounded-xl bg-gray-100 px-4 py-3"
-                                    value={yearsExperience}
-                                    onChangeText={setYearsExperience}
-                                    placeholder="Years"
-                                    keyboardType="numeric"
-                                />
+                                <Field label="Years of Experience">
+                                    <Input
+                                        value={yearsExperience}
+                                        onChangeText={setYearsExperience}
+                                        placeholder="Years"
+                                        keyboardType="numeric"
+                                    />
+                                </Field>
                             </View>
                         </View>
 
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Recruiter
-                            </Text>
-                            <TextInput
-                                className="rounded-xl bg-gray-100 px-4 py-3"
+                        <Field label="Recruiter">
+                            <Input
                                 value={recruiter}
                                 onChangeText={setRecruiter}
                                 placeholder="Assigned recruiter"
                             />
-                        </View>
+                        </Field>
 
-                        <View>
-                            <Text className="mb-2 text-base font-kumbhBold text-gray-700">
-                                Overall Status
-                            </Text>
+                        <Field label="Overall Status">
                             <View className="flex-row flex-wrap gap-2">
-                                {candidateStates.map((state) => (
-                                    <Pressable
-                                        key={state}
-                                        onPress={() => setOverallStatus(state)}
-                                        className={`rounded-full px-3 py-2 ${overallStatus === state ? "bg-[#4C5FAB]" : "bg-gray-100"}`}
-                                    >
-                                        <Text
-                                            className={`${overallStatus === state ? "text-white" : "text-gray-700"}`}
+                                {candidateStates.map((state) => {
+                                    const active = overallStatus === state;
+                                    return (
+                                        <Pressable
+                                            key={state}
+                                            onPress={() =>
+                                                setOverallStatus(state)
+                                            }
+                                            className={`rounded-full border px-3.5 py-2 ${
+                                                active
+                                                    ? "border-[#4C5FAB] bg-[#4C5FAB]"
+                                                    : "border-gray-200 bg-white"
+                                            }`}
                                         >
-                                            {state}
-                                        </Text>
-                                    </Pressable>
-                                ))}
+                                            <Text
+                                                className={`text-xs font-kumbhBold ${
+                                                    active
+                                                        ? "text-white"
+                                                        : "text-[#374151]"
+                                                }`}
+                                            >
+                                                {state}
+                                            </Text>
+                                        </Pressable>
+                                    );
+                                })}
                             </View>
-                        </View>
+                        </Field>
+
+                        <TouchableOpacity
+                            onPress={handleSave}
+                            disabled={isSaving}
+                            activeOpacity={0.85}
+                            className={`mt-2 h-14 flex-row items-center justify-center rounded-2xl ${
+                                isSaving ? "bg-[#4C5FAB]/60" : "bg-[#4C5FAB]"
+                            }`}
+                        >
+                            {isSaving ? (
+                                <ActivityIndicator
+                                    size="small"
+                                    color="#FFFFFF"
+                                />
+                            ) : (
+                                <Text className="font-kumbhBold text-base text-white">
+                                    {isEditMode
+                                        ? "Save Candidate"
+                                        : "Add Candidate"}
+                                </Text>
+                            )}
+                        </TouchableOpacity>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>

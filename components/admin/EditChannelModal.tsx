@@ -6,11 +6,11 @@ import {
   Pressable,
   Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { X } from "lucide-react-native";
 
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { showError } from "@/components/ui/toast";
 import { updateChannel } from "@/redux/channels/channels.thunks";
 import type { Channel } from "@/redux/channels/channels.types";
@@ -87,14 +87,14 @@ export default function EditChannelModal({ visible, channel, onClose }: Props) {
           className="w-full"
         >
           <Pressable onPress={() => {}} className="">
-            <View className="bg-white rounded-3xl p-5">
+            <View className="bg-white rounded-[28px] p-5 border border-gray-100">
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-[18px] font-kumbhBold text-gray-900">
+                <Text className="text-[19px] font-kumbhBold text-[#111827]">
                   Edit Project
                 </Text>
                 <Pressable
                   onPress={onClose}
-                  className="h-9 w-9 rounded-xl bg-gray-100 items-center justify-center"
+                  className="h-9 w-9 rounded-full bg-[#F3F4F6] items-center justify-center"
                   accessibilityLabel="Close modal"
                 >
                   <X size={18} color="#111827" />
@@ -102,41 +102,43 @@ export default function EditChannelModal({ visible, channel, onClose }: Props) {
               </View>
 
               <View className="mb-3">
-                <Text className="text-[12px] text-gray-500 mb-1">
+                <Text className="text-[12px] font-kumbhBold text-[#374151] mb-1.5">
                   Name of Project
                 </Text>
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Enter Name of Project"
-                  className="h-12 px-4 rounded-2xl bg-gray-100 text-gray-900"
-                  placeholderTextColor="#9CA3AF"
-                  autoCapitalize="words"
-                />
+                <View className="h-12 px-4 rounded-2xl border border-gray-200 bg-[#F9FAFB] justify-center">
+                  <CustomTextInput
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Enter Name of Project"
+                    autoCapitalize="words"
+                  />
+                </View>
               </View>
 
               <View className="mb-3">
-                <Text className="text-[12px] text-gray-500 mb-1">
+                <Text className="text-[12px] font-kumbhBold text-[#374151] mb-1.5">
                   Descriptions
                 </Text>
-                <TextInput
-                  value={desc}
-                  onChangeText={setDesc}
-                  placeholder="Add a short description"
-                  className="px-4 pt-3 pb-3 rounded-2xl bg-gray-100 text-gray-900"
-                  placeholderTextColor="#9CA3AF"
-                  multiline
-                  numberOfLines={3}
-                />
+                <View className="px-4 py-3 rounded-2xl border border-gray-200 bg-[#F9FAFB]">
+                  <CustomTextInput
+                    value={desc}
+                    onChangeText={setDesc}
+                    placeholder="Add a short description"
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    style={{ minHeight: 72 }}
+                  />
+                </View>
               </View>
 
               <View className="mb-5">
                 <View className="flex-row items-center justify-between">
                   <View>
-                    <Text className="text-[12px] text-gray-500 mb-1">
+                    <Text className="text-[13px] font-kumbhBold text-[#374151] mb-0.5">
                       Active project
                     </Text>
-                    <Text className="text-[10px] text-gray-400">
+                    <Text className="text-[11px] font-kumbh text-[#6B7280]">
                       Toggle off to deactivate this project.
                     </Text>
                   </View>
@@ -150,15 +152,18 @@ export default function EditChannelModal({ visible, channel, onClose }: Props) {
               </View>
 
               <View className="mb-5">
-                <Text className="text-[12px] text-gray-500 mb-1">Code</Text>
-                <TextInput
-                  value={code}
-                  editable={false}
-                  placeholder="#0101"
-                  className="h-12 px-4 rounded-2xl bg-gray-100 text-gray-400"
-                  placeholderTextColor="#9CA3AF"
-                  autoCapitalize="none"
-                />
+                <Text className="text-[12px] font-kumbhBold text-[#374151] mb-1.5">
+                  Code
+                </Text>
+                <View className="h-12 px-4 rounded-2xl border border-gray-200 bg-gray-100 justify-center">
+                  <CustomTextInput
+                    value={code}
+                    editable={false}
+                    placeholder="#0101"
+                    className="text-gray-400"
+                    autoCapitalize="none"
+                  />
+                </View>
               </View>
 
               <Pressable

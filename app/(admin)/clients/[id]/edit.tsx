@@ -4,14 +4,13 @@ import React, { useEffect, useState } from "react";
 import {
     Pressable,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import KeyboardAwareScrollView from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Field from "@/components/admin/Field";
-import HexButton from "@/components/ui/HexButton";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 
 import { showError, showSuccess } from "@/components/ui/toast";
 import { selectAdminUsers } from "@/redux/admin/admin.slice";
@@ -45,60 +44,81 @@ export default function EditClient() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-[#F5F7FB]">
       {/* Header */}
-      <View className="px-5 pt-6 pb-2 flex-row items-center gap-4">
+      <View className="px-5 pt-4 pb-3 flex-row items-center justify-between">
         <Pressable
           onPress={() => router.back()}
-          className="w-10 h-10 rounded-full items-center justify-center"
+          className="w-10 h-10 rounded-full bg-white border border-gray-100 items-center justify-center"
         >
-          <ArrowLeft size={24} color="#111827" />
+          <ArrowLeft size={20} color="#111827" />
         </Pressable>
-        <Text className="text-3xl font-kumbh text-text">Edit User</Text>
+        <Text className="text-2xl font-kumbhBold text-[#111827]">Edit Client</Text>
+        <View className="w-10" />
       </View>
 
       <KeyboardAwareScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-10 pt-4"
+        contentContainerClassName="px-5 pb-10 pt-2"
         keyboardShouldPersistTaps="handled"
         enableOnAndroid
         extraHeight={8}
       >
-          <Field label="Full name">
-            <TextInput
-              placeholder="Enter full name"
-              placeholderTextColor="#9CA3AF"
-              value={fullname}
-              onChangeText={setFullname}
-              className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
-              autoCapitalize="words"
-            />
+          <Field label="Full Name">
+            <View className="h-14 rounded-2xl border border-gray-200 bg-white px-4 justify-center">
+              <CustomTextInput
+                placeholder="Enter full name"
+                value={fullname}
+                onChangeText={setFullname}
+                className="h-full w-full"
+                autoCapitalize="words"
+              />
+            </View>
           </Field>
 
           <Field label="Username">
-            <TextInput
-              placeholder="Enter username"
-              placeholderTextColor="#9CA3AF"
-              value={username}
-              onChangeText={setUsername}
-              className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
-              autoCapitalize="none"
-            />
+            <View className="h-14 rounded-2xl border border-gray-200 bg-white px-4 justify-center">
+              <CustomTextInput
+                placeholder="Enter username"
+                value={username}
+                onChangeText={setUsername}
+                className="h-full w-full"
+                autoCapitalize="none"
+              />
+            </View>
           </Field>
 
           <Field label="Email">
-            <TextInput
-              placeholder="Enter email"
-              placeholderTextColor="#9CA3AF"
-              value={email}
-              onChangeText={setEmail}
-              className="bg-gray-200 rounded-2xl px-4 py-4 font-kumbh text-text"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+            <View className="h-14 rounded-2xl border border-gray-200 bg-white px-4 justify-center">
+              <CustomTextInput
+                placeholder="Enter email"
+                value={email}
+                onChangeText={setEmail}
+                className="h-full w-full"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
           </Field>
 
-          <HexButton title="Save" onPress={onSave} />
+          <View className="mt-4 flex-row gap-3">
+            <Pressable
+              onPress={() => router.back()}
+              className="h-14 flex-1 rounded-2xl border border-gray-200 bg-white items-center justify-center"
+            >
+              <Text className="font-kumbhBold text-[15px] text-[#374151]">
+                Cancel
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={onSave}
+              className="h-14 flex-1 rounded-2xl bg-primary items-center justify-center"
+            >
+              <Text className="font-kumbhBold text-[15px] text-white">
+                Save
+              </Text>
+            </Pressable>
+          </View>
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );

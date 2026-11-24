@@ -8,6 +8,7 @@ module.exports = {
       colors: {
         secondary: "#F59E0B",
         background: "#F3F4F6",
+        surface: "#F5F7FB",
         text: "#111827",
 
         blue: {

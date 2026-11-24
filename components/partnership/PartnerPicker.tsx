@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, Modal } from "react-native";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchPartners } from "@/redux/partner/partner.thunks";
+import { CustomTextInput } from "@/components/ui/CustomInput";
 import { selectAllPartners, selectPartnerLoading } from "@/redux/partner/partner.selectors";
+import { fetchPartners } from "@/redux/partner/partner.thunks";
 import type { Partner } from "@/redux/partner/partner.types";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { Check, ChevronDown, Search, X } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import { FlatList, Modal, Pressable, Text, View } from "react-native";
 
 interface PartnerPickerProps {
     value?: string;
@@ -44,18 +46,24 @@ export const PartnerPicker: React.FC<PartnerPickerProps> = ({
     };
 
     return (
-        <View className="w-full mb-4">
-            <TouchableOpacity
+        <View className="w-full">
+            <Pressable
                 onPress={() => setIsOpen(true)}
                 disabled={disabled}
-                className={`w-full border border-gray-300 rounded-lg px-4 py-3 ${
+                className={`h-14 flex-row items-center justify-between rounded-2xl border border-gray-200 px-4 ${
                     disabled ? "bg-gray-100" : "bg-white"
                 }`}
             >
-                <Text className={selectedPartner ? "text-gray-900" : "text-gray-500"}>
+                <Text
+                    className={`font-kumbh text-[15px] flex-1 ${
+                        selectedPartner ? "text-[#111827]" : "text-[#9CA3AF]"
+                    }`}
+                    numberOfLines={1}
+                >
                     {selectedPartner?.name || placeholder}
                 </Text>
-            </TouchableOpacity>
+                <ChevronDown size={18} color="#4C5FAB" />
+            </Pressable>
 
             <Modal
                 visible={isOpen}
@@ -63,58 +71,71 @@ export const PartnerPicker: React.FC<PartnerPickerProps> = ({
                 animationType="slide"
                 onRequestClose={() => setIsOpen(false)}
             >
-                <View className="flex-1 bg-white mt-12">
-                    <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200">
-                        <Text className="text-lg font-semibold">Select Partner</Text>
-                        <TouchableOpacity
-                            onPress={() => setIsOpen(false)}
-                            className="px-4 py-2"
-                        >
-                            <Text className="text-gray-600 text-base">✕</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View className="px-4 py-3 border-b border-gray-200">
-                        <Text className="text-gray-600 text-sm mb-2">Search</Text>
-                        <View className="border border-gray-300 rounded-lg px-3 py-2">
-                            <Text
-                                onPress={() => {}} // placeholder for input
-                                className="text-gray-900"
-                            >
-                                {searchText || "Type partner name..."}
+                <View className="flex-1 bg-black/40 justify-end">
+                    <View className="max-h-[82%] bg-white rounded-t-[28px] pt-3 pb-6">
+                        <View className="w-10 h-1 rounded-full bg-gray-200 self-center mb-3" />
+                        <View className="flex-row items-center justify-between px-5 pb-3.5 border-b border-gray-100">
+                            <Text className="text-[18px] font-kumbhBold text-[#111827]">
+                                Select Partner
                             </Text>
-                        </View>
-                    </View>
-
-                    <FlatList
-                        data={filteredPartners}
-                        keyExtractor={(item) => item._id}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                onPress={() => handleSelectPartner(item)}
-                                className="px-4 py-3 border-b border-gray-100"
+                            <Pressable
+                                onPress={() => setIsOpen(false)}
+                                className="h-9 w-9 rounded-full bg-gray-100 items-center justify-center"
                             >
-                                <Text className="text-gray-900 font-medium">
-                                    {item.name}
-                                </Text>
-                                {item.company && (
-                                    <Text className="text-gray-600 text-sm">
-                                        {item.company}
-                                    </Text>
-                                )}
-                                <Text className="text-gray-500 text-xs">
-                                    Status: {item.status}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        ListEmptyComponent={
-                            <View className="px-4 py-8">
-                                <Text className="text-gray-500 text-center">
-                                    {loading ? "Loading partners..." : "No partners found"}
-                                </Text>
+                                <X size={17} color="#374151" />
+                            </Pressable>
+                        </View>
+
+                        <View className="px-5 py-3 border-b border-gray-100">
+                            <View className="h-12 flex-row items-center rounded-2xl border border-gray-200 bg-[#F9FAFB] px-3.5">
+                                <Search size={16} color="#6B7280" />
+                                <CustomTextInput
+                                    value={searchText}
+                                    onChangeText={setSearchText}
+                                    placeholder="Search partners..."
+                                    className="flex-1 h-full ml-2"
+                                />
                             </View>
-                        }
-                    />
+                        </View>
+
+                        <FlatList
+                            data={filteredPartners}
+                            keyExtractor={(item) => item._id}
+                            keyboardShouldPersistTaps="handled"
+                            renderItem={({ item }) => {
+                                const active = item._id === value;
+                                return (
+                                    <Pressable
+                                        onPress={() => handleSelectPartner(item)}
+                                        className="px-5 py-3.5 border-b border-gray-100 flex-row items-center justify-between"
+                                    >
+                                        <View className="flex-1 pr-3">
+                                            <Text className="text-[#111827] font-kumbhBold text-[15px]">
+                                                {item.name}
+                                            </Text>
+                                            {item.company ? (
+                                                <Text className="text-[#6B7280] font-kumbh text-[12px] mt-0.5">
+                                                    {item.company}
+                                                </Text>
+                                            ) : null}
+                                        </View>
+                                        {active ? (
+                                            <Check size={17} color="#4C5FAB" />
+                                        ) : null}
+                                    </Pressable>
+                                );
+                            }}
+                            ListEmptyComponent={
+                                <View className="px-5 py-10 items-center">
+                                    <Text className="text-[#6B7280] font-kumbh text-center">
+                                        {loading
+                                            ? "Loading partners..."
+                                            : "No partners found"}
+                                    </Text>
+                                </View>
+                            }
+                        />
+                    </View>
                 </View>
             </Modal>
         </View>
